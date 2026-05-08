@@ -1,41 +1,87 @@
+import { useState } from "react";
+import { collection, addDoc } from "firebase/firestore";
+import { db } from "./firebase";
+
 export default function App() {
+  const [escola, setEscola] = useState("");
+  const [municipio, setMunicipio] = useState("");
+  const [prioridade, setPrioridade] = useState("");
+
+  async function salvarVisita() {
+    try {
+      await addDoc(collection(db, "visitas_tecnicas"), {
+        escola,
+        municipio,
+        prioridade,
+        data: new Date().toLocaleDateString()
+      });
+
+      alert("Visita salva com sucesso!");
+
+      setEscola("");
+      setMunicipio("");
+      setPrioridade("");
+    } catch (erro) {
+      console.log(erro);
+      alert("Erro ao salvar.");
+    }
+  }
+
   return (
     <div
       style={{
         minHeight: "100vh",
         background: "#0f172a",
         color: "white",
-        display: "flex",
-        flexDirection: "column",
-        justifyContent: "center",
-        alignItems: "center",
+        padding: "40px",
         fontFamily: "Arial"
       }}
     >
-      <h1 style={{ fontSize: "48px", marginBottom: "10px" }}>
-        Radar Link MS
-      </h1>
+      <h1>Radar Link MS</h1>
 
-      <p style={{ fontSize: "20px", opacity: 0.8 }}>
-        Inteligência • Gestão • Articulação
-      </p>
+      <h2>Cadastro de Visita Técnica</h2>
 
       <div
         style={{
-          marginTop: "40px",
-          padding: "20px",
-          background: "#1e293b",
-          borderRadius: "12px",
-          width: "320px",
-          textAlign: "center"
+          display: "flex",
+          flexDirection: "column",
+          gap: "10px",
+          maxWidth: "400px"
         }}
       >
-        <h2>Painel Inicial</h2>
+        <input
+          placeholder="Escola"
+          value={escola}
+          onChange={(e) => setEscola(e.target.value)}
+          style={{ padding: "12px" }}
+        />
 
-        <p>✅ Visitas Técnicas</p>
-        <p>✅ Reuniões</p>
-        <p>✅ Demandas Escolares</p>
-        <p>✅ Gestão Estratégica</p>
+        <input
+          placeholder="Município"
+          value={municipio}
+          onChange={(e) => setMunicipio(e.target.value)}
+          style={{ padding: "12px" }}
+        />
+
+        <input
+          placeholder="Prioridade"
+          value={prioridade}
+          onChange={(e) => setPrioridade(e.target.value)}
+          style={{ padding: "12px" }}
+        />
+
+        <button
+          onClick={salvarVisita}
+          style={{
+            padding: "14px",
+            background: "#2563eb",
+            color: "white",
+            border: "none",
+            cursor: "pointer"
+          }}
+        >
+          Salvar Visita
+        </button>
       </div>
     </div>
   );
