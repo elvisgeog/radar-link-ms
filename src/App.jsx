@@ -1,11 +1,5 @@
 import React, { useEffect, useState } from "react";
-import {
-  collection,
-  addDoc,
-  getDocs,
-  deleteDoc,
-  doc
-} from "firebase/firestore";
+import { collection, addDoc, getDocs } from "firebase/firestore";
 import { db } from "./firebase";
 
 export default function App() {
@@ -102,23 +96,60 @@ export default function App() {
   const [form, setForm] = useState({
     municipio: "",
     escola: "",
+    data: "",
     diretor: "",
     adjunto: "",
-    classificacaoDiretor: "",
-    classificacaoAdjunto: "",
+    demandas: [],
+    descricaoDemandas: "",
+    administrativas: [],
+    descricaoAdministrativas: "",
+    avaliacaoSedDiretor: "",
+    avaliacaoSedAdjunto: "",
+    avaliacaoGovernoDiretor: "",
+    avaliacaoGovernoAdjunto: "",
     interesseAgendaDiretor: "",
     interesseAgendaAdjunto: "",
+    classificacaoDiretor: "",
+    classificacaoAdjunto: "",
     observacoes: ""
   });
 
-  async function carregarRegistros() {
-    const dados = await getDocs(collection(db, "reunioes_gestores"));
-    setRegistros(dados.docs.map((docItem) => ({ id: docItem.id, ...docItem.data() })));
+  const demandasOpcoes = [
+    "Reforma",
+    "Pintura",
+    "Climatização",
+    "Rede elétrica",
+    "Mobiliário",
+    "Tecnologia",
+    "Segurança",
+    "Transporte",
+    "Outros"
+  ];
+
+  const administrativasOpcoes = [
+    "Déficit de servidores",
+    "Problemas organizacionais",
+    "Dificuldades pedagógicas",
+    "Necessidade de apoio da CRE",
+    "Outros"
+  ];
+
+  function alternarCheckbox(campo, valor) {
+    setForm((atual) => {
+      const lista = atual[campo];
+      return {
+        ...atual,
+        [campo]: lista.includes(valor)
+          ? lista.filter((item) => item !== valor)
+          : [...lista, valor]
+      };
+    });
   }
 
-  useEffect(() => {
-    carregarRegistros();
-  }, []);
+  async function carregarRegistros() {
+    const dados = await getDocs(collection(db, "reunioes_gestores"));
+    setRegistros(dados.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+  }
 
   async function salvarRegistro() {
     if (!form.municipio || !form.escola) {
@@ -131,31 +162,13 @@ export default function App() {
       criadoEm: new Date().toLocaleString()
     });
 
-    alert("Registro salvo!");
-
-    setForm({
-      municipio: "",
-      escola: "",
-      diretor: "",
-      adjunto: "",
-      classificacaoDiretor: "",
-      classificacaoAdjunto: "",
-      interesseAgendaDiretor: "",
-      interesseAgendaAdjunto: "",
-      observacoes: ""
-    });
-
+    alert("Reunião salva com sucesso!");
     carregarRegistros();
   }
 
-  async function excluirRegistro(id) {
-    const confirmar = window.confirm("Deseja realmente excluir este registro?");
-    if (!confirmar) return;
-
-    await deleteDoc(doc(db, "reunioes_gestores", id));
-    alert("Registro excluído com sucesso!");
+  useEffect(() => {
     carregarRegistros();
-  }
+  }, []);
 
   function contarClassificacao(tipo) {
     return registros.reduce((total, r) => {
@@ -181,19 +194,15 @@ export default function App() {
   const amarelo = contarClassificacao("AMARELO");
   const vermelho = contarClassificacao("VERMELHO");
 
-  const alto = contarEngajamento("Alto");
-  const medio = contarEngajamento("Médio");
-  const baixo = contarEngajamento("Baixo");
+  const altoEngajamento = contarEngajamento("Alto");
+  const medioEngajamento = contarEngajamento("Médio");
+  const baixoEngajamento = contarEngajamento("Baixo");
 
   function corIndicador(label) {
     if (label === "VERDE" || label === "Alto") return "#22c55e";
     if (label === "AMARELO" || label === "Médio") return "#eab308";
     if (label === "VERMELHO" || label === "Baixo") return "#ef4444";
-    return "#ffffff";
-  }
-
-  function gerarPDF() {
-    window.print();
+    return "#facc15";
   }
 
   function listaFiltrada() {
@@ -202,44 +211,54 @@ export default function App() {
     const lista = [];
 
     registros.forEach((r) => {
-      if (r.classificacaoDiretor === filtroAtivo) {
-        lista.push({
-          id: r.id + "d",
-          nome: r.diretor || "Não informado",
-          cargo: "Diretor(a)",
-          escola: r.escola,
-          municipio: r.municipio
-        });
-      }
+      if (["VERDE", "AMARELO", "VERMELHO"].includes(filtroAtivo)) {
+        if (r.classificacaoDiretor === filtroAtivo) {
+          lista.push({
+            id: r.id + "-diretor",
+            cargo: "Diretor(a)",
+            nome: r.diretor || "Não informado",
+            escola: r.escola,
+            municipio: r.municipio,
+            classificacao: r.classificacaoDiretor,
+            engajamento: r.interesseAgendaDiretor
+          });
+        }
 
-      if (r.classificacaoAdjunto === filtroAtivo) {
-        lista.push({
-          id: r.id + "a",
-          nome: r.adjunto || "Não informado",
-          cargo: "Diretor(a) Adjunto(a)",
-          escola: r.escola,
-          municipio: r.municipio
-        });
-      }
+        if (r.classificacaoAdjunto === filtroAtivo) {
+          lista.push({
+            id: r.id + "-adjunto",
+            cargo: "Diretor(a) Adjunto(a)",
+            nome: r.adjunto || "Não informado",
+            escola: r.escola,
+            municipio: r.municipio,
+            classificacao: r.classificacaoAdjunto,
+            engajamento: r.interesseAgendaAdjunto
+          });
+        }
+      } else {
+        if (r.interesseAgendaDiretor === filtroAtivo) {
+          lista.push({
+            id: r.id + "-diretor",
+            cargo: "Diretor(a)",
+            nome: r.diretor || "Não informado",
+            escola: r.escola,
+            municipio: r.municipio,
+            classificacao: r.classificacaoDiretor,
+            engajamento: r.interesseAgendaDiretor
+          });
+        }
 
-      if (r.interesseAgendaDiretor === filtroAtivo) {
-        lista.push({
-          id: r.id + "ed",
-          nome: r.diretor || "Não informado",
-          cargo: "Diretor(a)",
-          escola: r.escola,
-          municipio: r.municipio
-        });
-      }
-
-      if (r.interesseAgendaAdjunto === filtroAtivo) {
-        lista.push({
-          id: r.id + "ea",
-          nome: r.adjunto || "Não informado",
-          cargo: "Diretor(a) Adjunto(a)",
-          escola: r.escola,
-          municipio: r.municipio
-        });
+        if (r.interesseAgendaAdjunto === filtroAtivo) {
+          lista.push({
+            id: r.id + "-adjunto",
+            cargo: "Diretor(a) Adjunto(a)",
+            nome: r.adjunto || "Não informado",
+            escola: r.escola,
+            municipio: r.municipio,
+            classificacao: r.classificacaoAdjunto,
+            engajamento: r.interesseAgendaAdjunto
+          });
+        }
       }
     });
 
@@ -251,85 +270,119 @@ export default function App() {
     const cor = corIndicador(label);
 
     return (
-      <div style={styles.verticalChartItem} onClick={() => setFiltroAtivo(label)}>
-        <div style={styles.verticalBarArea}>
+      <div style={styles.barChartRow} onClick={() => setFiltroAtivo(label)}>
+        <div style={styles.barLabelArea}>
+          <span style={{ color: cor }}>{label}</span>
+          <strong style={{ color: cor }}>
+            {valor} ({percentual}%)
+          </strong>
+        </div>
+
+        <div style={styles.barraFundo}>
           <div
             style={{
-              ...styles.verticalBar,
-              background: cor,
-              height: `${percentual}%`
+              ...styles.barraValor,
+              width: `${percentual}%`,
+              background: cor
             }}
           />
         </div>
-
-        <strong style={{ color: cor, marginTop: 10 }}>{valor}</strong>
-
-        <span style={{ color: cor, fontWeight: "bold", marginTop: 5, textAlign: "center" }}>
-          {label}
-        </span>
-
-        <small style={{ color: "#cbd5e1", marginTop: 4 }}>{percentual}%</small>
       </div>
     );
   }
 
+  function gerarPDF() {
+    window.print();
+  }
+
   if (modoRelatorio) {
+    const dataGeracao = new Date().toLocaleString();
+
     return (
       <div style={styles.relatorioPage}>
-        <h1>Radar Link MS</h1>
-        <h2>Relatório Estratégico</h2>
-        <p>Data: {new Date().toLocaleString()}</p>
+        <div style={styles.relatorioTopo}>
+          <h1>Radar Link MS</h1>
+          <h2>Relatório Estratégico de Gestores</h2>
+          <p>Data de geração: {dataGeracao}</p>
 
-        <button style={styles.button} onClick={() => setModoRelatorio(false)}>
-          Voltar
-        </button>
+          <button style={styles.buttonRelatorio} onClick={() => setModoRelatorio(false)}>
+            Voltar ao painel
+          </button>
 
-        <button style={styles.button} onClick={gerarPDF}>
-          Gerar PDF
-        </button>
-
-        <div style={styles.relatorioBox}>
-          <h2>Indicadores</h2>
-          <p>Verde: {verde}</p>
-          <p>Amarelo: {amarelo}</p>
-          <p>Vermelho: {vermelho}</p>
-          <p>Alto: {alto}</p>
-          <p>Médio: {medio}</p>
-          <p>Baixo: {baixo}</p>
+          <button style={styles.buttonRelatorio} onClick={gerarPDF}>
+            Gerar PDF / Imprimir
+          </button>
         </div>
 
-        {registros.map((r) => (
-          <div key={r.id} style={styles.relatorioItem}>
-            <h3>{r.escola}</h3>
-            <p>Município: {r.municipio}</p>
-            <p>Diretor: {r.diretor}</p>
-            <p>Adjunto: {r.adjunto}</p>
-            <p>Classificação Diretor: {r.classificacaoDiretor}</p>
-            <p>Classificação Adjunto: {r.classificacaoAdjunto}</p>
-            <p>Engajamento Diretor: {r.interesseAgendaDiretor}</p>
-            <p>Engajamento Adjunto: {r.interesseAgendaAdjunto}</p>
-            <p>Observações: {r.observacoes}</p>
-          </div>
-        ))}
+        <section style={styles.relatorioBox}>
+          <h2>1. Totais por Classificação</h2>
+          <p><strong>Verde:</strong> {verde}</p>
+          <p><strong>Amarelo:</strong> {amarelo}</p>
+          <p><strong>Vermelho:</strong> {vermelho}</p>
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>2. Totais por Engajamento</h2>
+          <p><strong>Alto:</strong> {altoEngajamento}</p>
+          <p><strong>Médio:</strong> {medioEngajamento}</p>
+          <p><strong>Baixo:</strong> {baixoEngajamento}</p>
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>3. Lista de Diretores</h2>
+
+          {registros.map((r) => (
+            <div key={r.id + "-diretor"} style={styles.relatorioItem}>
+              <p><strong>Nome:</strong> {r.diretor || "Não informado"}</p>
+              <p><strong>Município:</strong> {r.municipio}</p>
+              <p><strong>Escola:</strong> {r.escola}</p>
+              <p><strong>Classificação:</strong> {r.classificacaoDiretor || "Não informado"}</p>
+              <p><strong>Engajamento:</strong> {r.interesseAgendaDiretor || "Não informado"}</p>
+              <p><strong>Observações:</strong> {r.observacoes || "Sem observações"}</p>
+            </div>
+          ))}
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>4. Lista de Diretores Adjuntos</h2>
+
+          {registros.map((r) => (
+            <div key={r.id + "-adjunto"} style={styles.relatorioItem}>
+              <p><strong>Nome:</strong> {r.adjunto || "Não informado"}</p>
+              <p><strong>Município:</strong> {r.municipio}</p>
+              <p><strong>Escola:</strong> {r.escola}</p>
+              <p><strong>Classificação:</strong> {r.classificacaoAdjunto || "Não informado"}</p>
+              <p><strong>Engajamento:</strong> {r.interesseAgendaAdjunto || "Não informado"}</p>
+              <p><strong>Observações:</strong> {r.observacoes || "Sem observações"}</p>
+            </div>
+          ))}
+        </section>
       </div>
     );
   }
 
   if (filtroAtivo) {
+    const lista = listaFiltrada();
+    const cor = corIndicador(filtroAtivo);
+
     return (
       <div style={styles.page}>
         <button style={styles.button} onClick={() => setFiltroAtivo(null)}>
-          Voltar
+          Voltar ao painel
         </button>
 
-        <h1 style={{ color: corIndicador(filtroAtivo) }}>Lista: {filtroAtivo}</h1>
+        <h1 style={{ ...styles.title, color: cor }}>Lista: {filtroAtivo}</h1>
 
-        {listaFiltrada().map((r) => (
-          <div key={r.id} style={styles.registro}>
+        {lista.length === 0 && <p>Nenhum registro encontrado.</p>}
+
+        {lista.map((r) => (
+          <div key={r.id} style={{ ...styles.registro, borderLeft: `6px solid ${cor}` }}>
             <h2>{r.nome}</h2>
-            <p>Cargo: {r.cargo}</p>
-            <p>Escola: {r.escola}</p>
-            <p>Município: {r.municipio}</p>
+            <p><strong>Cargo:</strong> {r.cargo}</p>
+            <p><strong>Município:</strong> {r.municipio}</p>
+            <p><strong>Escola:</strong> {r.escola}</p>
+            <p><strong>Classificação:</strong> {r.classificacao || "Não informado"}</p>
+            <p><strong>Engajamento:</strong> {r.engajamento || "Não informado"}</p>
           </div>
         ))}
       </div>
@@ -348,44 +401,44 @@ export default function App() {
       </header>
 
       <button style={styles.button} onClick={() => setModoRelatorio(true)}>
-        Abrir Relatório / PDF
+        Abrir Relatório / Gerar PDF
       </button>
 
       <section style={styles.cards}>
-        <div style={{ ...styles.card, color: "#22c55e" }}>
+        <div style={{ ...styles.card, color: "#22c55e" }} onClick={() => setFiltroAtivo("VERDE")}>
           <span>Verde</span>
           <strong>{verde}</strong>
         </div>
 
-        <div style={{ ...styles.card, color: "#eab308" }}>
+        <div style={{ ...styles.card, color: "#eab308" }} onClick={() => setFiltroAtivo("AMARELO")}>
           <span>Amarelo</span>
           <strong>{amarelo}</strong>
         </div>
 
-        <div style={{ ...styles.card, color: "#ef4444" }}>
+        <div style={{ ...styles.card, color: "#ef4444" }} onClick={() => setFiltroAtivo("VERMELHO")}>
           <span>Vermelho</span>
           <strong>{vermelho}</strong>
         </div>
 
-        <div style={{ ...styles.card, color: "#22c55e" }}>
+        <div style={{ ...styles.card, color: "#22c55e" }} onClick={() => setFiltroAtivo("Alto")}>
           <span>Alto engajamento</span>
-          <strong>{alto}</strong>
+          <strong>{altoEngajamento}</strong>
         </div>
 
-        <div style={{ ...styles.card, color: "#eab308" }}>
+        <div style={{ ...styles.card, color: "#eab308" }} onClick={() => setFiltroAtivo("Médio")}>
           <span>Médio engajamento</span>
-          <strong>{medio}</strong>
+          <strong>{medioEngajamento}</strong>
         </div>
 
-        <div style={{ ...styles.card, color: "#ef4444" }}>
+        <div style={{ ...styles.card, color: "#ef4444" }} onClick={() => setFiltroAtivo("Baixo")}>
           <span>Baixo engajamento</span>
-          <strong>{baixo}</strong>
+          <strong>{baixoEngajamento}</strong>
         </div>
       </section>
 
       <main style={styles.grid}>
         <section style={styles.panel}>
-          <h2>Cadastro</h2>
+          <h2>Formulário de Reunião com Gestores</h2>
 
           <select
             style={styles.input}
@@ -398,10 +451,10 @@ export default function App() {
               })
             }
           >
-            <option value="">Município</option>
+            <option value="">Selecione o município</option>
 
-            {Object.keys(escolasPorMunicipio).map((m) => (
-              <option key={m}>{m}</option>
+            {Object.keys(escolasPorMunicipio).map((municipio) => (
+              <option key={municipio}>{municipio}</option>
             ))}
           </select>
 
@@ -415,47 +468,139 @@ export default function App() {
               })
             }
           >
-            <option value="">Escola</option>
+            <option value="">Selecione a escola</option>
 
             {form.municipio &&
-              escolasPorMunicipio[form.municipio].map((e) => (
-                <option key={e}>{e}</option>
+              escolasPorMunicipio[form.municipio]?.map((escola) => (
+                <option key={escola}>{escola}</option>
               ))}
           </select>
 
           <input
             style={styles.input}
-            placeholder="Diretor"
-            value={form.diretor}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                diretor: e.target.value
-              })
-            }
+            type="date"
+            value={form.data}
+            onChange={(e) => setForm({ ...form, data: e.target.value })}
           />
 
           <input
             style={styles.input}
-            placeholder="Adjunto"
-            value={form.adjunto}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                adjunto: e.target.value
-              })
-            }
+            placeholder="Diretor(a)"
+            value={form.diretor}
+            onChange={(e) => setForm({ ...form, diretor: e.target.value })}
           />
+
+          <input
+            style={styles.input}
+            placeholder="Diretor(a) Adjunto(a)"
+            value={form.adjunto}
+            onChange={(e) => setForm({ ...form, adjunto: e.target.value })}
+          />
+
+          <h3>1. Demandas da Escola</h3>
+
+          {demandasOpcoes.map((opcao) => (
+            <label style={styles.check} key={opcao}>
+              <input
+                type="checkbox"
+                checked={form.demandas.includes(opcao)}
+                onChange={() => alternarCheckbox("demandas", opcao)}
+              />{" "}
+              {opcao}
+            </label>
+          ))}
+
+          <textarea
+            style={styles.textarea}
+            placeholder="Descrição das demandas"
+            value={form.descricaoDemandas}
+            onChange={(e) => setForm({ ...form, descricaoDemandas: e.target.value })}
+          />
+
+          <h3>2. Questões Administrativas</h3>
+
+          {administrativasOpcoes.map((opcao) => (
+            <label style={styles.check} key={opcao}>
+              <input
+                type="checkbox"
+                checked={form.administrativas.includes(opcao)}
+                onChange={() => alternarCheckbox("administrativas", opcao)}
+              />{" "}
+              {opcao}
+            </label>
+          ))}
+
+          <textarea
+            style={styles.textarea}
+            placeholder="Descrição das questões administrativas"
+            value={form.descricaoAdministrativas}
+            onChange={(e) => setForm({ ...form, descricaoAdministrativas: e.target.value })}
+          />
+
+          <h3>3. Percepção Institucional</h3>
+
+          <h4>Diretor(a)</h4>
+
+          <textarea
+            style={styles.textarea}
+            placeholder="Como o diretor avalia a atuação da SED?"
+            value={form.avaliacaoSedDiretor}
+            onChange={(e) => setForm({ ...form, avaliacaoSedDiretor: e.target.value })}
+          />
+
+          <textarea
+            style={styles.textarea}
+            placeholder="Como o diretor avalia o Governo?"
+            value={form.avaliacaoGovernoDiretor}
+            onChange={(e) => setForm({ ...form, avaliacaoGovernoDiretor: e.target.value })}
+          />
+
+          <h4>Diretor(a) Adjunto(a)</h4>
+
+          <textarea
+            style={styles.textarea}
+            placeholder="Como o adjunto avalia a atuação da SED?"
+            value={form.avaliacaoSedAdjunto}
+            onChange={(e) => setForm({ ...form, avaliacaoSedAdjunto: e.target.value })}
+          />
+
+          <textarea
+            style={styles.textarea}
+            placeholder="Como o adjunto avalia o Governo?"
+            value={form.avaliacaoGovernoAdjunto}
+            onChange={(e) => setForm({ ...form, avaliacaoGovernoAdjunto: e.target.value })}
+          />
+
+          <h3>4. Engajamento</h3>
+
+          <select
+            style={styles.input}
+            value={form.interesseAgendaDiretor}
+            onChange={(e) => setForm({ ...form, interesseAgendaDiretor: e.target.value })}
+          >
+            <option value="">Interesse Diretor</option>
+            <option>Alto</option>
+            <option>Médio</option>
+            <option>Baixo</option>
+          </select>
+
+          <select
+            style={styles.input}
+            value={form.interesseAgendaAdjunto}
+            onChange={(e) => setForm({ ...form, interesseAgendaAdjunto: e.target.value })}
+          >
+            <option value="">Interesse Adjunto</option>
+            <option>Alto</option>
+            <option>Médio</option>
+            <option>Baixo</option>
+          </select>
+
+          <h3>5. Classificação Interna</h3>
 
           <select
             style={styles.input}
             value={form.classificacaoDiretor}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                classificacaoDiretor: e.target.value
-              })
-            }
+            onChange={(e) => setForm({ ...form, classificacaoDiretor: e.target.value })}
           >
             <option value="">Classificação Diretor</option>
             <option>VERDE</option>
@@ -466,12 +611,7 @@ export default function App() {
           <select
             style={styles.input}
             value={form.classificacaoAdjunto}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                classificacaoAdjunto: e.target.value
-              })
-            }
+            onChange={(e) => setForm({ ...form, classificacaoAdjunto: e.target.value })}
           >
             <option value="">Classificação Adjunto</option>
             <option>VERDE</option>
@@ -479,84 +619,29 @@ export default function App() {
             <option>VERMELHO</option>
           </select>
 
-          <select
-            style={styles.input}
-            value={form.interesseAgendaDiretor}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                interesseAgendaDiretor: e.target.value
-              })
-            }
-          >
-            <option value="">Engajamento Diretor</option>
-            <option>Alto</option>
-            <option>Médio</option>
-            <option>Baixo</option>
-          </select>
-
-          <select
-            style={styles.input}
-            value={form.interesseAgendaAdjunto}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                interesseAgendaAdjunto: e.target.value
-              })
-            }
-          >
-            <option value="">Engajamento Adjunto</option>
-            <option>Alto</option>
-            <option>Médio</option>
-            <option>Baixo</option>
-          </select>
+          <h3>6. Observações Estratégicas</h3>
 
           <textarea
             style={styles.textarea}
-            placeholder="Observações"
+            placeholder="Observações estratégicas"
             value={form.observacoes}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                observacoes: e.target.value
-              })
-            }
+            onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
           />
 
           <button style={styles.button} onClick={salvarRegistro}>
-            Salvar
+            Salvar Reunião
           </button>
         </section>
 
         <section style={styles.panel}>
-          <h2>Indicadores</h2>
+          <h2>Indicadores por Gestor</h2>
 
-          <div style={styles.verticalChartContainer}>
-            {barra("VERDE", verde, totalGestores)}
-            {barra("AMARELO", amarelo, totalGestores)}
-            {barra("VERMELHO", vermelho, totalGestores)}
-            {barra("Alto", alto, totalGestores)}
-            {barra("Médio", medio, totalGestores)}
-            {barra("Baixo", baixo, totalGestores)}
-          </div>
-        </section>
-
-        <section style={styles.panel}>
-          <h2>Registros Salvos</h2>
-
-          {registros.map((r) => (
-            <div key={r.id} style={styles.registro}>
-              <h3>{r.escola}</h3>
-              <p><strong>Município:</strong> {r.municipio}</p>
-              <p><strong>Diretor:</strong> {r.diretor}</p>
-              <p><strong>Adjunto:</strong> {r.adjunto}</p>
-              <p><strong>Observações:</strong> {r.observacoes}</p>
-
-              <button style={styles.buttonExcluir} onClick={() => excluirRegistro(r.id)}>
-                Excluir Registro
-              </button>
-            </div>
-          ))}
+          {barra("VERDE", verde, totalGestores)}
+          {barra("AMARELO", amarelo, totalGestores)}
+          {barra("VERMELHO", vermelho, totalGestores)}
+          {barra("Alto", altoEngajamento, totalGestores)}
+          {barra("Médio", medioEngajamento, totalGestores)}
+          {barra("Baixo", baixoEngajamento, totalGestores)}
         </section>
       </main>
     </div>
@@ -576,7 +661,8 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: 15,
-    marginBottom: 25
+    marginBottom: 25,
+    flexWrap: "wrap"
   },
 
   logo: {
@@ -592,7 +678,7 @@ const styles = {
 
   title: {
     margin: 0,
-    fontSize: 38
+    fontSize: "clamp(26px, 5vw, 38px)"
   },
 
   subtitle: {
@@ -602,7 +688,7 @@ const styles = {
 
   cards: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))",
+    gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))",
     gap: 12,
     marginBottom: 25
   },
@@ -611,8 +697,12 @@ const styles = {
     background: "#1e293b",
     padding: 18,
     borderRadius: 14,
+    cursor: "pointer",
+    fontWeight: "bold",
     display: "flex",
-    justifyContent: "space-between"
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12
   },
 
   grid: {
@@ -633,8 +723,8 @@ const styles = {
     marginBottom: 10,
     borderRadius: 8,
     border: "none",
-    fontSize: 16,
-    boxSizing: "border-box"
+    boxSizing: "border-box",
+    fontSize: 16
   },
 
   textarea: {
@@ -644,7 +734,13 @@ const styles = {
     borderRadius: 8,
     border: "none",
     minHeight: 90,
-    boxSizing: "border-box"
+    boxSizing: "border-box",
+    fontSize: 16
+  },
+
+  check: {
+    display: "block",
+    marginBottom: 8
   },
 
   button: {
@@ -655,20 +751,34 @@ const styles = {
     border: "none",
     borderRadius: 10,
     fontWeight: "bold",
+    fontSize: 16,
     cursor: "pointer",
     marginBottom: 15
   },
 
-  buttonExcluir: {
-    width: "100%",
-    padding: 12,
-    background: "#ef4444",
-    color: "white",
-    border: "none",
-    borderRadius: 10,
-    fontWeight: "bold",
-    cursor: "pointer",
-    marginTop: 10
+  barChartRow: {
+    marginBottom: 18,
+    cursor: "pointer"
+  },
+
+  barLabelArea: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 6,
+    fontWeight: "bold"
+  },
+
+  barraFundo: {
+    height: 16,
+    background: "#334155",
+    borderRadius: 999,
+    marginTop: 5
+  },
+
+  barraValor: {
+    height: 16,
+    borderRadius: 999
   },
 
   registro: {
@@ -678,55 +788,41 @@ const styles = {
     marginBottom: 15
   },
 
-  verticalChartContainer: {
-    display: "flex",
-    alignItems: "flex-end",
-    justifyContent: "space-around",
-    gap: 20,
-    minHeight: 320,
-    paddingTop: 20,
-    overflowX: "auto"
-  },
-
-  verticalChartItem: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    cursor: "pointer",
-    width: 90
-  },
-
-  verticalBarArea: {
-    height: 220,
-    width: 60,
-    background: "#334155",
-    borderRadius: 12,
-    display: "flex",
-    alignItems: "flex-end",
-    overflow: "hidden"
-  },
-
-  verticalBar: {
-    width: "100%",
-    borderRadius: 12,
-    transition: "0.4s"
-  },
-
   relatorioPage: {
     background: "white",
     color: "black",
     minHeight: "100vh",
-    padding: 30
+    padding: 30,
+    fontFamily: "Arial"
+  },
+
+  relatorioTopo: {
+    borderBottom: "2px solid #111827",
+    marginBottom: 20,
+    paddingBottom: 15
   },
 
   relatorioBox: {
     border: "1px solid #ccc",
     padding: 15,
-    marginBottom: 20
+    marginBottom: 20,
+    borderRadius: 8
   },
 
   relatorioItem: {
     borderBottom: "1px solid #ddd",
     padding: "10px 0"
+  },
+
+  buttonRelatorio: {
+    padding: 12,
+    background: "#2563eb",
+    color: "white",
+    border: "none",
+    borderRadius: 8,
+    fontWeight: "bold",
+    cursor: "pointer",
+    marginRight: 10,
+    marginBottom: 10
   }
 };
