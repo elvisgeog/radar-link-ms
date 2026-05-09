@@ -2,12 +2,12 @@ import { initializeApp } from "firebase/app";
 import { getFirestore } from "firebase/firestore";
 
 const firebaseConfig = {
-  apiKey: "...",
-  authDomain: "...",
+  apiKey: "COLE_SUA_API_KEY",
+  authDomain: "radarlinkms.firebaseapp.com",
   projectId: "radarlinkms",
-  storageBucket: "...",
-  messagingSenderId: "...",
-  appId: "..."
+  storageBucket: "radarlinkms.appspot.com",
+  messagingSenderId: "COLE_SEU_MESSAGING_ID",
+  appId: "COLE_SEU_APP_ID"
 };
 
 const app = initializeApp(firebaseConfig);
