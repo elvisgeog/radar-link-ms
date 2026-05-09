@@ -12,16 +12,31 @@ export default function App() {
     diretor: "",
     adjunto: "",
     participantes: "",
+
     demandas: [],
     descricaoDemandas: "",
+
     administrativas: [],
     descricaoAdministrativas: "",
-    avaliacaoSed: "",
-    avaliacaoGoverno: "",
-    divulgaAcoes: "",
-    interesseAgenda: "",
-    potencialMobilizacao: "",
-    classificacao: "",
+
+    avaliacaoSedDiretor: "",
+    avaliacaoSedAdjunto: "",
+
+    avaliacaoGovernoDiretor: "",
+    avaliacaoGovernoAdjunto: "",
+
+    divulgaAcoesDiretor: "",
+    divulgaAcoesAdjunto: "",
+
+    interesseAgendaDiretor: "",
+    interesseAgendaAdjunto: "",
+
+    potencialMobilizacaoDiretor: "",
+    potencialMobilizacaoAdjunto: "",
+
+    classificacaoDiretor: "",
+    classificacaoAdjunto: "",
+
     observacoes: ""
   });
 
@@ -48,6 +63,7 @@ export default function App() {
   function alternarCheckbox(campo, valor) {
     setForm((atual) => {
       const lista = atual[campo];
+
       return {
         ...atual,
         [campo]: lista.includes(valor)
@@ -59,12 +75,18 @@ export default function App() {
 
   async function carregarRegistros() {
     const dados = await getDocs(collection(db, "reunioes_gestores"));
-    setRegistros(dados.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+
+    setRegistros(
+      dados.docs.map((doc) => ({
+        id: doc.id,
+        ...doc.data()
+      }))
+    );
   }
 
   async function salvarRegistro() {
-    if (!form.municipio || !form.escola || !form.classificacao) {
-      alert("Preencha município, escola e classificação interna.");
+    if (!form.municipio || !form.escola) {
+      alert("Preencha município e escola.");
       return;
     }
 
@@ -82,16 +104,31 @@ export default function App() {
       diretor: "",
       adjunto: "",
       participantes: "",
+
       demandas: [],
       descricaoDemandas: "",
+
       administrativas: [],
       descricaoAdministrativas: "",
-      avaliacaoSed: "",
-      avaliacaoGoverno: "",
-      divulgaAcoes: "",
-      interesseAgenda: "",
-      potencialMobilizacao: "",
-      classificacao: "",
+
+      avaliacaoSedDiretor: "",
+      avaliacaoSedAdjunto: "",
+
+      avaliacaoGovernoDiretor: "",
+      avaliacaoGovernoAdjunto: "",
+
+      divulgaAcoesDiretor: "",
+      divulgaAcoesAdjunto: "",
+
+      interesseAgendaDiretor: "",
+      interesseAgendaAdjunto: "",
+
+      potencialMobilizacaoDiretor: "",
+      potencialMobilizacaoAdjunto: "",
+
+      classificacaoDiretor: "",
+      classificacaoAdjunto: "",
+
       observacoes: ""
     });
 
@@ -103,23 +140,51 @@ export default function App() {
   }, []);
 
   const total = registros.length;
-  const verde = registros.filter((r) => r.classificacao === "VERDE").length;
-  const amarelo = registros.filter((r) => r.classificacao === "AMARELO").length;
-  const vermelho = registros.filter((r) => r.classificacao === "VERMELHO").length;
-  const altoEngajamento = registros.filter((r) => r.interesseAgenda === "Alto").length;
+
+  const verde = registros.filter(
+    (r) => r.classificacaoDiretor === "VERDE"
+  ).length;
+
+  const amarelo = registros.filter(
+    (r) => r.classificacaoDiretor === "AMARELO"
+  ).length;
+
+  const vermelho = registros.filter(
+    (r) => r.classificacaoDiretor === "VERMELHO"
+  ).length;
+
+  const altoEngajamento = registros.filter(
+    (r) => r.interesseAgendaDiretor === "Alto"
+  ).length;
 
   function barra(label, valor, totalBase) {
-    const percentual = totalBase ? Math.round((valor / totalBase) * 100) : 0;
+    const percentual = totalBase
+      ? Math.round((valor / totalBase) * 100)
+      : 0;
 
     return (
       <div style={{ marginBottom: 14 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 10 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 10
+          }}
+        >
           <span>{label}</span>
-          <strong>{valor} ({percentual}%)</strong>
+
+          <strong>
+            {valor} ({percentual}%)
+          </strong>
         </div>
 
         <div style={styles.barraFundo}>
-          <div style={{ ...styles.barraValor, width: `${percentual}%` }} />
+          <div
+            style={{
+              ...styles.barraValor,
+              width: `${percentual}%`
+            }}
+          />
         </div>
       </div>
     );
@@ -132,57 +197,244 @@ export default function App() {
 
         <div>
           <h1 style={styles.title}>Radar Link MS</h1>
-          <p style={styles.subtitle}>Inteligência • Gestão • Articulação Regional</p>
+
+          <p style={styles.subtitle}>
+            Inteligência • Gestão • Articulação Regional
+          </p>
         </div>
       </header>
 
       <section style={styles.cards}>
-        <div style={styles.card}><span>Reuniões</span><strong>{total}</strong></div>
-        <div style={styles.card}><span>Verde</span><strong>{verde}</strong></div>
-        <div style={styles.card}><span>Amarelo</span><strong>{amarelo}</strong></div>
-        <div style={styles.card}><span>Vermelho</span><strong>{vermelho}</strong></div>
-        <div style={styles.card}><span>Alto engajamento</span><strong>{altoEngajamento}</strong></div>
+        <div style={styles.card}>
+          <span>Reuniões</span>
+          <strong>{total}</strong>
+        </div>
+
+        <div style={styles.card}>
+          <span>Verde</span>
+          <strong>{verde}</strong>
+        </div>
+
+        <div style={styles.card}>
+          <span>Amarelo</span>
+          <strong>{amarelo}</strong>
+        </div>
+
+        <div style={styles.card}>
+          <span>Vermelho</span>
+          <strong>{vermelho}</strong>
+        </div>
+
+        <div style={styles.card}>
+          <span>Alto engajamento</span>
+          <strong>{altoEngajamento}</strong>
+        </div>
       </section>
 
       <main style={styles.grid}>
         <section style={styles.panel}>
           <h2>Formulário de Reunião com Gestores</h2>
 
-          <input style={styles.input} placeholder="Município" value={form.municipio} onChange={(e) => setForm({ ...form, municipio: e.target.value })} />
-          <input style={styles.input} placeholder="Escola" value={form.escola} onChange={(e) => setForm({ ...form, escola: e.target.value })} />
-          <input style={styles.input} type="date" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} />
-          <input style={styles.input} placeholder="Diretor(a)" value={form.diretor} onChange={(e) => setForm({ ...form, diretor: e.target.value })} />
-          <input style={styles.input} placeholder="Diretor(a) Adjunto(a)" value={form.adjunto} onChange={(e) => setForm({ ...form, adjunto: e.target.value })} />
-          <input style={styles.input} placeholder="Participantes da equipe" value={form.participantes} onChange={(e) => setForm({ ...form, participantes: e.target.value })} />
+          <input
+            style={styles.input}
+            placeholder="Município"
+            value={form.municipio}
+            onChange={(e) =>
+              setForm({ ...form, municipio: e.target.value })
+            }
+          />
+
+          <input
+            style={styles.input}
+            placeholder="Escola"
+            value={form.escola}
+            onChange={(e) =>
+              setForm({ ...form, escola: e.target.value })
+            }
+          />
+
+          <input
+            style={styles.input}
+            type="date"
+            value={form.data}
+            onChange={(e) =>
+              setForm({ ...form, data: e.target.value })
+            }
+          />
+
+          <input
+            style={styles.input}
+            placeholder="Diretor(a)"
+            value={form.diretor}
+            onChange={(e) =>
+              setForm({ ...form, diretor: e.target.value })
+            }
+          />
+
+          <input
+            style={styles.input}
+            placeholder="Diretor(a) Adjunto(a)"
+            value={form.adjunto}
+            onChange={(e) =>
+              setForm({ ...form, adjunto: e.target.value })
+            }
+          />
+
+          <input
+            style={styles.input}
+            placeholder="Participantes da equipe"
+            value={form.participantes}
+            onChange={(e) =>
+              setForm({ ...form, participantes: e.target.value })
+            }
+          />
 
           <h3>1. Demandas da Escola</h3>
+
           {demandasOpcoes.map((opcao) => (
             <label style={styles.check} key={opcao}>
-              <input type="checkbox" checked={form.demandas.includes(opcao)} onChange={() => alternarCheckbox("demandas", opcao)} />
+              <input
+                type="checkbox"
+                checked={form.demandas.includes(opcao)}
+                onChange={() =>
+                  alternarCheckbox("demandas", opcao)
+                }
+              />
+
               {" "}{opcao}
             </label>
           ))}
 
-          <textarea style={styles.textarea} placeholder="Descrição das demandas" value={form.descricaoDemandas} onChange={(e) => setForm({ ...form, descricaoDemandas: e.target.value })} />
+          <textarea
+            style={styles.textarea}
+            placeholder="Descrição das demandas"
+            value={form.descricaoDemandas}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                descricaoDemandas: e.target.value
+              })
+            }
+          />
 
           <h3>2. Questões Administrativas</h3>
+
           {administrativasOpcoes.map((opcao) => (
             <label style={styles.check} key={opcao}>
-              <input type="checkbox" checked={form.administrativas.includes(opcao)} onChange={() => alternarCheckbox("administrativas", opcao)} />
+              <input
+                type="checkbox"
+                checked={form.administrativas.includes(opcao)}
+                onChange={() =>
+                  alternarCheckbox(
+                    "administrativas",
+                    opcao
+                  )
+                }
+              />
+
               {" "}{opcao}
             </label>
           ))}
 
-          <textarea style={styles.textarea} placeholder="Descrição das questões administrativas" value={form.descricaoAdministrativas} onChange={(e) => setForm({ ...form, descricaoAdministrativas: e.target.value })} />
+          <textarea
+            style={styles.textarea}
+            placeholder="Descrição das questões administrativas"
+            value={form.descricaoAdministrativas}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                descricaoAdministrativas: e.target.value
+              })
+            }
+          />
 
           <h3>3. Percepção Institucional</h3>
 
-          <textarea style={styles.textarea} placeholder="Como o gestor avalia a atuação da SED?" value={form.avaliacaoSed} onChange={(e) => setForm({ ...form, avaliacaoSed: e.target.value })} />
+          <h4>Diretor(a)</h4>
 
-          <textarea style={styles.textarea} placeholder="Como avalia as ações do Governo do Estado na educação?" value={form.avaliacaoGoverno} onChange={(e) => setForm({ ...form, avaliacaoGoverno: e.target.value })} />
+          <textarea
+            style={styles.textarea}
+            placeholder="Como o diretor avalia a atuação da SED?"
+            value={form.avaliacaoSedDiretor}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                avaliacaoSedDiretor: e.target.value
+              })
+            }
+          />
 
-          <select style={styles.input} value={form.divulgaAcoes} onChange={(e) => setForm({ ...form, divulgaAcoes: e.target.value })}>
-            <option value="">Participa/divulga ações institucionais?</option>
+          <textarea
+            style={styles.textarea}
+            placeholder="Como o diretor avalia as ações do Governo?"
+            value={form.avaliacaoGovernoDiretor}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                avaliacaoGovernoDiretor: e.target.value
+              })
+            }
+          />
+
+          <select
+            style={styles.input}
+            value={form.divulgaAcoesDiretor}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                divulgaAcoesDiretor: e.target.value
+              })
+            }
+          >
+            <option value="">
+              Diretor divulga ações institucionais?
+            </option>
+
+            <option>Sim</option>
+            <option>Parcialmente</option>
+            <option>Não</option>
+          </select>
+
+          <h4>Diretor(a) Adjunto(a)</h4>
+
+          <textarea
+            style={styles.textarea}
+            placeholder="Como o adjunto avalia a atuação da SED?"
+            value={form.avaliacaoSedAdjunto}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                avaliacaoSedAdjunto: e.target.value
+              })
+            }
+          />
+
+          <textarea
+            style={styles.textarea}
+            placeholder="Como o adjunto avalia as ações do Governo?"
+            value={form.avaliacaoGovernoAdjunto}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                avaliacaoGovernoAdjunto: e.target.value
+              })
+            }
+          />
+
+          <select
+            style={styles.input}
+            value={form.divulgaAcoesAdjunto}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                divulgaAcoesAdjunto: e.target.value
+              })
+            }
+          >
+            <option value="">
+              Adjunto divulga ações institucionais?
+            </option>
+
             <option>Sim</option>
             <option>Parcialmente</option>
             <option>Não</option>
@@ -190,15 +442,84 @@ export default function App() {
 
           <h3>4. Engajamento</h3>
 
-          <select style={styles.input} value={form.interesseAgenda} onChange={(e) => setForm({ ...form, interesseAgenda: e.target.value })}>
-            <option value="">Interesse em agendas institucionais</option>
+          <h4>Diretor(a)</h4>
+
+          <select
+            style={styles.input}
+            value={form.interesseAgendaDiretor}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                interesseAgendaDiretor: e.target.value
+              })
+            }
+          >
+            <option value="">
+              Interesse em agendas institucionais
+            </option>
+
             <option>Alto</option>
             <option>Médio</option>
             <option>Baixo</option>
           </select>
 
-          <select style={styles.input} value={form.potencialMobilizacao} onChange={(e) => setForm({ ...form, potencialMobilizacao: e.target.value })}>
-            <option value="">Potencial de mobilização</option>
+          <select
+            style={styles.input}
+            value={form.potencialMobilizacaoDiretor}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                potencialMobilizacaoDiretor:
+                  e.target.value
+              })
+            }
+          >
+            <option value="">
+              Potencial de mobilização
+            </option>
+
+            <option>Alto</option>
+            <option>Médio</option>
+            <option>Baixo</option>
+          </select>
+
+          <h4>Diretor(a) Adjunto(a)</h4>
+
+          <select
+            style={styles.input}
+            value={form.interesseAgendaAdjunto}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                interesseAgendaAdjunto:
+                  e.target.value
+              })
+            }
+          >
+            <option value="">
+              Interesse em agendas institucionais
+            </option>
+
+            <option>Alto</option>
+            <option>Médio</option>
+            <option>Baixo</option>
+          </select>
+
+          <select
+            style={styles.input}
+            value={form.potencialMobilizacaoAdjunto}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                potencialMobilizacaoAdjunto:
+                  e.target.value
+              })
+            }
+          >
+            <option value="">
+              Potencial de mobilização
+            </option>
+
             <option>Alto</option>
             <option>Médio</option>
             <option>Baixo</option>
@@ -206,8 +527,45 @@ export default function App() {
 
           <h3>5. Classificação Interna</h3>
 
-          <select style={styles.input} value={form.classificacao} onChange={(e) => setForm({ ...form, classificacao: e.target.value })}>
-            <option value="">Classificação interna</option>
+          <h4>Diretor(a)</h4>
+
+          <select
+            style={styles.input}
+            value={form.classificacaoDiretor}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                classificacaoDiretor:
+                  e.target.value
+              })
+            }
+          >
+            <option value="">
+              Classificação diretor
+            </option>
+
+            <option>VERDE</option>
+            <option>AMARELO</option>
+            <option>VERMELHO</option>
+          </select>
+
+          <h4>Diretor(a) Adjunto(a)</h4>
+
+          <select
+            style={styles.input}
+            value={form.classificacaoAdjunto}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                classificacaoAdjunto:
+                  e.target.value
+              })
+            }
+          >
+            <option value="">
+              Classificação adjunto
+            </option>
+
             <option>VERDE</option>
             <option>AMARELO</option>
             <option>VERMELHO</option>
@@ -215,9 +573,24 @@ export default function App() {
 
           <h3>6. Observações Estratégicas</h3>
 
-          <textarea style={styles.textarea} placeholder="Observações estratégicas" value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
+          <textarea
+            style={styles.textarea}
+            placeholder="Observações estratégicas"
+            value={form.observacoes}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                observacoes: e.target.value
+              })
+            }
+          />
 
-          <button style={styles.button} onClick={salvarRegistro}>Salvar Reunião</button>
+          <button
+            style={styles.button}
+            onClick={salvarRegistro}
+          >
+            Salvar Reunião
+          </button>
         </section>
 
         <section style={styles.panel}>
@@ -226,19 +599,57 @@ export default function App() {
           {barra("Verde", verde, total)}
           {barra("Amarelo", amarelo, total)}
           {barra("Vermelho", vermelho, total)}
-          {barra("Alto engajamento", altoEngajamento, total)}
+          {barra(
+            "Alto engajamento",
+            altoEngajamento,
+            total
+          )}
 
-          <h2 style={{ marginTop: 30 }}>Registros Salvos</h2>
+          <h2 style={{ marginTop: 30 }}>
+            Registros Salvos
+          </h2>
 
           {registros.map((r) => (
-            <div key={r.id} style={styles.registro}>
+            <div
+              key={r.id}
+              style={styles.registro}
+            >
               <h3>{r.escola}</h3>
-              <p><strong>Município:</strong> {r.municipio}</p>
-              <p><strong>Diretor:</strong> {r.diretor || "Não informado"}</p>
-              <p><strong>Classificação:</strong> {r.classificacao}</p>
-              <p><strong>Engajamento:</strong> {r.interesseAgenda}</p>
-              <p><strong>Demandas:</strong> {r.demandas?.join(", ")}</p>
-              <p><strong>Data:</strong> {r.data}</p>
+
+              <p>
+                <strong>Município:</strong>{" "}
+                {r.municipio}
+              </p>
+
+              <p>
+                <strong>Diretor:</strong>{" "}
+                {r.diretor}
+              </p>
+
+              <p>
+                <strong>Adjunto:</strong>{" "}
+                {r.adjunto}
+              </p>
+
+              <p>
+                <strong>Classificação Diretor:</strong>{" "}
+                {r.classificacaoDiretor}
+              </p>
+
+              <p>
+                <strong>Classificação Adjunto:</strong>{" "}
+                {r.classificacaoAdjunto}
+              </p>
+
+              <p>
+                <strong>Engajamento Diretor:</strong>{" "}
+                {r.interesseAgendaDiretor}
+              </p>
+
+              <p>
+                <strong>Demandas:</strong>{" "}
+                {r.demandas?.join(", ")}
+              </p>
             </div>
           ))}
         </section>
@@ -250,7 +661,8 @@ export default function App() {
 const styles = {
   page: {
     minHeight: "100vh",
-    background: "linear-gradient(135deg,#07111f,#0f172a,#111827)",
+    background:
+      "linear-gradient(135deg,#07111f,#0f172a,#111827)",
     color: "white",
     fontFamily: "Arial, sans-serif",
     padding: 15,
@@ -269,7 +681,8 @@ const styles = {
     width: 54,
     height: 54,
     borderRadius: "50%",
-    background: "linear-gradient(135deg,#2563eb,#facc15)",
+    background:
+      "linear-gradient(135deg,#2563eb,#facc15)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
@@ -290,7 +703,8 @@ const styles = {
 
   cards: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(150px, 1fr))",
     gap: 12,
     marginBottom: 25
   },
@@ -304,7 +718,8 @@ const styles = {
 
   grid: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(300px, 1fr))",
+    gridTemplateColumns:
+      "repeat(auto-fit, minmax(300px, 1fr))",
     gap: 20
   },
 
