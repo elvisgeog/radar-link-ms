@@ -114,8 +114,15 @@ export default function App() {
   });
 
   const demandasOpcoes = [
-    "Reforma", "Pintura", "Climatização", "Rede elétrica",
-    "Mobiliário", "Tecnologia", "Segurança", "Transporte", "Outros"
+    "Reforma",
+    "Pintura",
+    "Climatização",
+    "Rede elétrica",
+    "Mobiliário",
+    "Tecnologia",
+    "Segurança",
+    "Transporte",
+    "Outros"
   ];
 
   const administrativasOpcoes = [
@@ -162,43 +169,33 @@ export default function App() {
     carregarRegistros();
   }, []);
 
-  const total = registros.length;
-
-  const verde = registros.filter(
-    (r) => r.classificacaoDiretor === "VERDE" || r.classificacaoAdjunto === "VERDE"
-  ).length;
-
-  const amarelo = registros.filter(
-    (r) => r.classificacaoDiretor === "AMARELO" || r.classificacaoAdjunto === "AMARELO"
-  ).length;
-
-  const vermelho = registros.filter(
-    (r) => r.classificacaoDiretor === "VERMELHO" || r.classificacaoAdjunto === "VERMELHO"
-  ).length;
-
-  const altoEngajamento = registros.filter(
-    (r) => r.interesseAgendaDiretor === "Alto" || r.interesseAgendaAdjunto === "Alto"
-  ).length;
-
-  const medioEngajamento = registros.filter(
-    (r) => r.interesseAgendaDiretor === "Médio" || r.interesseAgendaAdjunto === "Médio"
-  ).length;
-
-  const baixoEngajamento = registros.filter(
-    (r) => r.interesseAgendaDiretor === "Baixo" || r.interesseAgendaAdjunto === "Baixo"
-  ).length;
-
-  function listaFiltrada() {
-    if (!filtroAtivo) return [];
-
-    return registros.filter((r) => {
-      if (["VERDE", "AMARELO", "VERMELHO"].includes(filtroAtivo)) {
-        return r.classificacaoDiretor === filtroAtivo || r.classificacaoAdjunto === filtroAtivo;
-      }
-
-      return r.interesseAgendaDiretor === filtroAtivo || r.interesseAgendaAdjunto === filtroAtivo;
-    });
+  function contarClassificacao(tipo) {
+    return registros.reduce((total, r) => {
+      let soma = 0;
+      if (r.classificacaoDiretor === tipo) soma++;
+      if (r.classificacaoAdjunto === tipo) soma++;
+      return total + soma;
+    }, 0);
   }
+
+  function contarEngajamento(tipo) {
+    return registros.reduce((total, r) => {
+      let soma = 0;
+      if (r.interesseAgendaDiretor === tipo) soma++;
+      if (r.interesseAgendaAdjunto === tipo) soma++;
+      return total + soma;
+    }, 0);
+  }
+
+  const totalGestores = registros.length * 2;
+
+  const verde = contarClassificacao("VERDE");
+  const amarelo = contarClassificacao("AMARELO");
+  const vermelho = contarClassificacao("VERMELHO");
+
+  const altoEngajamento = contarEngajamento("Alto");
+  const medioEngajamento = contarEngajamento("Médio");
+  const baixoEngajamento = contarEngajamento("Baixo");
 
   function corIndicador(label) {
     if (label === "VERDE" || label === "Alto") return "#22c55e";
@@ -207,18 +204,87 @@ export default function App() {
     return "#facc15";
   }
 
+  function listaFiltrada() {
+    if (!filtroAtivo) return [];
+
+    const lista = [];
+
+    registros.forEach((r) => {
+      if (["VERDE", "AMARELO", "VERMELHO"].includes(filtroAtivo)) {
+        if (r.classificacaoDiretor === filtroAtivo) {
+          lista.push({
+            id: r.id + "-diretor",
+            cargo: "Diretor(a)",
+            nome: r.diretor || "Não informado",
+            escola: r.escola,
+            municipio: r.municipio,
+            classificacao: r.classificacaoDiretor,
+            engajamento: r.interesseAgendaDiretor
+          });
+        }
+
+        if (r.classificacaoAdjunto === filtroAtivo) {
+          lista.push({
+            id: r.id + "-adjunto",
+            cargo: "Diretor(a) Adjunto(a)",
+            nome: r.adjunto || "Não informado",
+            escola: r.escola,
+            municipio: r.municipio,
+            classificacao: r.classificacaoAdjunto,
+            engajamento: r.interesseAgendaAdjunto
+          });
+        }
+      } else {
+        if (r.interesseAgendaDiretor === filtroAtivo) {
+          lista.push({
+            id: r.id + "-diretor",
+            cargo: "Diretor(a)",
+            nome: r.diretor || "Não informado",
+            escola: r.escola,
+            municipio: r.municipio,
+            classificacao: r.classificacaoDiretor,
+            engajamento: r.interesseAgendaDiretor
+          });
+        }
+
+        if (r.interesseAgendaAdjunto === filtroAtivo) {
+          lista.push({
+            id: r.id + "-adjunto",
+            cargo: "Diretor(a) Adjunto(a)",
+            nome: r.adjunto || "Não informado",
+            escola: r.escola,
+            municipio: r.municipio,
+            classificacao: r.classificacaoAdjunto,
+            engajamento: r.interesseAgendaAdjunto
+          });
+        }
+      }
+    });
+
+    return lista;
+  }
+
   function barra(label, valor, totalBase) {
     const percentual = totalBase ? Math.round((valor / totalBase) * 100) : 0;
     const cor = corIndicador(label);
 
     return (
-      <div style={{ marginBottom: 14, cursor: "pointer" }} onClick={() => setFiltroAtivo(label)}>
-        <div style={{ display: "flex", justifyContent: "space-between", color: cor, fontWeight: "bold" }}>
-          <span>{label}</span>
-          <strong>{valor} ({percentual}%)</strong>
+      <div style={styles.barChartRow} onClick={() => setFiltroAtivo(label)}>
+        <div style={styles.barLabelArea}>
+          <span style={{ color: cor }}>{label}</span>
+          <strong style={{ color: cor }}>
+            {valor} ({percentual}%)
+          </strong>
         </div>
+
         <div style={styles.barraFundo}>
-          <div style={{ ...styles.barraValor, width: `${percentual}%`, background: cor }} />
+          <div
+            style={{
+              ...styles.barraValor,
+              width: `${percentual}%`,
+              background: cor
+            }}
+          />
         </div>
       </div>
     );
@@ -240,14 +306,12 @@ export default function App() {
 
         {lista.map((r) => (
           <div key={r.id} style={{ ...styles.registro, borderLeft: `6px solid ${cor}` }}>
-            <h2>{r.escola}</h2>
+            <h2>{r.nome}</h2>
+            <p><strong>Cargo:</strong> {r.cargo}</p>
             <p><strong>Município:</strong> {r.municipio}</p>
-            <p><strong>Diretor:</strong> {r.diretor || "Não informado"}</p>
-            <p><strong>Adjunto:</strong> {r.adjunto || "Não informado"}</p>
-            <p><strong>Classificação Diretor:</strong> {r.classificacaoDiretor || "Não informado"}</p>
-            <p><strong>Classificação Adjunto:</strong> {r.classificacaoAdjunto || "Não informado"}</p>
-            <p><strong>Engajamento Diretor:</strong> {r.interesseAgendaDiretor || "Não informado"}</p>
-            <p><strong>Engajamento Adjunto:</strong> {r.interesseAgendaAdjunto || "Não informado"}</p>
+            <p><strong>Escola:</strong> {r.escola}</p>
+            <p><strong>Classificação:</strong> {r.classificacao || "Não informado"}</p>
+            <p><strong>Engajamento:</strong> {r.engajamento || "Não informado"}</p>
           </div>
         ))}
       </div>
@@ -258,6 +322,7 @@ export default function App() {
     <div style={styles.page}>
       <header style={styles.header}>
         <div style={styles.logo}>◎</div>
+
         <div>
           <h1 style={styles.title}>Radar Link MS</h1>
           <p style={styles.subtitle}>Inteligência • Gestão • Articulação Regional</p>
@@ -266,22 +331,33 @@ export default function App() {
 
       <section style={styles.cards}>
         <div style={{ ...styles.card, color: "#22c55e" }} onClick={() => setFiltroAtivo("VERDE")}>
-          <span>Verde</span><strong>{verde}</strong>
+          <span>Verde</span>
+          <strong>{verde}</strong>
         </div>
+
         <div style={{ ...styles.card, color: "#eab308" }} onClick={() => setFiltroAtivo("AMARELO")}>
-          <span>Amarelo</span><strong>{amarelo}</strong>
+          <span>Amarelo</span>
+          <strong>{amarelo}</strong>
         </div>
+
         <div style={{ ...styles.card, color: "#ef4444" }} onClick={() => setFiltroAtivo("VERMELHO")}>
-          <span>Vermelho</span><strong>{vermelho}</strong>
+          <span>Vermelho</span>
+          <strong>{vermelho}</strong>
         </div>
+
         <div style={{ ...styles.card, color: "#22c55e" }} onClick={() => setFiltroAtivo("Alto")}>
-          <span>Alto engajamento</span><strong>{altoEngajamento}</strong>
+          <span>Alto engajamento</span>
+          <strong>{altoEngajamento}</strong>
         </div>
+
         <div style={{ ...styles.card, color: "#eab308" }} onClick={() => setFiltroAtivo("Médio")}>
-          <span>Médio engajamento</span><strong>{medioEngajamento}</strong>
+          <span>Médio engajamento</span>
+          <strong>{medioEngajamento}</strong>
         </div>
+
         <div style={{ ...styles.card, color: "#ef4444" }} onClick={() => setFiltroAtivo("Baixo")}>
-          <span>Baixo engajamento</span><strong>{baixoEngajamento}</strong>
+          <span>Baixo engajamento</span>
+          <strong>{baixoEngajamento}</strong>
         </div>
       </section>
 
@@ -289,60 +365,155 @@ export default function App() {
         <section style={styles.panel}>
           <h2>Formulário de Reunião com Gestores</h2>
 
-          <select style={styles.input} value={form.municipio} onChange={(e) => setForm({ ...form, municipio: e.target.value, escola: "" })}>
+          <select
+            style={styles.input}
+            value={form.municipio}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                municipio: e.target.value,
+                escola: ""
+              })
+            }
+          >
             <option value="">Selecione o município</option>
+
             {Object.keys(escolasPorMunicipio).map((municipio) => (
               <option key={municipio}>{municipio}</option>
             ))}
           </select>
 
-          <select style={styles.input} value={form.escola} onChange={(e) => setForm({ ...form, escola: e.target.value })}>
+          <select
+            style={styles.input}
+            value={form.escola}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                escola: e.target.value
+              })
+            }
+          >
             <option value="">Selecione a escola</option>
-            {form.municipio && escolasPorMunicipio[form.municipio]?.map((escola) => (
-              <option key={escola}>{escola}</option>
-            ))}
+
+            {form.municipio &&
+              escolasPorMunicipio[form.municipio]?.map((escola) => (
+                <option key={escola}>{escola}</option>
+              ))}
           </select>
 
-          <input style={styles.input} type="date" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} />
-          <input style={styles.input} placeholder="Diretor(a)" value={form.diretor} onChange={(e) => setForm({ ...form, diretor: e.target.value })} />
-          <input style={styles.input} placeholder="Diretor(a) Adjunto(a)" value={form.adjunto} onChange={(e) => setForm({ ...form, adjunto: e.target.value })} />
+          <input
+            style={styles.input}
+            type="date"
+            value={form.data}
+            onChange={(e) => setForm({ ...form, data: e.target.value })}
+          />
+
+          <input
+            style={styles.input}
+            placeholder="Diretor(a)"
+            value={form.diretor}
+            onChange={(e) => setForm({ ...form, diretor: e.target.value })}
+          />
+
+          <input
+            style={styles.input}
+            placeholder="Diretor(a) Adjunto(a)"
+            value={form.adjunto}
+            onChange={(e) => setForm({ ...form, adjunto: e.target.value })}
+          />
 
           <h3>1. Demandas da Escola</h3>
+
           {demandasOpcoes.map((opcao) => (
             <label style={styles.check} key={opcao}>
-              <input type="checkbox" checked={form.demandas.includes(opcao)} onChange={() => alternarCheckbox("demandas", opcao)} /> {opcao}
+              <input
+                type="checkbox"
+                checked={form.demandas.includes(opcao)}
+                onChange={() => alternarCheckbox("demandas", opcao)}
+              />{" "}
+              {opcao}
             </label>
           ))}
 
-          <textarea style={styles.textarea} placeholder="Descrição das demandas" value={form.descricaoDemandas} onChange={(e) => setForm({ ...form, descricaoDemandas: e.target.value })} />
+          <textarea
+            style={styles.textarea}
+            placeholder="Descrição das demandas"
+            value={form.descricaoDemandas}
+            onChange={(e) => setForm({ ...form, descricaoDemandas: e.target.value })}
+          />
 
           <h3>2. Questões Administrativas</h3>
+
           {administrativasOpcoes.map((opcao) => (
             <label style={styles.check} key={opcao}>
-              <input type="checkbox" checked={form.administrativas.includes(opcao)} onChange={() => alternarCheckbox("administrativas", opcao)} /> {opcao}
+              <input
+                type="checkbox"
+                checked={form.administrativas.includes(opcao)}
+                onChange={() => alternarCheckbox("administrativas", opcao)}
+              />{" "}
+              {opcao}
             </label>
           ))}
 
-          <textarea style={styles.textarea} placeholder="Descrição das questões administrativas" value={form.descricaoAdministrativas} onChange={(e) => setForm({ ...form, descricaoAdministrativas: e.target.value })} />
+          <textarea
+            style={styles.textarea}
+            placeholder="Descrição das questões administrativas"
+            value={form.descricaoAdministrativas}
+            onChange={(e) => setForm({ ...form, descricaoAdministrativas: e.target.value })}
+          />
 
           <h3>3. Percepção Institucional</h3>
+
           <h4>Diretor(a)</h4>
-          <textarea style={styles.textarea} placeholder="Como o diretor avalia a atuação da SED?" value={form.avaliacaoSedDiretor} onChange={(e) => setForm({ ...form, avaliacaoSedDiretor: e.target.value })} />
-          <textarea style={styles.textarea} placeholder="Como o diretor avalia o Governo?" value={form.avaliacaoGovernoDiretor} onChange={(e) => setForm({ ...form, avaliacaoGovernoDiretor: e.target.value })} />
+
+          <textarea
+            style={styles.textarea}
+            placeholder="Como o diretor avalia a atuação da SED?"
+            value={form.avaliacaoSedDiretor}
+            onChange={(e) => setForm({ ...form, avaliacaoSedDiretor: e.target.value })}
+          />
+
+          <textarea
+            style={styles.textarea}
+            placeholder="Como o diretor avalia o Governo?"
+            value={form.avaliacaoGovernoDiretor}
+            onChange={(e) => setForm({ ...form, avaliacaoGovernoDiretor: e.target.value })}
+          />
 
           <h4>Diretor(a) Adjunto(a)</h4>
-          <textarea style={styles.textarea} placeholder="Como o adjunto avalia a atuação da SED?" value={form.avaliacaoSedAdjunto} onChange={(e) => setForm({ ...form, avaliacaoSedAdjunto: e.target.value })} />
-          <textarea style={styles.textarea} placeholder="Como o adjunto avalia o Governo?" value={form.avaliacaoGovernoAdjunto} onChange={(e) => setForm({ ...form, avaliacaoGovernoAdjunto: e.target.value })} />
+
+          <textarea
+            style={styles.textarea}
+            placeholder="Como o adjunto avalia a atuação da SED?"
+            value={form.avaliacaoSedAdjunto}
+            onChange={(e) => setForm({ ...form, avaliacaoSedAdjunto: e.target.value })}
+          />
+
+          <textarea
+            style={styles.textarea}
+            placeholder="Como o adjunto avalia o Governo?"
+            value={form.avaliacaoGovernoAdjunto}
+            onChange={(e) => setForm({ ...form, avaliacaoGovernoAdjunto: e.target.value })}
+          />
 
           <h3>4. Engajamento</h3>
-          <select style={styles.input} value={form.interesseAgendaDiretor} onChange={(e) => setForm({ ...form, interesseAgendaDiretor: e.target.value })}>
+
+          <select
+            style={styles.input}
+            value={form.interesseAgendaDiretor}
+            onChange={(e) => setForm({ ...form, interesseAgendaDiretor: e.target.value })}
+          >
             <option value="">Interesse Diretor</option>
             <option>Alto</option>
             <option>Médio</option>
             <option>Baixo</option>
           </select>
 
-          <select style={styles.input} value={form.interesseAgendaAdjunto} onChange={(e) => setForm({ ...form, interesseAgendaAdjunto: e.target.value })}>
+          <select
+            style={styles.input}
+            value={form.interesseAgendaAdjunto}
+            onChange={(e) => setForm({ ...form, interesseAgendaAdjunto: e.target.value })}
+          >
             <option value="">Interesse Adjunto</option>
             <option>Alto</option>
             <option>Médio</option>
@@ -350,14 +521,23 @@ export default function App() {
           </select>
 
           <h3>5. Classificação Interna</h3>
-          <select style={styles.input} value={form.classificacaoDiretor} onChange={(e) => setForm({ ...form, classificacaoDiretor: e.target.value })}>
+
+          <select
+            style={styles.input}
+            value={form.classificacaoDiretor}
+            onChange={(e) => setForm({ ...form, classificacaoDiretor: e.target.value })}
+          >
             <option value="">Classificação Diretor</option>
             <option>VERDE</option>
             <option>AMARELO</option>
             <option>VERMELHO</option>
           </select>
 
-          <select style={styles.input} value={form.classificacaoAdjunto} onChange={(e) => setForm({ ...form, classificacaoAdjunto: e.target.value })}>
+          <select
+            style={styles.input}
+            value={form.classificacaoAdjunto}
+            onChange={(e) => setForm({ ...form, classificacaoAdjunto: e.target.value })}
+          >
             <option value="">Classificação Adjunto</option>
             <option>VERDE</option>
             <option>AMARELO</option>
@@ -365,7 +545,13 @@ export default function App() {
           </select>
 
           <h3>6. Observações Estratégicas</h3>
-          <textarea style={styles.textarea} placeholder="Observações estratégicas" value={form.observacoes} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
+
+          <textarea
+            style={styles.textarea}
+            placeholder="Observações estratégicas"
+            value={form.observacoes}
+            onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
+          />
 
           <button style={styles.button} onClick={salvarRegistro}>
             Salvar Reunião
@@ -373,13 +559,14 @@ export default function App() {
         </section>
 
         <section style={styles.panel}>
-          <h2>Indicadores</h2>
-          {barra("VERDE", verde, total)}
-          {barra("AMARELO", amarelo, total)}
-          {barra("VERMELHO", vermelho, total)}
-          {barra("Alto", altoEngajamento, total)}
-          {barra("Médio", medioEngajamento, total)}
-          {barra("Baixo", baixoEngajamento, total)}
+          <h2>Indicadores por Gestor</h2>
+
+          {barra("VERDE", verde, totalGestores)}
+          {barra("AMARELO", amarelo, totalGestores)}
+          {barra("VERMELHO", vermelho, totalGestores)}
+          {barra("Alto", altoEngajamento, totalGestores)}
+          {barra("Médio", medioEngajamento, totalGestores)}
+          {barra("Baixo", baixoEngajamento, totalGestores)}
         </section>
       </main>
     </div>
@@ -394,6 +581,7 @@ const styles = {
     fontFamily: "Arial",
     padding: 15
   },
+
   header: {
     display: "flex",
     alignItems: "center",
@@ -401,6 +589,7 @@ const styles = {
     marginBottom: 25,
     flexWrap: "wrap"
   },
+
   logo: {
     width: 55,
     height: 55,
@@ -411,37 +600,48 @@ const styles = {
     justifyContent: "center",
     fontSize: 32
   },
+
   title: {
     margin: 0,
     fontSize: "clamp(26px, 5vw, 38px)"
   },
+
   subtitle: {
     margin: 0,
     color: "#cbd5e1"
   },
+
   cards: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))",
+    gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))",
     gap: 12,
     marginBottom: 25
   },
+
   card: {
     background: "#1e293b",
     padding: 18,
     borderRadius: 14,
     cursor: "pointer",
-    fontWeight: "bold"
+    fontWeight: "bold",
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: 12
   },
+
   grid: {
     display: "grid",
     gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
     gap: 20
   },
+
   panel: {
     background: "rgba(15,23,42,.95)",
     padding: 20,
     borderRadius: 18
   },
+
   input: {
     width: "100%",
     padding: 13,
@@ -451,6 +651,7 @@ const styles = {
     boxSizing: "border-box",
     fontSize: 16
   },
+
   textarea: {
     width: "100%",
     padding: 13,
@@ -461,10 +662,12 @@ const styles = {
     boxSizing: "border-box",
     fontSize: 16
   },
+
   check: {
     display: "block",
     marginBottom: 8
   },
+
   button: {
     width: "100%",
     padding: 15,
@@ -477,16 +680,32 @@ const styles = {
     cursor: "pointer",
     marginBottom: 15
   },
+
+  barChartRow: {
+    marginBottom: 18,
+    cursor: "pointer"
+  },
+
+  barLabelArea: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 12,
+    marginBottom: 6,
+    fontWeight: "bold"
+  },
+
   barraFundo: {
-    height: 12,
+    height: 16,
     background: "#334155",
     borderRadius: 999,
     marginTop: 5
   },
+
   barraValor: {
-    height: 12,
+    height: 16,
     borderRadius: 999
   },
+
   registro: {
     background: "#1e293b",
     padding: 18,
