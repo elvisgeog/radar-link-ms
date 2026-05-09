@@ -201,6 +201,81 @@ export default function App() {
   }
 
   function barra(label, valor, totalBase) {
+
+  const percentual = totalBase
+    ? Math.round((valor / totalBase) * 100)
+    : 0;
+
+  let cor = "#facc15";
+
+  if (label === "VERDE") {
+    cor = "#22c55e";
+  }
+
+  if (label === "AMARELO") {
+    cor = "#eab308";
+  }
+
+  if (label === "VERMELHO") {
+    cor = "#ef4444";
+  }
+
+  if (label === "Alto") {
+    cor = "#22c55e";
+  }
+
+  if (label === "Médio") {
+    cor = "#eab308";
+  }
+
+  if (label === "Baixo") {
+    cor = "#ef4444";
+  }
+
+  return (
+
+    <div
+      style={{
+        marginBottom: 14,
+        cursor: "pointer"
+      }}
+      onClick={() => setFiltroAtivo(label)}
+    >
+
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          color: cor,
+          fontWeight: "bold"
+        }}
+      >
+
+        <span>{label}</span>
+
+        <strong>
+          {valor} ({percentual}%)
+        </strong>
+
+      </div>
+
+      <div style={styles.barraFundo}>
+
+        <div
+          style={{
+            ...styles.barraValor,
+            width: `${percentual}%`,
+            background: cor
+          }}
+        />
+
+      </div>
+
+    </div>
+
+  );
+
+}
     const percentual = totalBase ? Math.round((valor / totalBase) * 100) : 0;
 
     return (
