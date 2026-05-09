@@ -91,6 +91,7 @@ export default function App() {
 
   const [registros, setRegistros] = useState([]);
   const [filtroAtivo, setFiltroAtivo] = useState(null);
+  const [modoRelatorio, setModoRelatorio] = useState(false);
 
   const [form, setForm] = useState({
     municipio: "",
@@ -290,6 +291,76 @@ export default function App() {
     );
   }
 
+  function gerarPDF() {
+    window.print();
+  }
+
+  if (modoRelatorio) {
+    const dataGeracao = new Date().toLocaleString();
+
+    return (
+      <div style={styles.relatorioPage}>
+        <div style={styles.relatorioTopo}>
+          <h1>Radar Link MS</h1>
+          <h2>Relatório Estratégico de Gestores</h2>
+          <p>Data de geração: {dataGeracao}</p>
+
+          <button style={styles.buttonRelatorio} onClick={() => setModoRelatorio(false)}>
+            Voltar ao painel
+          </button>
+
+          <button style={styles.buttonRelatorio} onClick={gerarPDF}>
+            Gerar PDF / Imprimir
+          </button>
+        </div>
+
+        <section style={styles.relatorioBox}>
+          <h2>1. Totais por Classificação</h2>
+          <p><strong>Verde:</strong> {verde}</p>
+          <p><strong>Amarelo:</strong> {amarelo}</p>
+          <p><strong>Vermelho:</strong> {vermelho}</p>
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>2. Totais por Engajamento</h2>
+          <p><strong>Alto:</strong> {altoEngajamento}</p>
+          <p><strong>Médio:</strong> {medioEngajamento}</p>
+          <p><strong>Baixo:</strong> {baixoEngajamento}</p>
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>3. Lista de Diretores</h2>
+
+          {registros.map((r) => (
+            <div key={r.id + "-diretor"} style={styles.relatorioItem}>
+              <p><strong>Nome:</strong> {r.diretor || "Não informado"}</p>
+              <p><strong>Município:</strong> {r.municipio}</p>
+              <p><strong>Escola:</strong> {r.escola}</p>
+              <p><strong>Classificação:</strong> {r.classificacaoDiretor || "Não informado"}</p>
+              <p><strong>Engajamento:</strong> {r.interesseAgendaDiretor || "Não informado"}</p>
+              <p><strong>Observações:</strong> {r.observacoes || "Sem observações"}</p>
+            </div>
+          ))}
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>4. Lista de Diretores Adjuntos</h2>
+
+          {registros.map((r) => (
+            <div key={r.id + "-adjunto"} style={styles.relatorioItem}>
+              <p><strong>Nome:</strong> {r.adjunto || "Não informado"}</p>
+              <p><strong>Município:</strong> {r.municipio}</p>
+              <p><strong>Escola:</strong> {r.escola}</p>
+              <p><strong>Classificação:</strong> {r.classificacaoAdjunto || "Não informado"}</p>
+              <p><strong>Engajamento:</strong> {r.interesseAgendaAdjunto || "Não informado"}</p>
+              <p><strong>Observações:</strong> {r.observacoes || "Sem observações"}</p>
+            </div>
+          ))}
+        </section>
+      </div>
+    );
+  }
+
   if (filtroAtivo) {
     const lista = listaFiltrada();
     const cor = corIndicador(filtroAtivo);
@@ -328,6 +399,10 @@ export default function App() {
           <p style={styles.subtitle}>Inteligência • Gestão • Articulação Regional</p>
         </div>
       </header>
+
+      <button style={styles.button} onClick={() => setModoRelatorio(true)}>
+        Abrir Relatório / Gerar PDF
+      </button>
 
       <section style={styles.cards}>
         <div style={{ ...styles.card, color: "#22c55e" }} onClick={() => setFiltroAtivo("VERDE")}>
@@ -711,5 +786,43 @@ const styles = {
     padding: 18,
     borderRadius: 14,
     marginBottom: 15
+  },
+
+  relatorioPage: {
+    background: "white",
+    color: "black",
+    minHeight: "100vh",
+    padding: 30,
+    fontFamily: "Arial"
+  },
+
+  relatorioTopo: {
+    borderBottom: "2px solid #111827",
+    marginBottom: 20,
+    paddingBottom: 15
+  },
+
+  relatorioBox: {
+    border: "1px solid #ccc",
+    padding: 15,
+    marginBottom: 20,
+    borderRadius: 8
+  },
+
+  relatorioItem: {
+    borderBottom: "1px solid #ddd",
+    padding: "10px 0"
+  },
+
+  buttonRelatorio: {
+    padding: 12,
+    background: "#2563eb",
+    color: "white",
+    border: "none",
+    borderRadius: 8,
+    fontWeight: "bold",
+    cursor: "pointer",
+    marginRight: 10,
+    marginBottom: 10
   }
 };
