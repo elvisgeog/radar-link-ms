@@ -3,7 +3,9 @@ import { collection, addDoc, getDocs } from "firebase/firestore";
 import { db } from "./firebase";
 
 export default function App() {
+
   const escolasPorMunicipio = {
+
     "CAARAPÓ": [
       "EE ARCÊNIO ROJAS",
       "EE FREI JOÃO DAMASCENO",
@@ -112,7 +114,6 @@ export default function App() {
     data: "",
     diretor: "",
     adjunto: "",
-    participantes: "",
 
     demandas: [],
     descricaoDemandas: "",
@@ -126,14 +127,8 @@ export default function App() {
     avaliacaoGovernoDiretor: "",
     avaliacaoGovernoAdjunto: "",
 
-    divulgaAcoesDiretor: "",
-    divulgaAcoesAdjunto: "",
-
     interesseAgendaDiretor: "",
     interesseAgendaAdjunto: "",
-
-    potencialMobilizacaoDiretor: "",
-    potencialMobilizacaoAdjunto: "",
 
     classificacaoDiretor: "",
     classificacaoAdjunto: "",
@@ -162,20 +157,28 @@ export default function App() {
   ];
 
   function alternarCheckbox(campo, valor) {
+
     setForm((atual) => {
+
       const lista = atual[campo];
 
       return {
         ...atual,
+
         [campo]: lista.includes(valor)
           ? lista.filter((item) => item !== valor)
           : [...lista, valor]
       };
+
     });
+
   }
 
   async function carregarRegistros() {
-    const dados = await getDocs(collection(db, "reunioes_gestores"));
+
+    const dados = await getDocs(
+      collection(db, "reunioes_gestores")
+    );
 
     setRegistros(
       dados.docs.map((doc) => ({
@@ -183,22 +186,28 @@ export default function App() {
         ...doc.data()
       }))
     );
+
   }
 
   async function salvarRegistro() {
+
     if (!form.municipio || !form.escola) {
       alert("Preencha município e escola.");
       return;
     }
 
-    await addDoc(collection(db, "reunioes_gestores"), {
-      ...form,
-      criadoEm: new Date().toLocaleString()
-    });
+    await addDoc(
+      collection(db, "reunioes_gestores"),
+      {
+        ...form,
+        criadoEm: new Date().toLocaleString()
+      }
+    );
 
     alert("Reunião salva com sucesso!");
 
     carregarRegistros();
+
   }
 
   useEffect(() => {
@@ -223,13 +232,24 @@ export default function App() {
     (r) => r.interesseAgendaDiretor === "Alto"
   ).length;
 
+  const medioEngajamento = registros.filter(
+    (r) => r.interesseAgendaDiretor === "Médio"
+  ).length;
+
+  const baixoEngajamento = registros.filter(
+    (r) => r.interesseAgendaDiretor === "Baixo"
+  ).length;
+
   function barra(label, valor, totalBase) {
+
     const percentual = totalBase
       ? Math.round((valor / totalBase) * 100)
       : 0;
 
     return (
+
       <div style={{ marginBottom: 14 }}>
+
         <div
           style={{
             display: "flex",
@@ -251,25 +271,39 @@ export default function App() {
             }}
           />
         </div>
+
       </div>
+
     );
+
   }
 
   return (
+
     <div style={styles.page}>
+
       <header style={styles.header}>
-        <div style={styles.logo}>◎</div>
+
+        <div style={styles.logo}>
+          ◎
+        </div>
 
         <div>
-          <h1 style={styles.title}>Radar Link MS</h1>
+
+          <h1 style={styles.title}>
+            Radar Link MS
+          </h1>
 
           <p style={styles.subtitle}>
             Inteligência • Gestão • Articulação Regional
           </p>
+
         </div>
+
       </header>
 
       <section style={styles.cards}>
+
         <div style={styles.card}>
           <span>Reuniões</span>
           <strong>{total}</strong>
@@ -294,11 +328,26 @@ export default function App() {
           <span>Alto engajamento</span>
           <strong>{altoEngajamento}</strong>
         </div>
+
+        <div style={styles.card}>
+          <span>Médio engajamento</span>
+          <strong>{medioEngajamento}</strong>
+        </div>
+
+        <div style={styles.card}>
+          <span>Baixo engajamento</span>
+          <strong>{baixoEngajamento}</strong>
+        </div>
+
       </section>
 
       <main style={styles.grid}>
+
         <section style={styles.panel}>
-          <h2>Formulário de Reunião com Gestores</h2>
+
+          <h2>
+            Formulário de Reunião com Gestores
+          </h2>
 
           <select
             style={styles.input}
@@ -311,15 +360,21 @@ export default function App() {
               })
             }
           >
-            <option value="">Selecione o município</option>
+
+            <option value="">
+              Selecione o município
+            </option>
 
             {Object.keys(escolasPorMunicipio).map(
               (municipio) => (
+
                 <option key={municipio}>
                   {municipio}
                 </option>
+
               )
             )}
+
           </select>
 
           <select
@@ -332,16 +387,22 @@ export default function App() {
               })
             }
           >
-            <option value="">Selecione a escola</option>
+
+            <option value="">
+              Selecione a escola
+            </option>
 
             {form.municipio &&
               escolasPorMunicipio[
                 form.municipio
               ]?.map((escola) => (
+
                 <option key={escola}>
                   {escola}
                 </option>
+
               ))}
+
           </select>
 
           <input
@@ -380,10 +441,17 @@ export default function App() {
             }
           />
 
-          <h3>1. Demandas da Escola</h3>
+          <h3>
+            1. Demandas da Escola
+          </h3>
 
           {demandasOpcoes.map((opcao) => (
-            <label style={styles.check} key={opcao}>
+
+            <label
+              style={styles.check}
+              key={opcao}
+            >
+
               <input
                 type="checkbox"
                 checked={form.demandas.includes(
@@ -397,8 +465,11 @@ export default function App() {
                 }
               />
 
-              {" "}{opcao}
+              {" "}
+              {opcao}
+
             </label>
+
           ))}
 
           <textarea
@@ -414,10 +485,17 @@ export default function App() {
             }
           />
 
-          <h3>2. Questões Administrativas</h3>
+          <h3>
+            2. Questões Administrativas
+          </h3>
 
           {administrativasOpcoes.map((opcao) => (
-            <label style={styles.check} key={opcao}>
+
+            <label
+              style={styles.check}
+              key={opcao}
+            >
+
               <input
                 type="checkbox"
                 checked={form.administrativas.includes(
@@ -431,8 +509,11 @@ export default function App() {
                 }
               />
 
-              {" "}{opcao}
+              {" "}
+              {opcao}
+
             </label>
+
           ))}
 
           <textarea
@@ -450,7 +531,9 @@ export default function App() {
             }
           />
 
-          <h3>3. Percepção Institucional</h3>
+          <h3>
+            3. Percepção Institucional
+          </h3>
 
           <h4>Diretor(a)</h4>
 
@@ -482,7 +565,9 @@ export default function App() {
             }
           />
 
-          <h4>Diretor(a) Adjunto(a)</h4>
+          <h4>
+            Diretor(a) Adjunto(a)
+          </h4>
 
           <textarea
             style={styles.textarea}
@@ -512,7 +597,9 @@ export default function App() {
             }
           />
 
-          <h3>4. Engajamento</h3>
+          <h3>
+            4. Engajamento
+          </h3>
 
           <select
             style={styles.input}
@@ -527,6 +614,7 @@ export default function App() {
               })
             }
           >
+
             <option value="">
               Interesse Diretor
             </option>
@@ -534,6 +622,7 @@ export default function App() {
             <option>Alto</option>
             <option>Médio</option>
             <option>Baixo</option>
+
           </select>
 
           <select
@@ -549,6 +638,7 @@ export default function App() {
               })
             }
           >
+
             <option value="">
               Interesse Adjunto
             </option>
@@ -556,9 +646,12 @@ export default function App() {
             <option>Alto</option>
             <option>Médio</option>
             <option>Baixo</option>
+
           </select>
 
-          <h3>5. Classificação Interna</h3>
+          <h3>
+            5. Classificação Interna
+          </h3>
 
           <select
             style={styles.input}
@@ -573,6 +666,7 @@ export default function App() {
               })
             }
           >
+
             <option value="">
               Classificação Diretor
             </option>
@@ -580,6 +674,7 @@ export default function App() {
             <option>VERDE</option>
             <option>AMARELO</option>
             <option>VERMELHO</option>
+
           </select>
 
           <select
@@ -595,6 +690,7 @@ export default function App() {
               })
             }
           >
+
             <option value="">
               Classificação Adjunto
             </option>
@@ -602,9 +698,12 @@ export default function App() {
             <option>VERDE</option>
             <option>AMARELO</option>
             <option>VERMELHO</option>
+
           </select>
 
-          <h3>6. Observações Estratégicas</h3>
+          <h3>
+            6. Observações Estratégicas
+          </h3>
 
           <textarea
             style={styles.textarea}
@@ -624,26 +723,49 @@ export default function App() {
           >
             Salvar Reunião
           </button>
+
         </section>
 
         <section style={styles.panel}>
-          <h2>Indicadores</h2>
+
+          <h2>
+            Indicadores
+          </h2>
 
           {barra("Verde", verde, total)}
           {barra("Amarelo", amarelo, total)}
           {barra("Vermelho", vermelho, total)}
+
           {barra(
             "Alto engajamento",
             altoEngajamento,
             total
           )}
+
+          {barra(
+            "Médio engajamento",
+            medioEngajamento,
+            total
+          )}
+
+          {barra(
+            "Baixo engajamento",
+            baixoEngajamento,
+            total
+          )}
+
         </section>
+
       </main>
+
     </div>
+
   );
+
 }
 
 const styles = {
+
   page: {
     minHeight: "100vh",
     background:
@@ -657,7 +779,8 @@ const styles = {
     display: "flex",
     alignItems: "center",
     gap: 15,
-    marginBottom: 25
+    marginBottom: 25,
+    flexWrap: "wrap"
   },
 
   logo: {
@@ -674,7 +797,8 @@ const styles = {
 
   title: {
     margin: 0,
-    fontSize: "clamp(26px, 5vw, 38px)"
+    fontSize:
+      "clamp(26px, 5vw, 38px)"
   },
 
   subtitle: {
@@ -685,7 +809,7 @@ const styles = {
   cards: {
     display: "grid",
     gridTemplateColumns:
-      "repeat(auto-fit,minmax(150px,1fr))",
+      "repeat(auto-fit,minmax(180px,1fr))",
     gap: 12,
     marginBottom: 25
   },
@@ -704,7 +828,8 @@ const styles = {
   },
 
   panel: {
-    background: "rgba(15,23,42,.95)",
+    background:
+      "rgba(15,23,42,.95)",
     padding: 20,
     borderRadius: 18
   },
@@ -759,4 +884,5 @@ const styles = {
     background: "#facc15",
     borderRadius: 999
   }
+
 };
