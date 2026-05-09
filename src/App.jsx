@@ -3,6 +3,107 @@ import { collection, addDoc, getDocs } from "firebase/firestore";
 import { db } from "./firebase";
 
 export default function App() {
+  const escolasPorMunicipio = {
+    "CAARAPÓ": [
+      "EE ARCÊNIO ROJAS",
+      "EE FREI JOÃO DAMASCENO",
+      "EE PADRE JOSÉ DE ANCHIETA",
+      "EE PROF. JOAQUIM ALFREDO SOARES VIANNA",
+      "EE PROFª. CLEUZA APARECIDA V. GALHARDO",
+      "EE TEN. AVIADOR ANTÔNIO JOÃO",
+      "EE INDÍGENA DE EM YVY POTY"
+    ],
+
+    "DEODÁPOLIS": [
+      "EE 13 DE MAIO",
+      "EE JOÃO BAPTISTA PEREIRA",
+      "EE LAGOA BONITA",
+      "EE PORTO VILMA",
+      "EE SCILA MÉDICI"
+    ],
+
+    "DOURADINA": [
+      "EE BARÃO DO RIO BRANCO"
+    ],
+
+    "DOURADOS": [
+      "CEEJA DOURADOS",
+      "CENTRO ESTADUAL DE EDUCAÇÃO PROFISSIONAL",
+      "EE ABIGAIL BORRALHO",
+      "EE ANTÔNIA DA SILVEIRA CAPILÉ",
+      "EE ANTÔNIO VICENTE AZAMBUJA",
+      "EE CASTRO ALVES",
+      "EE FLORIANO VIEGAS MACHADO",
+      "EE JOAQUIM VAZ DE OLIVEIRA",
+      "EE MARIA DA GLÓRIA MUZZI FERREIRA",
+      "EE MENODORA FIALHO DE FIGUEIREDO",
+      "EE MIN. JOÃO PAULO DOS REIS VELOSO",
+      "EE PASTOR DANIEL BERG",
+      "EE PRES. GETÚLIO VARGAS",
+      "EE PRES. TANCREDO NEVES",
+      "EE PRESIDENTE VARGAS",
+      "EE PROF. ALÍCIO ARAÚJO",
+      "EE PROF. CELSO MÜLLER DO AMARAL",
+      "EE PROFª. FLORIANA LOPES",
+      "EE PROFESSOR JOSÉ PEREIRA LINS",
+      "EE RAMONA DA SILVA PEDROSO",
+      "EE RITA ANGELINA BARBOSA SILVEIRA",
+      "EE VEREADOR MOACIR DJALMA BARROS",
+      "EE VILMAR VIEIRA MATOS",
+      "EE INDÍGENA INTERCULTURAL GUATEKA - MARÇAL DE SOUZA"
+    ],
+
+    "FÁTIMA DO SUL": [
+      "EE JONAS BELARMINO DA SILVA",
+      "EE SEN. FILINTO MÜLLER",
+      "EE VICENTE PALLOTTI",
+      "EE VILA BRASIL"
+    ],
+
+    "GLÓRIA DE DOURADOS": [
+      "EE PROFª. EUFROSINA PINTO",
+      "EE PROFª. VÂNIA MEDEIROS LOPES",
+      "EE WEIMAR TORRES"
+    ],
+
+    "ITAPORÃ": [
+      "EE ANTÔNIO JOÃO RIBEIRO",
+      "EE EDSON BEZERRA",
+      "EE OLIVIA PAULA",
+      "EE PRINCESA IZABEL",
+      "EE RODRIGUES ALVES",
+      "EE SEN. SALDANHA DERZI"
+    ],
+
+    "JATEÍ": [
+      "EE PROF. JOAQUIM ALFREDO SOARES VIANNA",
+      "EE PROFª. BERNADETE SANTOS LEITE"
+    ],
+
+    "LAGUNA CARAPÃ": [
+      "EE ÁLVARO MARTINS DOS SANTOS"
+    ],
+
+    "MARACAJU": [
+      "EE CAMBARAI",
+      "EE CEL. LIMA DE FIGUEIREDO",
+      "EE MANOEL FERREIRA DE LIMA",
+      "EE PADRE CONSTANTINO DE MONTE"
+    ],
+
+    "RIO BRILHANTE": [
+      "EE ETALÍVIO PEREIRA MARTINS",
+      "EE FERNANDO CORRÊA DA COSTA",
+      "EE PROFª. LIGIA TEREZINHA MARTINS"
+    ],
+
+    "VICENTINA": [
+      "EE EMANNUEL PINHEIRO",
+      "EE PADRE JOSÉ DANIEL",
+      "EE SÃO JOSÉ"
+    ]
+  };
+
   const [registros, setRegistros] = useState([]);
 
   const [form, setForm] = useState({
@@ -97,41 +198,6 @@ export default function App() {
 
     alert("Reunião salva com sucesso!");
 
-    setForm({
-      municipio: "",
-      escola: "",
-      data: "",
-      diretor: "",
-      adjunto: "",
-      participantes: "",
-
-      demandas: [],
-      descricaoDemandas: "",
-
-      administrativas: [],
-      descricaoAdministrativas: "",
-
-      avaliacaoSedDiretor: "",
-      avaliacaoSedAdjunto: "",
-
-      avaliacaoGovernoDiretor: "",
-      avaliacaoGovernoAdjunto: "",
-
-      divulgaAcoesDiretor: "",
-      divulgaAcoesAdjunto: "",
-
-      interesseAgendaDiretor: "",
-      interesseAgendaAdjunto: "",
-
-      potencialMobilizacaoDiretor: "",
-      potencialMobilizacaoAdjunto: "",
-
-      classificacaoDiretor: "",
-      classificacaoAdjunto: "",
-
-      observacoes: ""
-    });
-
     carregarRegistros();
   }
 
@@ -167,8 +233,7 @@ export default function App() {
         <div
           style={{
             display: "flex",
-            justifyContent: "space-between",
-            gap: 10
+            justifyContent: "space-between"
           }}
         >
           <span>{label}</span>
@@ -235,30 +300,59 @@ export default function App() {
         <section style={styles.panel}>
           <h2>Formulário de Reunião com Gestores</h2>
 
-          <input
+          <select
             style={styles.input}
-            placeholder="Município"
             value={form.municipio}
             onChange={(e) =>
-              setForm({ ...form, municipio: e.target.value })
+              setForm({
+                ...form,
+                municipio: e.target.value,
+                escola: ""
+              })
             }
-          />
+          >
+            <option value="">Selecione o município</option>
 
-          <input
+            {Object.keys(escolasPorMunicipio).map(
+              (municipio) => (
+                <option key={municipio}>
+                  {municipio}
+                </option>
+              )
+            )}
+          </select>
+
+          <select
             style={styles.input}
-            placeholder="Escola"
             value={form.escola}
             onChange={(e) =>
-              setForm({ ...form, escola: e.target.value })
+              setForm({
+                ...form,
+                escola: e.target.value
+              })
             }
-          />
+          >
+            <option value="">Selecione a escola</option>
+
+            {form.municipio &&
+              escolasPorMunicipio[
+                form.municipio
+              ]?.map((escola) => (
+                <option key={escola}>
+                  {escola}
+                </option>
+              ))}
+          </select>
 
           <input
             style={styles.input}
             type="date"
             value={form.data}
             onChange={(e) =>
-              setForm({ ...form, data: e.target.value })
+              setForm({
+                ...form,
+                data: e.target.value
+              })
             }
           />
 
@@ -267,7 +361,10 @@ export default function App() {
             placeholder="Diretor(a)"
             value={form.diretor}
             onChange={(e) =>
-              setForm({ ...form, diretor: e.target.value })
+              setForm({
+                ...form,
+                diretor: e.target.value
+              })
             }
           />
 
@@ -276,16 +373,10 @@ export default function App() {
             placeholder="Diretor(a) Adjunto(a)"
             value={form.adjunto}
             onChange={(e) =>
-              setForm({ ...form, adjunto: e.target.value })
-            }
-          />
-
-          <input
-            style={styles.input}
-            placeholder="Participantes da equipe"
-            value={form.participantes}
-            onChange={(e) =>
-              setForm({ ...form, participantes: e.target.value })
+              setForm({
+                ...form,
+                adjunto: e.target.value
+              })
             }
           />
 
@@ -295,9 +386,14 @@ export default function App() {
             <label style={styles.check} key={opcao}>
               <input
                 type="checkbox"
-                checked={form.demandas.includes(opcao)}
+                checked={form.demandas.includes(
+                  opcao
+                )}
                 onChange={() =>
-                  alternarCheckbox("demandas", opcao)
+                  alternarCheckbox(
+                    "demandas",
+                    opcao
+                  )
                 }
               />
 
@@ -312,7 +408,8 @@ export default function App() {
             onChange={(e) =>
               setForm({
                 ...form,
-                descricaoDemandas: e.target.value
+                descricaoDemandas:
+                  e.target.value
               })
             }
           />
@@ -323,7 +420,9 @@ export default function App() {
             <label style={styles.check} key={opcao}>
               <input
                 type="checkbox"
-                checked={form.administrativas.includes(opcao)}
+                checked={form.administrativas.includes(
+                  opcao
+                )}
                 onChange={() =>
                   alternarCheckbox(
                     "administrativas",
@@ -339,11 +438,14 @@ export default function App() {
           <textarea
             style={styles.textarea}
             placeholder="Descrição das questões administrativas"
-            value={form.descricaoAdministrativas}
+            value={
+              form.descricaoAdministrativas
+            }
             onChange={(e) =>
               setForm({
                 ...form,
-                descricaoAdministrativas: e.target.value
+                descricaoAdministrativas:
+                  e.target.value
               })
             }
           />
@@ -359,41 +461,26 @@ export default function App() {
             onChange={(e) =>
               setForm({
                 ...form,
-                avaliacaoSedDiretor: e.target.value
+                avaliacaoSedDiretor:
+                  e.target.value
               })
             }
           />
 
           <textarea
             style={styles.textarea}
-            placeholder="Como o diretor avalia as ações do Governo?"
-            value={form.avaliacaoGovernoDiretor}
+            placeholder="Como o diretor avalia o Governo?"
+            value={
+              form.avaliacaoGovernoDiretor
+            }
             onChange={(e) =>
               setForm({
                 ...form,
-                avaliacaoGovernoDiretor: e.target.value
+                avaliacaoGovernoDiretor:
+                  e.target.value
               })
             }
           />
-
-          <select
-            style={styles.input}
-            value={form.divulgaAcoesDiretor}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                divulgaAcoesDiretor: e.target.value
-              })
-            }
-          >
-            <option value="">
-              Diretor divulga ações institucionais?
-            </option>
-
-            <option>Sim</option>
-            <option>Parcialmente</option>
-            <option>Não</option>
-          </select>
 
           <h4>Diretor(a) Adjunto(a)</h4>
 
@@ -404,78 +491,44 @@ export default function App() {
             onChange={(e) =>
               setForm({
                 ...form,
-                avaliacaoSedAdjunto: e.target.value
+                avaliacaoSedAdjunto:
+                  e.target.value
               })
             }
           />
 
           <textarea
             style={styles.textarea}
-            placeholder="Como o adjunto avalia as ações do Governo?"
-            value={form.avaliacaoGovernoAdjunto}
+            placeholder="Como o adjunto avalia o Governo?"
+            value={
+              form.avaliacaoGovernoAdjunto
+            }
             onChange={(e) =>
               setForm({
                 ...form,
-                avaliacaoGovernoAdjunto: e.target.value
+                avaliacaoGovernoAdjunto:
+                  e.target.value
               })
             }
           />
 
-          <select
-            style={styles.input}
-            value={form.divulgaAcoesAdjunto}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                divulgaAcoesAdjunto: e.target.value
-              })
-            }
-          >
-            <option value="">
-              Adjunto divulga ações institucionais?
-            </option>
-
-            <option>Sim</option>
-            <option>Parcialmente</option>
-            <option>Não</option>
-          </select>
-
           <h3>4. Engajamento</h3>
 
-          <h4>Diretor(a)</h4>
-
           <select
             style={styles.input}
-            value={form.interesseAgendaDiretor}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                interesseAgendaDiretor: e.target.value
-              })
+            value={
+              form.interesseAgendaDiretor
             }
-          >
-            <option value="">
-              Interesse em agendas institucionais
-            </option>
-
-            <option>Alto</option>
-            <option>Médio</option>
-            <option>Baixo</option>
-          </select>
-
-          <select
-            style={styles.input}
-            value={form.potencialMobilizacaoDiretor}
             onChange={(e) =>
               setForm({
                 ...form,
-                potencialMobilizacaoDiretor:
+                interesseAgendaDiretor:
                   e.target.value
               })
             }
           >
             <option value="">
-              Potencial de mobilização
+              Interesse Diretor
             </option>
 
             <option>Alto</option>
@@ -483,11 +536,11 @@ export default function App() {
             <option>Baixo</option>
           </select>
 
-          <h4>Diretor(a) Adjunto(a)</h4>
-
           <select
             style={styles.input}
-            value={form.interesseAgendaAdjunto}
+            value={
+              form.interesseAgendaAdjunto
+            }
             onChange={(e) =>
               setForm({
                 ...form,
@@ -497,27 +550,7 @@ export default function App() {
             }
           >
             <option value="">
-              Interesse em agendas institucionais
-            </option>
-
-            <option>Alto</option>
-            <option>Médio</option>
-            <option>Baixo</option>
-          </select>
-
-          <select
-            style={styles.input}
-            value={form.potencialMobilizacaoAdjunto}
-            onChange={(e) =>
-              setForm({
-                ...form,
-                potencialMobilizacaoAdjunto:
-                  e.target.value
-              })
-            }
-          >
-            <option value="">
-              Potencial de mobilização
+              Interesse Adjunto
             </option>
 
             <option>Alto</option>
@@ -527,11 +560,11 @@ export default function App() {
 
           <h3>5. Classificação Interna</h3>
 
-          <h4>Diretor(a)</h4>
-
           <select
             style={styles.input}
-            value={form.classificacaoDiretor}
+            value={
+              form.classificacaoDiretor
+            }
             onChange={(e) =>
               setForm({
                 ...form,
@@ -541,7 +574,7 @@ export default function App() {
             }
           >
             <option value="">
-              Classificação diretor
+              Classificação Diretor
             </option>
 
             <option>VERDE</option>
@@ -549,11 +582,11 @@ export default function App() {
             <option>VERMELHO</option>
           </select>
 
-          <h4>Diretor(a) Adjunto(a)</h4>
-
           <select
             style={styles.input}
-            value={form.classificacaoAdjunto}
+            value={
+              form.classificacaoAdjunto
+            }
             onChange={(e) =>
               setForm({
                 ...form,
@@ -563,7 +596,7 @@ export default function App() {
             }
           >
             <option value="">
-              Classificação adjunto
+              Classificação Adjunto
             </option>
 
             <option>VERDE</option>
@@ -594,7 +627,7 @@ export default function App() {
         </section>
 
         <section style={styles.panel}>
-          <h2>Gráficos e Indicadores</h2>
+          <h2>Indicadores</h2>
 
           {barra("Verde", verde, total)}
           {barra("Amarelo", amarelo, total)}
@@ -604,54 +637,6 @@ export default function App() {
             altoEngajamento,
             total
           )}
-
-          <h2 style={{ marginTop: 30 }}>
-            Registros Salvos
-          </h2>
-
-          {registros.map((r) => (
-            <div
-              key={r.id}
-              style={styles.registro}
-            >
-              <h3>{r.escola}</h3>
-
-              <p>
-                <strong>Município:</strong>{" "}
-                {r.municipio}
-              </p>
-
-              <p>
-                <strong>Diretor:</strong>{" "}
-                {r.diretor}
-              </p>
-
-              <p>
-                <strong>Adjunto:</strong>{" "}
-                {r.adjunto}
-              </p>
-
-              <p>
-                <strong>Classificação Diretor:</strong>{" "}
-                {r.classificacaoDiretor}
-              </p>
-
-              <p>
-                <strong>Classificação Adjunto:</strong>{" "}
-                {r.classificacaoAdjunto}
-              </p>
-
-              <p>
-                <strong>Engajamento Diretor:</strong>{" "}
-                {r.interesseAgendaDiretor}
-              </p>
-
-              <p>
-                <strong>Demandas:</strong>{" "}
-                {r.demandas?.join(", ")}
-              </p>
-            </div>
-          ))}
         </section>
       </main>
     </div>
@@ -664,47 +649,43 @@ const styles = {
     background:
       "linear-gradient(135deg,#07111f,#0f172a,#111827)",
     color: "white",
-    fontFamily: "Arial, sans-serif",
-    padding: 15,
-    boxSizing: "border-box"
+    fontFamily: "Arial",
+    padding: 15
   },
 
   header: {
     display: "flex",
     alignItems: "center",
-    gap: 14,
-    marginBottom: 25,
-    flexWrap: "wrap"
+    gap: 15,
+    marginBottom: 25
   },
 
   logo: {
-    width: 54,
-    height: 54,
+    width: 55,
+    height: 55,
     borderRadius: "50%",
     background:
       "linear-gradient(135deg,#2563eb,#facc15)",
     display: "flex",
     alignItems: "center",
     justifyContent: "center",
-    fontSize: 34,
-    flexShrink: 0
+    fontSize: 32
   },
 
   title: {
     margin: 0,
-    fontSize: "clamp(26px, 6vw, 38px)"
+    fontSize: "clamp(26px, 5vw, 38px)"
   },
 
   subtitle: {
     margin: 0,
-    color: "#cbd5e1",
-    fontSize: "clamp(13px, 3.5vw, 16px)"
+    color: "#cbd5e1"
   },
 
   cards: {
     display: "grid",
     gridTemplateColumns:
-      "repeat(auto-fit, minmax(150px, 1fr))",
+      "repeat(auto-fit,minmax(150px,1fr))",
     gap: 12,
     marginBottom: 25
   },
@@ -712,22 +693,20 @@ const styles = {
   card: {
     background: "#1e293b",
     padding: 18,
-    borderRadius: 14,
-    minWidth: 0
+    borderRadius: 14
   },
 
   grid: {
     display: "grid",
     gridTemplateColumns:
-      "repeat(auto-fit, minmax(300px, 1fr))",
+      "repeat(auto-fit,minmax(320px,1fr))",
     gap: 20
   },
 
   panel: {
     background: "rgba(15,23,42,.95)",
-    padding: 18,
-    borderRadius: 18,
-    overflow: "hidden"
+    padding: 20,
+    borderRadius: 18
   },
 
   input: {
@@ -753,8 +732,7 @@ const styles = {
 
   check: {
     display: "block",
-    marginBottom: 9,
-    fontSize: 15
+    marginBottom: 8
   },
 
   button: {
@@ -765,8 +743,8 @@ const styles = {
     border: "none",
     borderRadius: 10,
     fontWeight: "bold",
-    cursor: "pointer",
-    fontSize: 16
+    fontSize: 16,
+    cursor: "pointer"
   },
 
   barraFundo: {
@@ -780,13 +758,5 @@ const styles = {
     height: 12,
     background: "#facc15",
     borderRadius: 999
-  },
-
-  registro: {
-    background: "#1e293b",
-    padding: 15,
-    borderRadius: 12,
-    marginBottom: 12,
-    overflowWrap: "break-word"
   }
 };
