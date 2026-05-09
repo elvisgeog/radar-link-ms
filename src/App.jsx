@@ -200,92 +200,25 @@ export default function App() {
     });
   }
 
+  function corIndicador(label) {
+    if (label === "VERDE" || label === "Alto") return "#22c55e";
+    if (label === "AMARELO" || label === "Médio") return "#eab308";
+    if (label === "VERMELHO" || label === "Baixo") return "#ef4444";
+    return "#facc15";
+  }
+
   function barra(label, valor, totalBase) {
-
-  const percentual = totalBase
-    ? Math.round((valor / totalBase) * 100)
-    : 0;
-
-  let cor = "#facc15";
-
-  if (label === "VERDE") {
-    cor = "#22c55e";
-  }
-
-  if (label === "AMARELO") {
-    cor = "#eab308";
-  }
-
-  if (label === "VERMELHO") {
-    cor = "#ef4444";
-  }
-
-  if (label === "Alto") {
-    cor = "#22c55e";
-  }
-
-  if (label === "Médio") {
-    cor = "#eab308";
-  }
-
-  if (label === "Baixo") {
-    cor = "#ef4444";
-  }
-
-  return (
-
-    <div
-      style={{
-        marginBottom: 14,
-        cursor: "pointer"
-      }}
-      onClick={() => setFiltroAtivo(label)}
-    >
-
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          color: cor,
-          fontWeight: "bold"
-        }}
-      >
-
-        <span>{label}</span>
-
-        <strong>
-          {valor} ({percentual}%)
-        </strong>
-
-      </div>
-
-      <div style={styles.barraFundo}>
-
-        <div
-          style={{
-            ...styles.barraValor,
-            width: `${percentual}%`,
-            background: cor
-          }}
-        />
-
-      </div>
-
-    </div>
-
-  );
-
-}
     const percentual = totalBase ? Math.round((valor / totalBase) * 100) : 0;
+    const cor = corIndicador(label);
 
     return (
       <div style={{ marginBottom: 14, cursor: "pointer" }} onClick={() => setFiltroAtivo(label)}>
-        <div style={{ display: "flex", justifyContent: "space-between" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", color: cor, fontWeight: "bold" }}>
           <span>{label}</span>
           <strong>{valor} ({percentual}%)</strong>
         </div>
         <div style={styles.barraFundo}>
-          <div style={{ ...styles.barraValor, width: `${percentual}%` }} />
+          <div style={{ ...styles.barraValor, width: `${percentual}%`, background: cor }} />
         </div>
       </div>
     );
@@ -293,6 +226,7 @@ export default function App() {
 
   if (filtroAtivo) {
     const lista = listaFiltrada();
+    const cor = corIndicador(filtroAtivo);
 
     return (
       <div style={styles.page}>
@@ -300,12 +234,12 @@ export default function App() {
           Voltar ao painel
         </button>
 
-        <h1 style={styles.title}>Lista: {filtroAtivo}</h1>
+        <h1 style={{ ...styles.title, color: cor }}>Lista: {filtroAtivo}</h1>
 
         {lista.length === 0 && <p>Nenhum registro encontrado.</p>}
 
         {lista.map((r) => (
-          <div key={r.id} style={styles.registro}>
+          <div key={r.id} style={{ ...styles.registro, borderLeft: `6px solid ${cor}` }}>
             <h2>{r.escola}</h2>
             <p><strong>Município:</strong> {r.municipio}</p>
             <p><strong>Diretor:</strong> {r.diretor || "Não informado"}</p>
@@ -331,22 +265,22 @@ export default function App() {
       </header>
 
       <section style={styles.cards}>
-        <div style={styles.card} onClick={() => setFiltroAtivo("VERDE")}>
+        <div style={{ ...styles.card, color: "#22c55e" }} onClick={() => setFiltroAtivo("VERDE")}>
           <span>Verde</span><strong>{verde}</strong>
         </div>
-        <div style={styles.card} onClick={() => setFiltroAtivo("AMARELO")}>
+        <div style={{ ...styles.card, color: "#eab308" }} onClick={() => setFiltroAtivo("AMARELO")}>
           <span>Amarelo</span><strong>{amarelo}</strong>
         </div>
-        <div style={styles.card} onClick={() => setFiltroAtivo("VERMELHO")}>
+        <div style={{ ...styles.card, color: "#ef4444" }} onClick={() => setFiltroAtivo("VERMELHO")}>
           <span>Vermelho</span><strong>{vermelho}</strong>
         </div>
-        <div style={styles.card} onClick={() => setFiltroAtivo("Alto")}>
+        <div style={{ ...styles.card, color: "#22c55e" }} onClick={() => setFiltroAtivo("Alto")}>
           <span>Alto engajamento</span><strong>{altoEngajamento}</strong>
         </div>
-        <div style={styles.card} onClick={() => setFiltroAtivo("Médio")}>
+        <div style={{ ...styles.card, color: "#eab308" }} onClick={() => setFiltroAtivo("Médio")}>
           <span>Médio engajamento</span><strong>{medioEngajamento}</strong>
         </div>
-        <div style={styles.card} onClick={() => setFiltroAtivo("Baixo")}>
+        <div style={{ ...styles.card, color: "#ef4444" }} onClick={() => setFiltroAtivo("Baixo")}>
           <span>Baixo engajamento</span><strong>{baixoEngajamento}</strong>
         </div>
       </section>
@@ -495,7 +429,8 @@ const styles = {
     background: "#1e293b",
     padding: 18,
     borderRadius: 14,
-    cursor: "pointer"
+    cursor: "pointer",
+    fontWeight: "bold"
   },
   grid: {
     display: "grid",
@@ -550,7 +485,6 @@ const styles = {
   },
   barraValor: {
     height: 12,
-    background: "#facc15",
     borderRadius: 999
   },
   registro: {
