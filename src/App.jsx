@@ -1,5 +1,11 @@
 import React, { useEffect, useState } from "react";
-import { collection, addDoc, getDocs } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  getDocs,
+  deleteDoc,
+  doc
+} from "firebase/firestore";
 import { db } from "./firebase";
 
 export default function App() {
@@ -92,6 +98,8 @@ export default function App() {
   const [registros, setRegistros] = useState([]);
   const [filtroAtivo, setFiltroAtivo] = useState(null);
   const [modoRelatorio, setModoRelatorio] = useState(false);
+  const [formAberto, setFormAberto] = useState(null);
+  const [municipioIndicador, setMunicipioIndicador] = useState("GERAL");
 
   const [form, setForm] = useState({
     municipio: "",
@@ -137,6 +145,7 @@ export default function App() {
   function alternarCheckbox(campo, valor) {
     setForm((atual) => {
       const lista = atual[campo];
+
       return {
         ...atual,
         [campo]: lista.includes(valor)
@@ -148,8 +157,18 @@ export default function App() {
 
   async function carregarRegistros() {
     const dados = await getDocs(collection(db, "reunioes_gestores"));
-    setRegistros(dados.docs.map((doc) => ({ id: doc.id, ...doc.data() })));
+
+    setRegistros(
+      dados.docs.map((docItem) => ({
+        id: docItem.id,
+        ...docItem.data()
+      }))
+    );
   }
+
+  useEffect(() => {
+    carregarRegistros();
+  }, []);
 
   async function salvarRegistro() {
     if (!form.municipio || !form.escola) {
@@ -163,15 +182,51 @@ export default function App() {
     });
 
     alert("Reunião salva com sucesso!");
+
+    setForm({
+      municipio: "",
+      escola: "",
+      data: "",
+      diretor: "",
+      adjunto: "",
+      demandas: [],
+      descricaoDemandas: "",
+      administrativas: [],
+      descricaoAdministrativas: "",
+      avaliacaoSedDiretor: "",
+      avaliacaoSedAdjunto: "",
+      avaliacaoGovernoDiretor: "",
+      avaliacaoGovernoAdjunto: "",
+      interesseAgendaDiretor: "",
+      interesseAgendaAdjunto: "",
+      classificacaoDiretor: "",
+      classificacaoAdjunto: "",
+      observacoes: ""
+    });
+
     carregarRegistros();
   }
 
-  useEffect(() => {
+  async function excluirRegistro(id) {
+    const confirmar = window.confirm("Deseja realmente excluir este formulário?");
+    if (!confirmar) return;
+
+    await deleteDoc(doc(db, "reunioes_gestores", id));
+    alert("Registro excluído com sucesso!");
+
+    setFormAberto(null);
     carregarRegistros();
-  }, []);
+  }
+
+  function registrosBase() {
+    if (municipioIndicador === "GERAL") return registros;
+    return registros.filter((r) => r.municipio === municipioIndicador);
+  }
+
+  const baseIndicadores = registrosBase();
 
   function contarClassificacao(tipo) {
-    return registros.reduce((total, r) => {
+    return baseIndicadores.reduce((total, r) => {
       let soma = 0;
       if (r.classificacaoDiretor === tipo) soma++;
       if (r.classificacaoAdjunto === tipo) soma++;
@@ -180,7 +235,7 @@ export default function App() {
   }
 
   function contarEngajamento(tipo) {
-    return registros.reduce((total, r) => {
+    return baseIndicadores.reduce((total, r) => {
       let soma = 0;
       if (r.interesseAgendaDiretor === tipo) soma++;
       if (r.interesseAgendaAdjunto === tipo) soma++;
@@ -188,7 +243,7 @@ export default function App() {
     }, 0);
   }
 
-  const totalGestores = registros.length * 2;
+  const totalGestores = baseIndicadores.length * 2;
 
   const verde = contarClassificacao("VERDE");
   const amarelo = contarClassificacao("AMARELO");
@@ -205,12 +260,16 @@ export default function App() {
     return "#facc15";
   }
 
+  function gerarPDF() {
+    window.print();
+  }
+
   function listaFiltrada() {
     if (!filtroAtivo) return [];
 
     const lista = [];
 
-    registros.forEach((r) => {
+    baseIndicadores.forEach((r) => {
       if (["VERDE", "AMARELO", "VERMELHO"].includes(filtroAtivo)) {
         if (r.classificacaoDiretor === filtroAtivo) {
           lista.push({
@@ -270,29 +329,93 @@ export default function App() {
     const cor = corIndicador(label);
 
     return (
-      <div style={styles.barChartRow} onClick={() => setFiltroAtivo(label)}>
-        <div style={styles.barLabelArea}>
-          <span style={{ color: cor }}>{label}</span>
-          <strong style={{ color: cor }}>
-            {valor} ({percentual}%)
-          </strong>
-        </div>
-
-        <div style={styles.barraFundo}>
+      <div style={styles.verticalChartItem} onClick={() => setFiltroAtivo(label)}>
+        <div style={styles.verticalBarArea}>
           <div
             style={{
-              ...styles.barraValor,
-              width: `${percentual}%`,
-              background: cor
+              ...styles.verticalBar,
+              background: cor,
+              height: `${percentual}%`
             }}
           />
         </div>
+
+        <strong style={{ color: cor, marginTop: 10 }}>{valor}</strong>
+
+        <span style={{ color: cor, fontWeight: "bold", marginTop: 5, textAlign: "center" }}>
+          {label}
+        </span>
+
+        <small style={{ color: "#cbd5e1", marginTop: 4 }}>{percentual}%</small>
       </div>
     );
   }
 
-  function gerarPDF() {
-    window.print();
+  function abrirFormulario(r) {
+    setFormAberto(r);
+  }
+
+  if (formAberto) {
+    return (
+      <div style={styles.relatorioPage}>
+        <h1>Radar Link MS</h1>
+        <h2>Formulário salvo</h2>
+
+        <button style={styles.buttonRelatorio} onClick={() => setFormAberto(null)}>
+          Voltar
+        </button>
+
+        <button style={styles.buttonRelatorio} onClick={gerarPDF}>
+          Gerar PDF / Imprimir
+        </button>
+
+        <section style={styles.relatorioBox}>
+          <h2>Dados da reunião</h2>
+          <p><strong>Município:</strong> {formAberto.municipio}</p>
+          <p><strong>Escola:</strong> {formAberto.escola}</p>
+          <p><strong>Data:</strong> {formAberto.data || "Não informada"}</p>
+          <p><strong>Diretor(a):</strong> {formAberto.diretor || "Não informado"}</p>
+          <p><strong>Diretor(a) Adjunto(a):</strong> {formAberto.adjunto || "Não informado"}</p>
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>Demandas da escola</h2>
+          <p><strong>Marcadas:</strong> {formAberto.demandas?.join(", ") || "Nenhuma"}</p>
+          <p><strong>Descrição:</strong> {formAberto.descricaoDemandas || "Sem descrição"}</p>
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>Questões administrativas</h2>
+          <p><strong>Marcadas:</strong> {formAberto.administrativas?.join(", ") || "Nenhuma"}</p>
+          <p><strong>Descrição:</strong> {formAberto.descricaoAdministrativas || "Sem descrição"}</p>
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>Percepção institucional</h2>
+          <p><strong>SED - Diretor:</strong> {formAberto.avaliacaoSedDiretor || "Não informado"}</p>
+          <p><strong>SED - Adjunto:</strong> {formAberto.avaliacaoSedAdjunto || "Não informado"}</p>
+          <p><strong>Governo - Diretor:</strong> {formAberto.avaliacaoGovernoDiretor || "Não informado"}</p>
+          <p><strong>Governo - Adjunto:</strong> {formAberto.avaliacaoGovernoAdjunto || "Não informado"}</p>
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>Engajamento e classificação</h2>
+          <p><strong>Engajamento Diretor:</strong> {formAberto.interesseAgendaDiretor || "Não informado"}</p>
+          <p><strong>Engajamento Adjunto:</strong> {formAberto.interesseAgendaAdjunto || "Não informado"}</p>
+          <p><strong>Classificação Diretor:</strong> {formAberto.classificacaoDiretor || "Não informado"}</p>
+          <p><strong>Classificação Adjunto:</strong> {formAberto.classificacaoAdjunto || "Não informado"}</p>
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>Observações estratégicas</h2>
+          <p>{formAberto.observacoes || "Sem observações"}</p>
+        </section>
+
+        <button style={styles.buttonExcluir} onClick={() => excluirRegistro(formAberto.id)}>
+          Excluir este formulário
+        </button>
+      </div>
+    );
   }
 
   if (modoRelatorio) {
@@ -303,6 +426,7 @@ export default function App() {
         <div style={styles.relatorioTopo}>
           <h1>Radar Link MS</h1>
           <h2>Relatório Estratégico de Gestores</h2>
+          <p>Filtro: {municipioIndicador === "GERAL" ? "Geral" : municipioIndicador}</p>
           <p>Data de geração: {dataGeracao}</p>
 
           <button style={styles.buttonRelatorio} onClick={() => setModoRelatorio(false)}>
@@ -331,7 +455,7 @@ export default function App() {
         <section style={styles.relatorioBox}>
           <h2>3. Lista de Diretores</h2>
 
-          {registros.map((r) => (
+          {baseIndicadores.map((r) => (
             <div key={r.id + "-diretor"} style={styles.relatorioItem}>
               <p><strong>Nome:</strong> {r.diretor || "Não informado"}</p>
               <p><strong>Município:</strong> {r.municipio}</p>
@@ -346,7 +470,7 @@ export default function App() {
         <section style={styles.relatorioBox}>
           <h2>4. Lista de Diretores Adjuntos</h2>
 
-          {registros.map((r) => (
+          {baseIndicadores.map((r) => (
             <div key={r.id + "-adjunto"} style={styles.relatorioItem}>
               <p><strong>Nome:</strong> {r.adjunto || "Não informado"}</p>
               <p><strong>Município:</strong> {r.municipio}</p>
@@ -636,12 +760,49 @@ export default function App() {
         <section style={styles.panel}>
           <h2>Indicadores por Gestor</h2>
 
+          <select
+            style={styles.input}
+            value={municipioIndicador}
+            onChange={(e) => setMunicipioIndicador(e.target.value)}
+          >
+            <option value="GERAL">Indicadores gerais</option>
+
+            {Object.keys(escolasPorMunicipio).map((municipio) => (
+              <option key={municipio} value={municipio}>
+                {municipio}
+              </option>
+            ))}
+          </select>
+
           {barra("VERDE", verde, totalGestores)}
           {barra("AMARELO", amarelo, totalGestores)}
           {barra("VERMELHO", vermelho, totalGestores)}
           {barra("Alto", altoEngajamento, totalGestores)}
           {barra("Médio", medioEngajamento, totalGestores)}
           {barra("Baixo", baixoEngajamento, totalGestores)}
+        </section>
+
+        <section style={styles.panel}>
+          <h2>Formulários salvos</h2>
+
+          {registros.length === 0 && <p>Nenhum formulário salvo ainda.</p>}
+
+          {registros.map((r) => (
+            <div key={r.id} style={styles.registro}>
+              <h3>{r.escola}</h3>
+              <p><strong>Município:</strong> {r.municipio}</p>
+              <p><strong>Diretor:</strong> {r.diretor || "Não informado"}</p>
+              <p><strong>Adjunto:</strong> {r.adjunto || "Não informado"}</p>
+
+              <button style={styles.button} onClick={() => abrirFormulario(r)}>
+                Abrir formulário salvo
+              </button>
+
+              <button style={styles.buttonExcluir} onClick={() => excluirRegistro(r.id)}>
+                Excluir
+              </button>
+            </div>
+          ))}
         </section>
       </main>
     </div>
@@ -753,7 +914,19 @@ const styles = {
     fontWeight: "bold",
     fontSize: 16,
     cursor: "pointer",
-    marginBottom: 15
+    marginBottom: 10
+  },
+
+  buttonExcluir: {
+    width: "100%",
+    padding: 15,
+    background: "#ef4444",
+    color: "white",
+    border: "none",
+    borderRadius: 10,
+    fontWeight: "bold",
+    fontSize: 16,
+    cursor: "pointer"
   },
 
   barChartRow: {
