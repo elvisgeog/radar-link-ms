@@ -4,6 +4,7 @@ import {
   addDoc,
   getDocs,
   deleteDoc,
+  updateDoc,
   doc
 } from "firebase/firestore";
 import { db } from "./firebase";
@@ -95,15 +96,10 @@ export default function App() {
     ]
   };
 
-  const [registros, setRegistros] = useState([]);
-  const [formAberto, setFormAberto] = useState(null);
-  const [modoRelatorio, setModoRelatorio] = useState(false);
-  const [filtroAtivo, setFiltroAtivo] = useState(null);
-  const [municipioIndicador, setMunicipioIndicador] = useState("GERAL");
-
-  const [form, setForm] = useState({
+  const formLimpo = {
     municipio: "",
     escola: "",
+    classificacaoEscola: "",
     data: "",
     diretor: "",
     adjunto: "",
@@ -119,8 +115,17 @@ export default function App() {
     interesseAgendaAdjunto: "",
     classificacaoDiretor: "",
     classificacaoAdjunto: "",
-    observacoes: ""
-  });
+    observacoesDiretor: "",
+    observacoesAdjunto: ""
+  };
+
+  const [registros, setRegistros] = useState([]);
+  const [formAberto, setFormAberto] = useState(null);
+  const [modoRelatorio, setModoRelatorio] = useState(false);
+  const [filtroAtivo, setFiltroAtivo] = useState(null);
+  const [municipioIndicador, setMunicipioIndicador] = useState("GERAL");
+  const [editandoId, setEditandoId] = useState(null);
+  const [form, setForm] = useState(formLimpo);
 
   const demandasOpcoes = [
     "Reforma",
@@ -175,35 +180,53 @@ export default function App() {
       return;
     }
 
-    await addDoc(collection(db, "reunioes_gestores"), {
-      ...form,
-      criadoEm: new Date().toLocaleString()
-    });
+    if (editandoId) {
+      await updateDoc(doc(db, "reunioes_gestores", editandoId), {
+        ...form,
+        atualizadoEm: new Date().toLocaleString()
+      });
 
-    alert("Reunião salva com sucesso!");
+      alert("Formulário atualizado com sucesso!");
+    } else {
+      await addDoc(collection(db, "reunioes_gestores"), {
+        ...form,
+        criadoEm: new Date().toLocaleString()
+      });
 
-    setForm({
-      municipio: "",
-      escola: "",
-      data: "",
-      diretor: "",
-      adjunto: "",
-      demandas: [],
-      descricaoDemandas: "",
-      administrativas: [],
-      descricaoAdministrativas: "",
-      avaliacaoSedDiretor: "",
-      avaliacaoSedAdjunto: "",
-      avaliacaoGovernoDiretor: "",
-      avaliacaoGovernoAdjunto: "",
-      interesseAgendaDiretor: "",
-      interesseAgendaAdjunto: "",
-      classificacaoDiretor: "",
-      classificacaoAdjunto: "",
-      observacoes: ""
-    });
+      alert("Reunião salva com sucesso!");
+    }
 
+    setForm(formLimpo);
+    setEditandoId(null);
     carregarRegistros();
+  }
+
+  function editarFormulario(registro) {
+    setForm({
+      municipio: registro.municipio || "",
+      escola: registro.escola || "",
+      classificacaoEscola: registro.classificacaoEscola || "",
+      data: registro.data || "",
+      diretor: registro.diretor || "",
+      adjunto: registro.adjunto || "",
+      demandas: registro.demandas || [],
+      descricaoDemandas: registro.descricaoDemandas || "",
+      administrativas: registro.administrativas || [],
+      descricaoAdministrativas: registro.descricaoAdministrativas || "",
+      avaliacaoSedDiretor: registro.avaliacaoSedDiretor || "",
+      avaliacaoSedAdjunto: registro.avaliacaoSedAdjunto || "",
+      avaliacaoGovernoDiretor: registro.avaliacaoGovernoDiretor || "",
+      avaliacaoGovernoAdjunto: registro.avaliacaoGovernoAdjunto || "",
+      interesseAgendaDiretor: registro.interesseAgendaDiretor || "",
+      interesseAgendaAdjunto: registro.interesseAgendaAdjunto || "",
+      classificacaoDiretor: registro.classificacaoDiretor || "",
+      classificacaoAdjunto: registro.classificacaoAdjunto || "",
+      observacoesDiretor: registro.observacoesDiretor || "",
+      observacoesAdjunto: registro.observacoesAdjunto || ""
+    });
+
+    setEditandoId(registro.id);
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   async function excluirRegistro(id) {
@@ -376,6 +399,7 @@ export default function App() {
           <h2>Dados da reunião</h2>
           <p><strong>Município:</strong> {formAberto.municipio}</p>
           <p><strong>Escola:</strong> {formAberto.escola}</p>
+          <p><strong>Classificação da Escola:</strong> {formAberto.classificacaoEscola || "Não informada"}</p>
           <p><strong>Data:</strong> {formAberto.data || "Não informada"}</p>
           <p><strong>Diretor(a):</strong> {formAberto.diretor || "Não informado"}</p>
           <p><strong>Diretor(a) Adjunto(a):</strong> {formAberto.adjunto || "Não informado"}</p>
@@ -411,7 +435,8 @@ export default function App() {
 
         <section style={styles.relatorioBox}>
           <h2>Observações estratégicas</h2>
-          <p>{formAberto.observacoes || "Sem observações"}</p>
+          <p><strong>Diretor(a):</strong> {formAberto.observacoesDiretor || "Sem observações"}</p>
+          <p><strong>Adjunto(a):</strong> {formAberto.observacoesAdjunto || "Sem observações"}</p>
         </section>
 
         <button style={styles.buttonExcluir} onClick={() => excluirRegistro(formAberto.id)}>
@@ -459,9 +484,10 @@ export default function App() {
               <p><strong>Nome:</strong> {r.diretor || "Não informado"}</p>
               <p><strong>Município:</strong> {r.municipio}</p>
               <p><strong>Escola:</strong> {r.escola}</p>
+              <p><strong>Classificação Escola:</strong> {r.classificacaoEscola || "Não informada"}</p>
               <p><strong>Classificação:</strong> {r.classificacaoDiretor || "Não informado"}</p>
               <p><strong>Engajamento:</strong> {r.interesseAgendaDiretor || "Não informado"}</p>
-              <p><strong>Observações:</strong> {r.observacoes || "Sem observações"}</p>
+              <p><strong>Observações:</strong> {r.observacoesDiretor || "Sem observações"}</p>
             </div>
           ))}
         </section>
@@ -474,9 +500,10 @@ export default function App() {
               <p><strong>Nome:</strong> {r.adjunto || "Não informado"}</p>
               <p><strong>Município:</strong> {r.municipio}</p>
               <p><strong>Escola:</strong> {r.escola}</p>
+              <p><strong>Classificação Escola:</strong> {r.classificacaoEscola || "Não informada"}</p>
               <p><strong>Classificação:</strong> {r.classificacaoAdjunto || "Não informado"}</p>
               <p><strong>Engajamento:</strong> {r.interesseAgendaAdjunto || "Não informado"}</p>
-              <p><strong>Observações:</strong> {r.observacoes || "Sem observações"}</p>
+              <p><strong>Observações:</strong> {r.observacoesAdjunto || "Sem observações"}</p>
             </div>
           ))}
         </section>
@@ -531,6 +558,12 @@ export default function App() {
         <section style={styles.panel}>
           <h2>Formulário de Reunião com Gestores</h2>
 
+          {editandoId && (
+            <div style={styles.avisoEdicao}>
+              Editando formulário salvo
+            </div>
+          )}
+
           <select
             style={styles.input}
             value={form.municipio}
@@ -565,6 +598,23 @@ export default function App() {
               escolasPorMunicipio[form.municipio]?.map((escola) => (
                 <option key={escola}>{escola}</option>
               ))}
+          </select>
+
+          <select
+            style={styles.input}
+            value={form.classificacaoEscola}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                classificacaoEscola: e.target.value
+              })
+            }
+          >
+            <option value="">Classificação da Escola</option>
+            <option>1</option>
+            <option>2</option>
+            <option>3</option>
+            <option>4</option>
           </select>
 
           <input
@@ -712,16 +762,39 @@ export default function App() {
 
           <h3>6. Observações Estratégicas</h3>
 
+          <h4>Diretor(a)</h4>
+
           <textarea
             style={styles.textarea}
-            placeholder="Observações estratégicas"
-            value={form.observacoes}
-            onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
+            placeholder="Observações estratégicas do Diretor(a)"
+            value={form.observacoesDiretor}
+            onChange={(e) => setForm({ ...form, observacoesDiretor: e.target.value })}
+          />
+
+          <h4>Diretor(a) Adjunto(a)</h4>
+
+          <textarea
+            style={styles.textarea}
+            placeholder="Observações estratégicas do Adjunto(a)"
+            value={form.observacoesAdjunto}
+            onChange={(e) => setForm({ ...form, observacoesAdjunto: e.target.value })}
           />
 
           <button style={styles.button} onClick={salvarRegistro}>
-            Salvar Reunião
+            {editandoId ? "Salvar Alterações" : "Salvar Reunião"}
           </button>
+
+          {editandoId && (
+            <button
+              style={styles.buttonSecundario}
+              onClick={() => {
+                setForm(formLimpo);
+                setEditandoId(null);
+              }}
+            >
+              Cancelar edição
+            </button>
+          )}
         </section>
 
         <section style={styles.panel}>
@@ -767,11 +840,16 @@ export default function App() {
             <div key={r.id} style={styles.registro}>
               <h3>{r.escola}</h3>
               <p><strong>Município:</strong> {r.municipio}</p>
+              <p><strong>Classificação Escola:</strong> {r.classificacaoEscola || "Não informada"}</p>
               <p><strong>Diretor:</strong> {r.diretor || "Não informado"}</p>
               <p><strong>Adjunto:</strong> {r.adjunto || "Não informado"}</p>
 
               <button style={styles.button} onClick={() => setFormAberto(r)}>
                 Abrir formulário salvo
+              </button>
+
+              <button style={styles.button} onClick={() => editarFormulario(r)}>
+                Editar formulário
               </button>
 
               <button style={styles.buttonExcluir} onClick={() => excluirRegistro(r.id)}>
@@ -873,6 +951,18 @@ const styles = {
     marginBottom: 10
   },
 
+  buttonSecundario: {
+    width: "100%",
+    padding: 14,
+    background: "#475569",
+    color: "white",
+    border: "none",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontWeight: "bold",
+    marginBottom: 10
+  },
+
   buttonExcluir: {
     width: "100%",
     padding: 14,
@@ -882,6 +972,15 @@ const styles = {
     borderRadius: 10,
     cursor: "pointer",
     fontWeight: "bold"
+  },
+
+  avisoEdicao: {
+    background: "#eab308",
+    color: "#111827",
+    padding: 12,
+    borderRadius: 10,
+    fontWeight: "bold",
+    marginBottom: 12
   },
 
   graficoVertical: {
