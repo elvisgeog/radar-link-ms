@@ -299,11 +299,21 @@ export default function App() {
     }, 0);
   }
 
-  function contarPercepcao(campo, opcao) {
-    return baseIndicadores.reduce((total, r) => {
-      return r[campo] === opcao ? total + 1 : total;
-    }, 0);
-  }
+  function normalizarPercepcao(valor) {
+  const texto = String(valor || "").toLowerCase();
+
+  if (texto.includes("ressalva")) return "Positivo com ressalvas";
+  if (texto.includes("negativ")) return "Negativo";
+  if (texto.includes("positiv")) return "Positivo";
+
+  return "";
+}
+
+function contarPercepcao(campo, opcao) {
+  return baseIndicadores.reduce((total, r) => {
+    return normalizarPercepcao(r[campo]) === opcao ? total + 1 : total;
+  }, 0);
+}
 
   const totalGestores = baseIndicadores.length * 2;
   const totalFormularios = baseIndicadores.length;
@@ -451,6 +461,22 @@ export default function App() {
   }
 
   function graficoPercepcao(titulo, campo) {
+  return (
+    <section style={styles.subPainel}>
+      <h3>{titulo}</h3>
+
+      <div style={styles.graficoVertical}>
+        {percepcaoOpcoes.map((opcao) =>
+          barraVertical(
+            opcao,
+            contarPercepcao(campo, opcao),
+            totalFormularios
+          )
+        )}
+      </div>
+    </section>
+  );
+}
     return (
       <section style={styles.subPainel}>
         <h3>{titulo}</h3>
