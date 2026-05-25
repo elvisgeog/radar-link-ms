@@ -119,14 +119,6 @@ export default function App() {
     observacoesAdjunto: ""
   };
 
-  const [registros, setRegistros] = useState([]);
-  const [formAberto, setFormAberto] = useState(null);
-  const [modoRelatorio, setModoRelatorio] = useState(false);
-  const [filtroAtivo, setFiltroAtivo] = useState(null);
-  const [municipioIndicador, setMunicipioIndicador] = useState("GERAL");
-  const [editandoId, setEditandoId] = useState(null);
-  const [form, setForm] = useState(formLimpo);
-
   const demandasOpcoes = [
     "Reforma",
     "Pintura",
@@ -147,6 +139,20 @@ export default function App() {
     "Outros"
   ];
 
+  const percepcaoOpcoes = [
+    "Positivo",
+    "Positivo com ressalvas",
+    "Negativo"
+  ];
+
+  const [registros, setRegistros] = useState([]);
+  const [formAberto, setFormAberto] = useState(null);
+  const [modoRelatorio, setModoRelatorio] = useState(false);
+  const [filtroAtivo, setFiltroAtivo] = useState(null);
+  const [municipioIndicador, setMunicipioIndicador] = useState("GERAL");
+  const [editandoId, setEditandoId] = useState(null);
+  const [form, setForm] = useState(formLimpo);
+
   async function carregarRegistros() {
     const dados = await getDocs(collection(db, "reunioes_gestores"));
     const lista = dados.docs.map((item) => ({
@@ -160,6 +166,12 @@ export default function App() {
   useEffect(() => {
     carregarRegistros();
   }, []);
+
+  function ordenarPorEscola(lista) {
+    return [...lista].sort((a, b) =>
+      String(a.escola || "").localeCompare(String(b.escola || ""), "pt-BR")
+    );
+  }
 
   function alternarCheckbox(campo, valor) {
     setForm((atual) => {
@@ -226,6 +238,7 @@ export default function App() {
     });
 
     setEditandoId(registro.id);
+    setFormAberto(null);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -254,6 +267,8 @@ export default function App() {
   }
 
   const baseIndicadores = registrosBase();
+  const registrosOrdenados = ordenarPorEscola(registros);
+  const baseOrdenada = ordenarPorEscola(baseIndicadores);
 
   function contarClassificacao(tipo) {
     return baseIndicadores.reduce((total, r) => {
@@ -277,7 +292,21 @@ export default function App() {
     }, 0);
   }
 
+  function contarArray(campo, opcao) {
+    return baseIndicadores.reduce((total, r) => {
+      const lista = Array.isArray(r[campo]) ? r[campo] : [];
+      return lista.includes(opcao) ? total + 1 : total;
+    }, 0);
+  }
+
+  function contarPercepcao(campo, opcao) {
+    return baseIndicadores.reduce((total, r) => {
+      return r[campo] === opcao ? total + 1 : total;
+    }, 0);
+  }
+
   const totalGestores = baseIndicadores.length * 2;
+  const totalFormularios = baseIndicadores.length;
 
   const verde = contarClassificacao("VERDE");
   const amarelo = contarClassificacao("AMARELO");
@@ -288,10 +317,10 @@ export default function App() {
   const baixo = contarEngajamento("Baixo");
 
   function corIndicador(label) {
-    if (label === "VERDE" || label === "Alto") return "#22c55e";
-    if (label === "AMARELO" || label === "Médio") return "#eab308";
-    if (label === "VERMELHO" || label === "Baixo") return "#ef4444";
-    return "#ffffff";
+    if (label === "VERDE" || label === "Alto" || label === "Positivo") return "#22c55e";
+    if (label === "AMARELO" || label === "Médio" || label === "Positivo com ressalvas") return "#eab308";
+    if (label === "VERMELHO" || label === "Baixo" || label === "Negativo") return "#ef4444";
+    return "#38bdf8";
   }
 
   function listaFiltrada() {
@@ -351,10 +380,12 @@ export default function App() {
       }
     });
 
-    return lista;
+    return lista.sort((a, b) =>
+      String(a.escola || "").localeCompare(String(b.escola || ""), "pt-BR")
+    );
   }
 
-  function barra(label, valor, totalBase) {
+  function barraVertical(label, valor, totalBase) {
     const percentual = totalBase ? Math.round((valor / totalBase) * 100) : 0;
     const cor = corIndicador(label);
 
@@ -378,6 +409,58 @@ export default function App() {
 
         <small style={{ color: "#cbd5e1" }}>{percentual}%</small>
       </div>
+    );
+  }
+
+  function barraHorizontal(label, valor, totalBase) {
+    const percentual = totalBase ? Math.round((valor / totalBase) * 100) : 0;
+    const cor = corIndicador(label);
+
+    return (
+      <div style={styles.barraHorizontalItem}>
+        <div style={styles.barraHorizontalTexto}>
+          <span>{label}</span>
+          <strong>{valor} ({percentual}%)</strong>
+        </div>
+
+        <div style={styles.barraHorizontalFundo}>
+          <div
+            style={{
+              ...styles.barraHorizontalValor,
+              width: `${percentual}%`,
+              background: cor
+            }}
+          />
+        </div>
+      </div>
+    );
+  }
+
+  function graficoCheckbox(titulo, campo, opcoes) {
+    return (
+      <section style={styles.subPainel}>
+        <h3>{titulo}</h3>
+
+        {opcoes.map((opcao) => (
+          <div key={opcao}>
+            {barraHorizontal(opcao, contarArray(campo, opcao), totalFormularios)}
+          </div>
+        ))}
+      </section>
+    );
+  }
+
+  function graficoPercepcao(titulo, campo) {
+    return (
+      <section style={styles.subPainel}>
+        <h3>{titulo}</h3>
+
+        {percepcaoOpcoes.map((opcao) => (
+          <div key={opcao}>
+            {barraHorizontal(opcao, contarPercepcao(campo, opcao), totalFormularios)}
+          </div>
+        ))}
+      </section>
     );
   }
 
@@ -420,8 +503,8 @@ export default function App() {
         <section style={styles.relatorioBox}>
           <h2>Percepção institucional</h2>
           <p><strong>SED - Diretor:</strong> {formAberto.avaliacaoSedDiretor || "Não informado"}</p>
-          <p><strong>SED - Adjunto:</strong> {formAberto.avaliacaoSedAdjunto || "Não informado"}</p>
           <p><strong>Governo - Diretor:</strong> {formAberto.avaliacaoGovernoDiretor || "Não informado"}</p>
+          <p><strong>SED - Adjunto:</strong> {formAberto.avaliacaoSedAdjunto || "Não informado"}</p>
           <p><strong>Governo - Adjunto:</strong> {formAberto.avaliacaoGovernoAdjunto || "Não informado"}</p>
         </section>
 
@@ -438,6 +521,10 @@ export default function App() {
           <p><strong>Diretor(a):</strong> {formAberto.observacoesDiretor || "Sem observações"}</p>
           <p><strong>Adjunto(a):</strong> {formAberto.observacoesAdjunto || "Sem observações"}</p>
         </section>
+
+        <button style={styles.buttonRelatorio} onClick={() => editarFormulario(formAberto)}>
+          Editar este formulário
+        </button>
 
         <button style={styles.buttonExcluir} onClick={() => excluirRegistro(formAberto.id)}>
           Excluir este formulário
@@ -479,11 +566,11 @@ export default function App() {
         <section style={styles.relatorioBox}>
           <h2>3. Lista de Diretores</h2>
 
-          {baseIndicadores.map((r) => (
+          {baseOrdenada.map((r) => (
             <div key={`${r.id}-diretor`} style={styles.relatorioItem}>
+              <p><strong>Escola:</strong> {r.escola}</p>
               <p><strong>Nome:</strong> {r.diretor || "Não informado"}</p>
               <p><strong>Município:</strong> {r.municipio}</p>
-              <p><strong>Escola:</strong> {r.escola}</p>
               <p><strong>Classificação Escola:</strong> {r.classificacaoEscola || "Não informada"}</p>
               <p><strong>Classificação:</strong> {r.classificacaoDiretor || "Não informado"}</p>
               <p><strong>Engajamento:</strong> {r.interesseAgendaDiretor || "Não informado"}</p>
@@ -495,17 +582,31 @@ export default function App() {
         <section style={styles.relatorioBox}>
           <h2>4. Lista de Diretores Adjuntos</h2>
 
-          {baseIndicadores.map((r) => (
+          {baseOrdenada.map((r) => (
             <div key={`${r.id}-adjunto`} style={styles.relatorioItem}>
+              <p><strong>Escola:</strong> {r.escola}</p>
               <p><strong>Nome:</strong> {r.adjunto || "Não informado"}</p>
               <p><strong>Município:</strong> {r.municipio}</p>
-              <p><strong>Escola:</strong> {r.escola}</p>
               <p><strong>Classificação Escola:</strong> {r.classificacaoEscola || "Não informada"}</p>
               <p><strong>Classificação:</strong> {r.classificacaoAdjunto || "Não informado"}</p>
               <p><strong>Engajamento:</strong> {r.interesseAgendaAdjunto || "Não informado"}</p>
               <p><strong>Observações:</strong> {r.observacoesAdjunto || "Sem observações"}</p>
             </div>
           ))}
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>5. Indicadores Demandas</h2>
+          {graficoCheckbox("Demandas da Escola", "demandas", demandasOpcoes)}
+          {graficoCheckbox("Questões Administrativas", "administrativas", administrativasOpcoes)}
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>6. Percepção Institucional</h2>
+          {graficoPercepcao("Diretor(a): Como avalia a SED?", "avaliacaoSedDiretor")}
+          {graficoPercepcao("Diretor(a): Como avalia o Governo?", "avaliacaoGovernoDiretor")}
+          {graficoPercepcao("Diretor(a) Adjunto(a): Como avalia a SED?", "avaliacaoSedAdjunto")}
+          {graficoPercepcao("Diretor(a) Adjunto(a): Como avalia o Governo?", "avaliacaoGovernoAdjunto")}
         </section>
       </div>
     );
@@ -680,37 +781,57 @@ export default function App() {
 
           <h3>3. Percepção Institucional</h3>
 
-          <h4>Diretor(a)</h4>
+          <h4>Diretor(a): Como avalia a SED?</h4>
 
-          <textarea
-            style={styles.textarea}
-            placeholder="Como o diretor avalia a atuação da SED?"
+          <select
+            style={styles.input}
             value={form.avaliacaoSedDiretor}
             onChange={(e) => setForm({ ...form, avaliacaoSedDiretor: e.target.value })}
-          />
+          >
+            <option value="">Selecione</option>
+            {percepcaoOpcoes.map((opcao) => (
+              <option key={opcao}>{opcao}</option>
+            ))}
+          </select>
 
-          <textarea
-            style={styles.textarea}
-            placeholder="Como o diretor avalia o Governo?"
+          <h4>Diretor(a): Como avalia o Governo?</h4>
+
+          <select
+            style={styles.input}
             value={form.avaliacaoGovernoDiretor}
             onChange={(e) => setForm({ ...form, avaliacaoGovernoDiretor: e.target.value })}
-          />
+          >
+            <option value="">Selecione</option>
+            {percepcaoOpcoes.map((opcao) => (
+              <option key={opcao}>{opcao}</option>
+            ))}
+          </select>
 
-          <h4>Diretor(a) Adjunto(a)</h4>
+          <h4>Diretor(a) Adjunto(a): Como avalia a SED?</h4>
 
-          <textarea
-            style={styles.textarea}
-            placeholder="Como o adjunto avalia a atuação da SED?"
+          <select
+            style={styles.input}
             value={form.avaliacaoSedAdjunto}
             onChange={(e) => setForm({ ...form, avaliacaoSedAdjunto: e.target.value })}
-          />
+          >
+            <option value="">Selecione</option>
+            {percepcaoOpcoes.map((opcao) => (
+              <option key={opcao}>{opcao}</option>
+            ))}
+          </select>
 
-          <textarea
-            style={styles.textarea}
-            placeholder="Como o adjunto avalia o Governo?"
+          <h4>Diretor(a) Adjunto(a): Como avalia o Governo?</h4>
+
+          <select
+            style={styles.input}
             value={form.avaliacaoGovernoAdjunto}
             onChange={(e) => setForm({ ...form, avaliacaoGovernoAdjunto: e.target.value })}
-          />
+          >
+            <option value="">Selecione</option>
+            {percepcaoOpcoes.map((opcao) => (
+              <option key={opcao}>{opcao}</option>
+            ))}
+          </select>
 
           <h3>4. Engajamento</h3>
 
@@ -817,26 +938,38 @@ export default function App() {
           <h3>Classificação</h3>
 
           <div style={styles.graficoVertical}>
-            {barra("VERDE", verde, totalGestores)}
-            {barra("AMARELO", amarelo, totalGestores)}
-            {barra("VERMELHO", vermelho, totalGestores)}
+            {barraVertical("VERDE", verde, totalGestores)}
+            {barraVertical("AMARELO", amarelo, totalGestores)}
+            {barraVertical("VERMELHO", vermelho, totalGestores)}
           </div>
 
           <h3>Engajamento</h3>
 
           <div style={styles.graficoVertical}>
-            {barra("Alto", alto, totalGestores)}
-            {barra("Médio", medio, totalGestores)}
-            {barra("Baixo", baixo, totalGestores)}
+            {barraVertical("Alto", alto, totalGestores)}
+            {barraVertical("Médio", medio, totalGestores)}
+            {barraVertical("Baixo", baixo, totalGestores)}
           </div>
+
+          <h2>Indicadores Demandas</h2>
+
+          {graficoCheckbox("1. Demandas da Escola", "demandas", demandasOpcoes)}
+          {graficoCheckbox("2. Questões Administrativas", "administrativas", administrativasOpcoes)}
+
+          <h2>Percepção Institucional</h2>
+
+          {graficoPercepcao("Diretor(a): Como avalia a SED?", "avaliacaoSedDiretor")}
+          {graficoPercepcao("Diretor(a): Como avalia o Governo?", "avaliacaoGovernoDiretor")}
+          {graficoPercepcao("Diretor(a) Adjunto(a): Como avalia a SED?", "avaliacaoSedAdjunto")}
+          {graficoPercepcao("Diretor(a) Adjunto(a): Como avalia o Governo?", "avaliacaoGovernoAdjunto")}
         </section>
 
         <section style={styles.panel}>
           <h2>Formulários salvos</h2>
 
-          {registros.length === 0 && <p>Nenhum formulário salvo ainda.</p>}
+          {registrosOrdenados.length === 0 && <p>Nenhum formulário salvo ainda.</p>}
 
-          {registros.map((r) => (
+          {registrosOrdenados.map((r) => (
             <div key={r.id} style={styles.registro}>
               <h3>{r.escola}</h3>
               <p><strong>Município:</strong> {r.municipio}</p>
@@ -911,6 +1044,13 @@ const styles = {
     background: "rgba(15,23,42,.95)",
     padding: 20,
     borderRadius: 18
+  },
+
+  subPainel: {
+    background: "#0f172a",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 18
   },
 
   input: {
@@ -1016,6 +1156,31 @@ const styles = {
   barraVertical: {
     width: "100%",
     borderRadius: 10,
+    transition: "0.3s"
+  },
+
+  barraHorizontalItem: {
+    marginBottom: 12
+  },
+
+  barraHorizontalTexto: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 10,
+    fontWeight: "bold",
+    marginBottom: 5
+  },
+
+  barraHorizontalFundo: {
+    height: 14,
+    background: "#334155",
+    borderRadius: 999,
+    overflow: "hidden"
+  },
+
+  barraHorizontalValor: {
+    height: 14,
+    borderRadius: 999,
     transition: "0.3s"
   },
 
