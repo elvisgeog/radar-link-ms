@@ -338,13 +338,13 @@ export default function App() {
   const medio = contarEngajamento("Médio");
   const baixo = contarEngajamento("Baixo");
 
- function corIndicador(label) {
-  if (label === "VERDE" || label === "Alto" || label === "Positivo") return "#00ff66";
-  if (label === "AMARELO" || label === "Médio" || label === "Positivo com ressalvas") return "#ffd400";
-  if (label === "VERMELHO" || label === "Baixo" || label === "Negativo") return "#ff3333";
+  function corIndicador(label) {
+    if (label === "VERDE" || label === "Alto" || label === "Positivo") return "#00ff66";
+    if (label === "AMARELO" || label === "Médio" || label === "Positivo com ressalvas") return "#ffd400";
+    if (label === "VERMELHO" || label === "Baixo" || label === "Negativo") return "#ff3333";
 
-  return "#facc15";
-}
+    return "#facc15";
+  }
 
   function listaFiltrada() {
     if (!filtroAtivo) return [];
@@ -490,7 +490,7 @@ export default function App() {
       <div style={styles.barraHorizontalItem}>
         <div style={styles.barraHorizontalTexto}>
           <span style={{ color: "#ffffff" }}>{label}</span>
-          <strong style={{ color: "#ffffff" }}>valor} ({percentual}%)</strong>
+          <strong style={{ color: "#ffffff" }}>{valor} ({percentual}%)</strong>
         </div>
 
         <div style={styles.barraHorizontalFundo}>
@@ -1293,23 +1293,23 @@ const styles = {
     justifyContent: "space-between",
     gap: 10,
     fontWeight: "bold",
-    marginBottom: 5
-color: "#ffffff"
+    marginBottom: 5,
+    color: "#ffffff"
   },
 
   barraHorizontalFundo: {
-  height: 14,
-  background: "#334155",
-  borderRadius: 999,
-  overflow: "hidden"
-},
+    height: 14,
+    background: "#334155",
+    borderRadius: 999,
+    overflow: "hidden"
+  },
 
   barraHorizontalValor: {
-  height: 14,
-  borderRadius: 999,
-  transition: "0.3s",
-  boxShadow: "0 0 12px rgba(245,158,11,0.55)"
-},
+    height: 14,
+    borderRadius: 999,
+    transition: "0.3s",
+    boxShadow: "0 0 12px rgba(250,204,21,0.55)"
+  },
 
   registro: {
     background: "#1e293b",
