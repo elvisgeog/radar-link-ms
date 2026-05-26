@@ -343,7 +343,7 @@ export default function App() {
   if (label === "AMARELO" || label === "Médio" || label === "Positivo com ressalvas") return "#ffd400";
   if (label === "VERMELHO" || label === "Baixo" || label === "Negativo") return "#ff3333";
 
-  return "#3b82f6";
+  return "#f59e0b";
 }
 
   function listaFiltrada() {
@@ -1307,7 +1307,7 @@ const styles = {
   height: 14,
   borderRadius: 999,
   transition: "0.3s",
-  boxShadow: "0 0 10px rgba(59,130,246,0.45)"
+  boxShadow: "0 0 12px rgba(245,158,11,0.55)"
 },
 
   registro: {
