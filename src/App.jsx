@@ -339,9 +339,9 @@ export default function App() {
   const baixo = contarEngajamento("Baixo");
 
   function corIndicador(label) {
-    if (label === "VERDE" || label === "Alto" || label === "Positivo") return "#22c55e";
-    if (label === "AMARELO" || label === "Médio" || label === "Positivo com ressalvas") return "#eab308";
-    if (label === "VERMELHO" || label === "Baixo" || label === "Negativo") return "#ef4444";
+    if (label === "VERDE" || label === "Alto" || label === "Positivo") return "#00ff66";
+    if (label === "AMARELO" || label === "Médio" || label === "Positivo com ressalvas") return "#ffd400";
+    if (label === "VERMELHO" || label === "Baixo" || label === "Negativo") return "#ff3333";
     return "#38bdf8";
   }
 
@@ -349,6 +349,38 @@ export default function App() {
     if (!filtroAtivo) return [];
 
     const lista = [];
+
+    if (typeof filtroAtivo === "object" && filtroAtivo.tipo === "percepcao") {
+      baseIndicadores.forEach((r) => {
+        const cargoDiretor =
+          filtroAtivo.campo === "avaliacaoSedDiretor" ||
+          filtroAtivo.campo === "avaliacaoGovernoDiretor";
+
+        const cargoAdjunto =
+          filtroAtivo.campo === "avaliacaoSedAdjunto" ||
+          filtroAtivo.campo === "avaliacaoGovernoAdjunto";
+
+        if (normalizarPercepcao(r[filtroAtivo.campo]) === filtroAtivo.label) {
+          lista.push({
+            id: `${r.id}-${filtroAtivo.campo}`,
+            nome: cargoDiretor
+              ? r.diretor || "Não informado"
+              : cargoAdjunto
+              ? r.adjunto || "Não informado"
+              : "Não informado",
+            cargo: cargoDiretor ? "Diretor(a)" : "Diretor(a) Adjunto(a)",
+            municipio: r.municipio,
+            escola: r.escola,
+            percepcao: r[filtroAtivo.campo] || "Não informado",
+            titulo: filtroAtivo.titulo
+          });
+        }
+      });
+
+      return lista.sort((a, b) =>
+        String(a.escola || "").localeCompare(String(b.escola || ""), "pt-BR")
+      );
+    }
 
     baseIndicadores.forEach((r) => {
       if (["VERDE", "AMARELO", "VERMELHO"].includes(filtroAtivo)) {
@@ -407,12 +439,15 @@ export default function App() {
     );
   }
 
-  function barraVertical(label, valor, totalBase) {
+  function barraVertical(label, valor, totalBase, aoClicar) {
     const percentual = totalBase ? Math.round((valor / totalBase) * 100) : 0;
     const cor = corIndicador(label);
 
     return (
-      <div style={styles.colunaGrafico} onClick={() => setFiltroAtivo(label)}>
+      <div
+        style={styles.colunaGrafico}
+        onClick={aoClicar || (() => setFiltroAtivo(label))}
+      >
         <div style={styles.areaBarraVertical}>
           <div
             style={{
@@ -423,13 +458,25 @@ export default function App() {
           />
         </div>
 
-        <strong style={{ color: cor }}>{valor}</strong>
+        <strong style={{ color: cor, fontSize: 18 }}>{valor}</strong>
 
-        <span style={{ color: cor, fontWeight: "bold", textAlign: "center" }}>
+        <span
+          style={{
+            color: cor,
+            fontWeight: "900",
+            textAlign: "center",
+            fontSize: label === "Positivo com ressalvas" ? 12 : 15,
+            lineHeight: "15px",
+            minHeight: 34,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center"
+          }}
+        >
           {label}
         </span>
 
-        <small style={{ color: "#cbd5e1" }}>{percentual}%</small>
+        <small style={{ color: "#ffffff", fontWeight: "bold" }}>{percentual}%</small>
       </div>
     );
   }
@@ -441,8 +488,8 @@ export default function App() {
     return (
       <div style={styles.barraHorizontalItem}>
         <div style={styles.barraHorizontalTexto}>
-          <span>{label}</span>
-          <strong>{valor} ({percentual}%)</strong>
+          <span style={{ color: cor }}>{label}</span>
+          <strong style={{ color: cor }}>{valor} ({percentual}%)</strong>
         </div>
 
         <div style={styles.barraHorizontalFundo}>
@@ -461,7 +508,7 @@ export default function App() {
   function graficoCheckbox(titulo, campo, opcoes) {
     return (
       <section style={styles.subPainel}>
-        <h3>{titulo}</h3>
+        <h3 style={styles.tituloGrafico}>{titulo}</h3>
 
         {opcoes.map((opcao) => (
           <div key={opcao}>
@@ -475,14 +522,21 @@ export default function App() {
   function graficoPercepcao(titulo, campo) {
     return (
       <section style={styles.subPainel}>
-        <h3>{titulo}</h3>
+        <h3 style={styles.tituloGrafico}>{titulo}</h3>
 
         <div style={styles.graficoVertical}>
           {percepcaoOpcoes.map((opcao) =>
             barraVertical(
               opcao,
               contarPercepcao(campo, opcao),
-              totalFormularios
+              totalFormularios,
+              () =>
+                setFiltroAtivo({
+                  tipo: "percepcao",
+                  label: opcao,
+                  campo,
+                  titulo
+                })
             )
           )}
         </div>
@@ -693,7 +747,9 @@ export default function App() {
 
   if (filtroAtivo) {
     const lista = listaFiltrada();
-    const cor = corIndicador(filtroAtivo);
+    const filtroLabel = typeof filtroAtivo === "object" ? filtroAtivo.label : filtroAtivo;
+    const filtroTitulo = typeof filtroAtivo === "object" ? filtroAtivo.titulo : `Lista: ${filtroLabel}`;
+    const cor = corIndicador(filtroLabel);
 
     return (
       <div style={styles.page}>
@@ -701,7 +757,8 @@ export default function App() {
           Voltar ao painel
         </button>
 
-        <h1 style={{ color: cor }}>Lista: {filtroAtivo}</h1>
+        <h1 style={{ color: cor }}>{filtroTitulo}</h1>
+        <h2 style={{ color: cor }}>{filtroLabel}</h2>
 
         {lista.length === 0 && <p>Nenhum registro encontrado.</p>}
 
@@ -711,8 +768,9 @@ export default function App() {
             <p><strong>Cargo:</strong> {r.cargo}</p>
             <p><strong>Município:</strong> {r.municipio}</p>
             <p><strong>Escola:</strong> {r.escola}</p>
-            <p><strong>Classificação:</strong> {r.classificacao || "Não informado"}</p>
-            <p><strong>Engajamento:</strong> {r.engajamento || "Não informado"}</p>
+            {r.percepcao && <p><strong>Percepção:</strong> {r.percepcao}</p>}
+            {r.classificacao && <p><strong>Classificação:</strong> {r.classificacao}</p>}
+            {r.engajamento && <p><strong>Engajamento:</strong> {r.engajamento}</p>}
           </div>
         ))}
       </div>
@@ -1018,7 +1076,7 @@ export default function App() {
             ))}
           </select>
 
-          <h3>Classificação</h3>
+          <h3 style={styles.tituloGrafico}>Classificação</h3>
 
           <div style={styles.graficoVertical}>
             {barraVertical("VERDE", verde, totalGestores)}
@@ -1026,7 +1084,7 @@ export default function App() {
             {barraVertical("VERMELHO", vermelho, totalGestores)}
           </div>
 
-          <h3>Engajamento</h3>
+          <h3 style={styles.tituloGrafico}>Engajamento</h3>
 
           <div style={styles.graficoVertical}>
             {barraVertical("Alto", alto, totalGestores)}
@@ -1106,6 +1164,14 @@ const styles = {
     padding: 14,
     borderRadius: 12,
     marginBottom: 18
+  },
+
+  tituloGrafico: {
+    textAlign: "center",
+    fontSize: 20,
+    fontWeight: "900",
+    marginBottom: 10,
+    color: "#ffffff"
   },
 
   input: {
