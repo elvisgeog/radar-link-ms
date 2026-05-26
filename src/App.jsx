@@ -290,7 +290,12 @@ export default function App() {
           <div style={styles.logoGrande}>◎</div>
           <h1 style={styles.loginTitle}>Radar Link MS</h1>
           <p style={styles.loginSubtitle}>Plataforma Estratégica de Gestão Regional</p>
-          <input type="password" placeholder="Digite a senha" style={styles.input} value={senhaDigitada} onChange={(e) => setSenhaDigitada(e.target.value)} />
+          <input type="password" placeholder="Digite a senha" style={styles.input} value={senhaDigitada}
+onChange={(e) => {
+  const valor = e.target.value;
+  setSenhaDigitada(valor);
+}}
+autoFocus />
           <button style={styles.button} onClick={entrarNaPlataforma}>🔐 Entrar na Plataforma</button>
         </div>
       </div>
