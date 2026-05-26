@@ -148,22 +148,20 @@ export default function App() {
   const [registros, setRegistros] = useState([]);
   const [formAberto, setFormAberto] = useState(null);
   const [modoRelatorio, setModoRelatorio] = useState(false);
+  const [modoFormularios, setModoFormularios] = useState(false);
   const [filtroAtivo, setFiltroAtivo] = useState(null);
   const [municipioIndicador, setMunicipioIndicador] = useState("GERAL");
   const [editandoId, setEditandoId] = useState(null);
   const [form, setForm] = useState(formLimpo);
 
   async function carregarRegistros() {
-    try {
-      const dados = await getDocs(collection(db, "reunioes_gestores"));
-      const lista = dados.docs.map((item) => ({
-        id: item.id,
-        ...item.data()
-      }));
-      setRegistros(lista);
-    } catch (error) {
-      console.error("Erro ao carregar registros: ", error);
-    }
+    const dados = await getDocs(collection(db, "reunioes_gestores"));
+    const lista = dados.docs.map((item) => ({
+      id: item.id,
+      ...item.data()
+    }));
+
+    setRegistros(lista);
   }
 
   useEffect(() => {
@@ -195,27 +193,25 @@ export default function App() {
       return;
     }
 
-    try {
-      if (editandoId) {
-        await updateDoc(doc(db, "reunioes_gestores", editandoId), {
-          ...form,
-          atualizadoEm: new Date().toLocaleString()
-        });
-        alert("Formulário atualizado com sucesso!");
-      } else {
-        await addDoc(collection(db, "reunioes_gestores"), {
-          ...form,
-          criadoEm: new Date().toLocaleString()
-        });
-        alert("Reunião salva com sucesso!");
-      }
+    if (editandoId) {
+      await updateDoc(doc(db, "reunioes_gestores", editandoId), {
+        ...form,
+        atualizadoEm: new Date().toLocaleString()
+      });
 
-      setForm(formLimpo);
-      setEditandoId(null);
-      carregarRegistros();
-    } catch (error) {
-      console.error("Erro ao salvar registro: ", error);
+      alert("Formulário atualizado com sucesso!");
+    } else {
+      await addDoc(collection(db, "reunioes_gestores"), {
+        ...form,
+        criadoEm: new Date().toLocaleString()
+      });
+
+      alert("Reunião salva com sucesso!");
     }
+
+    setForm(formLimpo);
+    setEditandoId(null);
+    carregarRegistros();
   }
 
   function editarFormulario(registro) {
@@ -244,6 +240,7 @@ export default function App() {
 
     setEditandoId(registro.id);
     setFormAberto(null);
+    setModoFormularios(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -251,35 +248,44 @@ export default function App() {
     const confirmar = window.confirm("Deseja realmente excluir este formulário?");
     if (!confirmar) return;
 
-    try {
-      await deleteDoc(doc(db, "reunioes_gestores", id));
-      alert("Formulário excluído com sucesso!");
-      setFormAberto(null);
-      carregarRegistros();
-    } catch (error) {
-      console.error("Erro ao excluir registro: ", error);
-    }
+    await deleteDoc(doc(db, "reunioes_gestores", id));
+
+    alert("Formulário excluído com sucesso!");
+
+    setFormAberto(null);
+    carregarRegistros();
   }
 
   function gerarPDF() {
     window.print();
   }
 
+  function imprimirFormulario(registro) {
+    setFormAberto(registro);
+    setTimeout(() => {
+      window.print();
+    }, 500);
+  }
+
   function registrosBase() {
     if (municipioIndicador === "GERAL") {
       return registros;
     }
+
     return registros.filter((r) => r.municipio === municipioIndicador);
   }
 
   const baseIndicadores = registrosBase();
+  const registrosOrdenados = ordenarPorEscola(registros);
   const baseOrdenada = ordenarPorEscola(baseIndicadores);
 
   function contarClassificacao(tipo) {
     return baseIndicadores.reduce((total, r) => {
       let soma = 0;
+
       if (r.classificacaoDiretor === tipo) soma++;
       if (r.classificacaoAdjunto === tipo) soma++;
+
       return total + soma;
     }, 0);
   }
@@ -287,8 +293,10 @@ export default function App() {
   function contarEngajamento(tipo) {
     return baseIndicadores.reduce((total, r) => {
       let soma = 0;
+
       if (r.interesseAgendaDiretor === tipo) soma++;
       if (r.interesseAgendaAdjunto === tipo) soma++;
+
       return total + soma;
     }, 0);
   }
@@ -301,10 +309,15 @@ export default function App() {
   }
 
   function normalizarPercepcao(valor) {
-    const texto = String(valor || "").toLowerCase();
+    const texto = String(valor || "")
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+
     if (texto.includes("ressalva")) return "Positivo com ressalvas";
     if (texto.includes("negativ")) return "Negativo";
     if (texto.includes("positiv")) return "Positivo";
+
     return "";
   }
 
@@ -399,7 +412,7 @@ export default function App() {
     const cor = corIndicador(label);
 
     return (
-      <div style={styles.colunaGrafico} onClick={() => setFiltroAtivo(label)} key={label}>
+      <div style={styles.colunaGrafico} onClick={() => setFiltroAtivo(label)}>
         <div style={styles.areaBarraVertical}>
           <div
             style={{
@@ -409,10 +422,13 @@ export default function App() {
             }}
           />
         </div>
+
         <strong style={{ color: cor }}>{valor}</strong>
+
         <span style={{ color: cor, fontWeight: "bold", textAlign: "center" }}>
           {label}
         </span>
+
         <small style={{ color: "#cbd5e1" }}>{percentual}%</small>
       </div>
     );
@@ -423,11 +439,12 @@ export default function App() {
     const cor = corIndicador(label);
 
     return (
-      <div style={styles.barraHorizontalItem} key={label}>
+      <div style={styles.barraHorizontalItem}>
         <div style={styles.barraHorizontalTexto}>
           <span>{label}</span>
           <strong>{valor} ({percentual}%)</strong>
         </div>
+
         <div style={styles.barraHorizontalFundo}>
           <div
             style={{
@@ -445,6 +462,7 @@ export default function App() {
     return (
       <section style={styles.subPainel}>
         <h3>{titulo}</h3>
+
         {opcoes.map((opcao) => (
           <div key={opcao}>
             {barraHorizontal(opcao, contarArray(campo, opcao), totalFormularios)}
@@ -458,6 +476,7 @@ export default function App() {
     return (
       <section style={styles.subPainel}>
         <h3>{titulo}</h3>
+
         <div style={styles.graficoVertical}>
           {percepcaoOpcoes.map((opcao) =>
             barraVertical(
@@ -480,8 +499,13 @@ export default function App() {
         <button style={styles.buttonRelatorio} onClick={() => setFormAberto(null)}>
           Voltar
         </button>
+
         <button style={styles.buttonRelatorio} onClick={gerarPDF}>
-          Gerar PDF / Imprimir
+          Imprimir / Salvar PDF
+        </button>
+
+        <button style={styles.buttonRelatorio} onClick={() => editarFormulario(formAberto)}>
+          Editar este formulário
         </button>
 
         <section style={styles.relatorioBox}>
@@ -494,13 +518,96 @@ export default function App() {
           <p><strong>Diretor(a) Adjunto(a):</strong> {formAberto.adjunto || "Não informado"}</p>
         </section>
 
-        {/* ... Demais seções do formAberto ... */}
-        <button style={styles.buttonRelatorio} onClick={() => editarFormulario(formAberto)}>
-          Editar este formulário
-        </button>
+        <section style={styles.relatorioBox}>
+          <h2>Demandas da escola</h2>
+          <p><strong>Marcadas:</strong> {formAberto.demandas?.join(", ") || "Nenhuma"}</p>
+          <p><strong>Descrição:</strong> {formAberto.descricaoDemandas || "Sem descrição"}</p>
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>Questões administrativas</h2>
+          <p><strong>Marcadas:</strong> {formAberto.administrativas?.join(", ") || "Nenhuma"}</p>
+          <p><strong>Descrição:</strong> {formAberto.descricaoAdministrativas || "Sem descrição"}</p>
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>Percepção institucional</h2>
+          <p><strong>SED - Diretor:</strong> {formAberto.avaliacaoSedDiretor || "Não informado"}</p>
+          <p><strong>Governo - Diretor:</strong> {formAberto.avaliacaoGovernoDiretor || "Não informado"}</p>
+          <p><strong>SED - Adjunto:</strong> {formAberto.avaliacaoSedAdjunto || "Não informado"}</p>
+          <p><strong>Governo - Adjunto:</strong> {formAberto.avaliacaoGovernoAdjunto || "Não informado"}</p>
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>Engajamento e classificação</h2>
+          <p><strong>Engajamento Diretor:</strong> {formAberto.interesseAgendaDiretor || "Não informado"}</p>
+          <p><strong>Engajamento Adjunto:</strong> {formAberto.interesseAgendaAdjunto || "Não informado"}</p>
+          <p><strong>Classificação Diretor:</strong> {formAberto.classificacaoDiretor || "Não informado"}</p>
+          <p><strong>Classificação Adjunto:</strong> {formAberto.classificacaoAdjunto || "Não informado"}</p>
+        </section>
+
+        <section style={styles.relatorioBox}>
+          <h2>Observações estratégicas</h2>
+          <p><strong>Diretor(a):</strong> {formAberto.observacoesDiretor || "Sem observações"}</p>
+          <p><strong>Adjunto(a):</strong> {formAberto.observacoesAdjunto || "Sem observações"}</p>
+        </section>
+
         <button style={styles.buttonExcluir} onClick={() => excluirRegistro(formAberto.id)}>
           Excluir este formulário
         </button>
+      </div>
+    );
+  }
+
+  if (modoFormularios) {
+    return (
+      <div style={styles.page}>
+        <header style={styles.header}>
+          <div style={styles.logo}>◎</div>
+
+          <div>
+            <h1 style={styles.title}>Formulários Salvos</h1>
+            <p style={styles.subtitle}>Abrir • Editar • Imprimir • Excluir</p>
+          </div>
+        </header>
+
+        <button style={styles.button} onClick={() => setModoFormularios(false)}>
+          Voltar ao painel principal
+        </button>
+
+        <button style={styles.button} onClick={gerarPDF}>
+          Imprimir lista / Salvar PDF
+        </button>
+
+        <section style={styles.panel}>
+          {registrosOrdenados.length === 0 && <p>Nenhum formulário salvo ainda.</p>}
+
+          {registrosOrdenados.map((r) => (
+            <div key={r.id} style={styles.registro}>
+              <h3>{r.escola}</h3>
+              <p><strong>Município:</strong> {r.municipio}</p>
+              <p><strong>Classificação Escola:</strong> {r.classificacaoEscola || "Não informada"}</p>
+              <p><strong>Diretor:</strong> {r.diretor || "Não informado"}</p>
+              <p><strong>Adjunto:</strong> {r.adjunto || "Não informado"}</p>
+
+              <button style={styles.button} onClick={() => setFormAberto(r)}>
+                Abrir formulário
+              </button>
+
+              <button style={styles.button} onClick={() => editarFormulario(r)}>
+                Editar formulário
+              </button>
+
+              <button style={styles.buttonSecundario} onClick={() => imprimirFormulario(r)}>
+                Imprimir formulário
+              </button>
+
+              <button style={styles.buttonExcluir} onClick={() => excluirRegistro(r.id)}>
+                Excluir
+              </button>
+            </div>
+          ))}
+        </section>
       </div>
     );
   }
@@ -516,6 +623,7 @@ export default function App() {
         <button style={styles.buttonRelatorio} onClick={() => setModoRelatorio(false)}>
           Voltar ao painel
         </button>
+
         <button style={styles.buttonRelatorio} onClick={gerarPDF}>
           Gerar PDF / Imprimir
         </button>
@@ -536,6 +644,7 @@ export default function App() {
 
         <section style={styles.relatorioBox}>
           <h2>3. Lista de Diretores</h2>
+
           {baseOrdenada.map((r) => (
             <div key={`${r.id}-diretor`} style={styles.relatorioItem}>
               <p><strong>Escola:</strong> {r.escola}</p>
@@ -551,6 +660,7 @@ export default function App() {
 
         <section style={styles.relatorioBox}>
           <h2>4. Lista de Diretores Adjuntos</h2>
+
           {baseOrdenada.map((r) => (
             <div key={`${r.id}-adjunto`} style={styles.relatorioItem}>
               <p><strong>Escola:</strong> {r.escola}</p>
@@ -592,6 +702,7 @@ export default function App() {
         </button>
 
         <h1 style={{ color: cor }}>Lista: {filtroAtivo}</h1>
+
         {lista.length === 0 && <p>Nenhum registro encontrado.</p>}
 
         {lista.map((r) => (
@@ -612,6 +723,7 @@ export default function App() {
     <div style={styles.page}>
       <header style={styles.header}>
         <div style={styles.logo}>◎</div>
+
         <div>
           <h1 style={styles.title}>Radar Link MS</h1>
           <p style={styles.subtitle}>Inteligência • Gestão • Articulação Regional</p>
@@ -620,6 +732,10 @@ export default function App() {
 
       <button style={styles.button} onClick={() => setModoRelatorio(true)}>
         Abrir Relatório Geral / Gerar PDF
+      </button>
+
+      <button style={styles.button} onClick={() => setModoFormularios(true)}>
+        Acessar Formulários Salvos
       </button>
 
       <main style={styles.grid}>
@@ -644,6 +760,7 @@ export default function App() {
             }
           >
             <option value="">Selecione o município</option>
+
             {Object.keys(escolasPorMunicipio).map((municipio) => (
               <option key={municipio}>{municipio}</option>
             ))}
@@ -652,9 +769,15 @@ export default function App() {
           <select
             style={styles.input}
             value={form.escola}
-            onChange={(e) => setForm({ ...form, escola: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                escola: e.target.value
+              })
+            }
           >
             <option value="">Selecione a escola</option>
+
             {form.municipio &&
               escolasPorMunicipio[form.municipio]?.map((escola) => (
                 <option key={escola}>{escola}</option>
@@ -664,7 +787,12 @@ export default function App() {
           <select
             style={styles.input}
             value={form.classificacaoEscola}
-            onChange={(e) => setForm({ ...form, classificacaoEscola: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                classificacaoEscola: e.target.value
+              })
+            }
           >
             <option value="">Classificação da Escola</option>
             <option>1</option>
@@ -695,6 +823,7 @@ export default function App() {
           />
 
           <h3>1. Demandas da Escola</h3>
+
           {demandasOpcoes.map((opcao) => (
             <label style={styles.check} key={opcao}>
               <input
@@ -714,6 +843,7 @@ export default function App() {
           />
 
           <h3>2. Questões Administrativas</h3>
+
           {administrativasOpcoes.map((opcao) => (
             <label style={styles.check} key={opcao}>
               <input
@@ -733,7 +863,9 @@ export default function App() {
           />
 
           <h3>3. Percepção Institucional</h3>
+
           <h4>Diretor(a): Como avalia a SED?</h4>
+
           <select
             style={styles.input}
             value={form.avaliacaoSedDiretor}
@@ -746,6 +878,7 @@ export default function App() {
           </select>
 
           <h4>Diretor(a): Como avalia o Governo?</h4>
+
           <select
             style={styles.input}
             value={form.avaliacaoGovernoDiretor}
@@ -758,6 +891,7 @@ export default function App() {
           </select>
 
           <h4>Diretor(a) Adjunto(a): Como avalia a SED?</h4>
+
           <select
             style={styles.input}
             value={form.avaliacaoSedAdjunto}
@@ -770,6 +904,7 @@ export default function App() {
           </select>
 
           <h4>Diretor(a) Adjunto(a): Como avalia o Governo?</h4>
+
           <select
             style={styles.input}
             value={form.avaliacaoGovernoAdjunto}
@@ -782,6 +917,7 @@ export default function App() {
           </select>
 
           <h3>4. Engajamento</h3>
+
           <select
             style={styles.input}
             value={form.interesseAgendaDiretor}
@@ -805,6 +941,7 @@ export default function App() {
           </select>
 
           <h3>5. Classificação Interna</h3>
+
           <select
             style={styles.input}
             value={form.classificacaoDiretor}
@@ -828,7 +965,9 @@ export default function App() {
           </select>
 
           <h3>6. Observações Estratégicas</h3>
+
           <h4>Diretor(a)</h4>
+
           <textarea
             style={styles.textarea}
             placeholder="Observações estratégicas do Diretor(a)"
@@ -837,6 +976,7 @@ export default function App() {
           />
 
           <h4>Diretor(a) Adjunto(a)</h4>
+
           <textarea
             style={styles.textarea}
             placeholder="Observações estratégicas do Adjunto(a)"
@@ -863,12 +1003,14 @@ export default function App() {
 
         <section style={styles.panel}>
           <h2>Indicadores por Gestor</h2>
+
           <select
             style={styles.input}
             value={municipioIndicador}
             onChange={(e) => setMunicipioIndicador(e.target.value)}
           >
             <option value="GERAL">Indicadores gerais</option>
+
             {Object.keys(escolasPorMunicipio).map((municipio) => (
               <option key={municipio} value={municipio}>
                 {municipio}
@@ -877,6 +1019,7 @@ export default function App() {
           </select>
 
           <h3>Classificação</h3>
+
           <div style={styles.graficoVertical}>
             {barraVertical("VERDE", verde, totalGestores)}
             {barraVertical("AMARELO", amarelo, totalGestores)}
@@ -884,6 +1027,7 @@ export default function App() {
           </div>
 
           <h3>Engajamento</h3>
+
           <div style={styles.graficoVertical}>
             {barraVertical("Alto", alto, totalGestores)}
             {barraVertical("Médio", medio, totalGestores)}
@@ -891,46 +1035,249 @@ export default function App() {
           </div>
 
           <h2>Indicadores Demandas</h2>
+
           {graficoCheckbox("1. Demandas da Escola", "demandas", demandasOpcoes)}
           {graficoCheckbox("2. Questões Administrativas", "administrativas", administrativasOpcoes)}
 
           <h2>Percepção Institucional</h2>
+
           {graficoPercepcao("Diretor(a): Como avalia a SED?", "avaliacaoSedDiretor")}
           {graficoPercepcao("Diretor(a): Como avalia o Governo?", "avaliacaoGovernoDiretor")}
+          {graficoPercepcao("Diretor(a) Adjunto(a): Como avalia a SED?", "avaliacaoSedAdjunto")}
+          {graficoPercepcao("Diretor(a) Adjunto(a): Como avalia o Governo?", "avaliacaoGovernoAdjunto")}
         </section>
       </main>
     </div>
   );
 }
 
-// Definição dos estilos básicos para evitar erros de compilação/renderização
 const styles = {
-  page: { padding: "20px", fontFamily: "sans-serif", backgroundColor: "#f8fafc" },
-  header: { display: "flex", alignItems: "center", marginBottom: "20px", gap: "15px" },
-  logo: { fontSize: "32px" },
-  title: { margin: 0, fontSize: "28px", color: "#1e293b" },
-  subtitle: { margin: 0, color: "#64748b" },
-  grid: { display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" },
-  panel: { backgroundColor: "#fff", padding: "20px", borderRadius: "8px", boxShadow: "0 1px 3px rgba(0,0,0,0.1)" },
-  subPainel: { marginTop: "15px", padding: "10px", backgroundColor: "#f1f5f9", borderRadius: "6px" },
-  input: { width: "100%", padding: "10px", marginBottom: "12px", borderRadius: "4px", border: "1px solid #cbd5e1", boxSizing: "border-box" },
-  textarea: { width: "100%", padding: "10px", marginBottom: "12px", borderRadius: "4px", border: "1px solid #cbd5e1", height: "80px", boxSizing: "border-box" },
-  check: { display: "block", marginBottom: "8px", cursor: "pointer" },
-  button: { width: "100%", padding: "12px", backgroundColor: "#3b82f6", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer", fontWeight: "bold", marginBottom: "10px" },
-  buttonSecundario: { width: "100%", padding: "12px", backgroundColor: "#64748b", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" },
-  buttonRelatorio: { padding: "10px 20px", marginRight: "10px", backgroundColor: "#0f172a", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" },
-  buttonExcluir: { padding: "10px 20px", backgroundColor: "#ef4444", color: "#fff", border: "none", borderRadius: "4px", cursor: "pointer" },
-  avisoEdicao: { padding: "10px", backgroundColor: "#fef08a", color: "#854d0e", marginBottom: "15px", borderRadius: "4px", fontWeight: "bold" },
-  graficoVertical: { display: "flex", gap: "20px", justifyContent: "space-around", marginTop: "15px", marginBottom: "15px" },
-  colunaGrafico: { display: "flex", flexDirection: "column", alignItems: "center", cursor: "pointer", width: "70px" },
-  areaBarraVertical: { height: "120px", width: "30px", backgroundColor: "#e2e8f0", borderRadius: "4px", display: "flex", alignItems: "flex-end", marginBottom: "5px" },
-  barraVertical: { width: "100%", borderRadius: "4px", transition: "height 0.3s ease" },
-  barraHorizontalItem: { marginBottom: "10px" },
-  barraHorizontalTexto: { display: "flex", justifyContent: "space-between", fontSize: "14px", marginBottom: "4px" },
-  barraHorizontalFundo: { height: "12px", backgroundColor: "#e2e8f0", borderRadius: "6px", width: "100%" },
-  barraHorizontalValor: { height: "100%", borderRadius: "6px" },
-  registro: { backgroundColor: "#fff", padding: "15px", marginBottom: "10px", borderRadius: "4px", boxShadow: "0 1px 2px rgba(0,0,0,0.05)" },
-  relatorioPage: { padding: "4px", maxWidth: "800px", margin: "0 auto" },
-  relatorioBox: { border: "1px solid #cbd5e1", padding: "15px", marginBottom: "15px", borderRadius: "6px" },
-  relatorioItem: { padding: "10px", borderBottom: "1px dashed #e2e8f0" }
+  page: {
+    minHeight: "100vh",
+    background: "linear-gradient(135deg,#07111f,#0f172a,#111827)",
+    color: "white",
+    fontFamily: "Arial",
+    padding: 15
+  },
+
+  header: {
+    display: "flex",
+    alignItems: "center",
+    gap: 15,
+    marginBottom: 25,
+    flexWrap: "wrap"
+  },
+
+  logo: {
+    width: 55,
+    height: 55,
+    borderRadius: "50%",
+    background: "linear-gradient(135deg,#2563eb,#facc15)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 32
+  },
+
+  title: {
+    margin: 0,
+    fontSize: "clamp(26px, 5vw, 38px)"
+  },
+
+  subtitle: {
+    margin: 0,
+    color: "#cbd5e1"
+  },
+
+  grid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))",
+    gap: 20
+  },
+
+  panel: {
+    background: "rgba(15,23,42,.95)",
+    padding: 20,
+    borderRadius: 18
+  },
+
+  subPainel: {
+    background: "#0f172a",
+    padding: 14,
+    borderRadius: 12,
+    marginBottom: 18
+  },
+
+  input: {
+    width: "100%",
+    padding: 13,
+    marginBottom: 10,
+    borderRadius: 8,
+    border: "none",
+    boxSizing: "border-box",
+    fontSize: 16
+  },
+
+  textarea: {
+    width: "100%",
+    padding: 13,
+    marginBottom: 10,
+    borderRadius: 8,
+    border: "none",
+    minHeight: 90,
+    boxSizing: "border-box",
+    fontSize: 16
+  },
+
+  check: {
+    display: "block",
+    marginBottom: 8
+  },
+
+  button: {
+    width: "100%",
+    padding: 14,
+    background: "#2563eb",
+    color: "white",
+    border: "none",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontWeight: "bold",
+    marginBottom: 10
+  },
+
+  buttonSecundario: {
+    width: "100%",
+    padding: 14,
+    background: "#475569",
+    color: "white",
+    border: "none",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontWeight: "bold",
+    marginBottom: 10
+  },
+
+  buttonExcluir: {
+    width: "100%",
+    padding: 14,
+    background: "#ef4444",
+    color: "white",
+    border: "none",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontWeight: "bold"
+  },
+
+  avisoEdicao: {
+    background: "#eab308",
+    color: "#111827",
+    padding: 12,
+    borderRadius: 10,
+    fontWeight: "bold",
+    marginBottom: 12
+  },
+
+  graficoVertical: {
+    display: "flex",
+    justifyContent: "space-evenly",
+    alignItems: "flex-end",
+    gap: 30,
+    height: 320,
+    marginBottom: 40,
+    paddingTop: 20,
+    overflowX: "auto"
+  },
+
+  colunaGrafico: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "center",
+    justifyContent: "flex-end",
+    cursor: "pointer",
+    width: 90,
+    gap: 10,
+    flexShrink: 0
+  },
+
+  areaBarraVertical: {
+    height: 220,
+    width: 55,
+    background: "#334155",
+    borderRadius: 12,
+    display: "flex",
+    alignItems: "flex-end",
+    overflow: "hidden",
+    border: "1px solid #475569"
+  },
+
+  barraVertical: {
+    width: "100%",
+    borderRadius: 12,
+    transition: "0.4s"
+  },
+
+  barraHorizontalItem: {
+    marginBottom: 12
+  },
+
+  barraHorizontalTexto: {
+    display: "flex",
+    justifyContent: "space-between",
+    gap: 10,
+    fontWeight: "bold",
+    marginBottom: 5
+  },
+
+  barraHorizontalFundo: {
+    height: 14,
+    background: "#334155",
+    borderRadius: 999,
+    overflow: "hidden"
+  },
+
+  barraHorizontalValor: {
+    height: 14,
+    borderRadius: 999,
+    transition: "0.3s"
+  },
+
+  registro: {
+    background: "#1e293b",
+    padding: 18,
+    borderRadius: 14,
+    marginBottom: 15
+  },
+
+  relatorioPage: {
+    background: "white",
+    color: "black",
+    minHeight: "100vh",
+    padding: 30,
+    fontFamily: "Arial"
+  },
+
+  relatorioBox: {
+    border: "1px solid #ccc",
+    padding: 15,
+    borderRadius: 10,
+    marginBottom: 20
+  },
+
+  relatorioItem: {
+    borderBottom: "1px solid #ddd",
+    padding: "10px 0"
+  },
+
+  buttonRelatorio: {
+    padding: 12,
+    background: "#2563eb",
+    color: "white",
+    border: "none",
+    borderRadius: 8,
+    fontWeight: "bold",
+    cursor: "pointer",
+    marginRight: 10,
+    marginBottom: 10
+  }
 };
