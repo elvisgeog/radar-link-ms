@@ -10,6 +10,8 @@ import {
 import { db } from "./firebase";
 
 export default function App() {
+  const SENHA_ACESSO = "radar2026";
+
   const escolasPorMunicipio = {
     "CAARAPÓ": [
       "EE ARCÊNIO ROJAS",
@@ -145,14 +147,35 @@ export default function App() {
     "Negativo"
   ];
 
+  const [senhaDigitada, setSenhaDigitada] = useState("");
+  const [autenticado, setAutenticado] = useState(
+    localStorage.getItem("radar_auth") === "ok"
+  );
+
   const [registros, setRegistros] = useState([]);
   const [formAberto, setFormAberto] = useState(null);
   const [modoRelatorio, setModoRelatorio] = useState(false);
   const [modoFormularios, setModoFormularios] = useState(false);
+  const [modoGraficos, setModoGraficos] = useState(false);
   const [filtroAtivo, setFiltroAtivo] = useState(null);
   const [municipioIndicador, setMunicipioIndicador] = useState("GERAL");
   const [editandoId, setEditandoId] = useState(null);
   const [form, setForm] = useState(formLimpo);
+
+  function entrarNaPlataforma() {
+    if (senhaDigitada === SENHA_ACESSO) {
+      localStorage.setItem("radar_auth", "ok");
+      setAutenticado(true);
+    } else {
+      alert("Senha incorreta.");
+    }
+  }
+
+  function sairDaPlataforma() {
+    localStorage.removeItem("radar_auth");
+    setAutenticado(false);
+    setSenhaDigitada("");
+  }
 
   async function carregarRegistros() {
     const dados = await getDocs(collection(db, "reunioes_gestores"));
@@ -165,8 +188,10 @@ export default function App() {
   }
 
   useEffect(() => {
-    carregarRegistros();
-  }, []);
+    if (autenticado) {
+      carregarRegistros();
+    }
+  }, [autenticado]);
 
   function ordenarPorEscola(lista) {
     return [...lista].sort((a, b) =>
@@ -241,6 +266,7 @@ export default function App() {
     setEditandoId(registro.id);
     setFormAberto(null);
     setModoFormularios(false);
+    setModoGraficos(false);
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -249,7 +275,6 @@ export default function App() {
     if (!confirmar) return;
 
     await deleteDoc(doc(db, "reunioes_gestores", id));
-
     alert("Formulário excluído com sucesso!");
 
     setFormAberto(null);
@@ -336,12 +361,19 @@ export default function App() {
 
   const alto = contarEngajamento("Alto");
   const medio = contarEngajamento("Médio");
-  const baixo = contarEngajamento("Baixo");
+  const baixo = contarEngajamento("Baixo");  function corIndicador(label) {
+    if (label === "VERDE" || label === "Alto" || label === "Positivo")
+      return "#00ff66";
 
-  function corIndicador(label) {
-    if (label === "VERDE" || label === "Alto" || label === "Positivo") return "#00ff66";
-    if (label === "AMARELO" || label === "Médio" || label === "Positivo com ressalvas") return "#ffd400";
-    if (label === "VERMELHO" || label === "Baixo" || label === "Negativo") return "#ff3333";
+    if (
+      label === "AMARELO" ||
+      label === "Médio" ||
+      label === "Positivo com ressalvas"
+    )
+      return "#ffd400";
+
+    if (label === "VERMELHO" || label === "Baixo" || label === "Negativo")
+      return "#ff3333";
 
     return "#facc15";
   }
@@ -366,10 +398,10 @@ export default function App() {
             id: `${r.id}-${filtroAtivo.campo}`,
             nome: cargoDiretor
               ? r.diretor || "Não informado"
-              : cargoAdjunto
-              ? r.adjunto || "Não informado"
-              : "Não informado",
-            cargo: cargoDiretor ? "Diretor(a)" : "Diretor(a) Adjunto(a)",
+              : r.adjunto || "Não informado",
+            cargo: cargoDiretor
+              ? "Diretor(a)"
+              : "Diretor(a) Adjunto(a)",
             municipio: r.municipio,
             escola: r.escola,
             percepcao: r[filtroAtivo.campo] || "Não informado",
@@ -379,7 +411,10 @@ export default function App() {
       });
 
       return lista.sort((a, b) =>
-        String(a.escola || "").localeCompare(String(b.escola || ""), "pt-BR")
+        String(a.escola || "").localeCompare(
+          String(b.escola || ""),
+          "pt-BR"
+        )
       );
     }
 
@@ -436,12 +471,18 @@ export default function App() {
     });
 
     return lista.sort((a, b) =>
-      String(a.escola || "").localeCompare(String(b.escola || ""), "pt-BR")
+      String(a.escola || "").localeCompare(
+        String(b.escola || ""),
+        "pt-BR"
+      )
     );
   }
 
   function barraVertical(label, valor, totalBase, aoClicar) {
-    const percentual = totalBase ? Math.round((valor / totalBase) * 100) : 0;
+    const percentual = totalBase
+      ? Math.round((valor / totalBase) * 100)
+      : 0;
+
     const cor = corIndicador(label);
 
     return (
@@ -466,7 +507,8 @@ export default function App() {
             color: cor,
             fontWeight: "900",
             textAlign: "center",
-            fontSize: label === "Positivo com ressalvas" ? 12 : 15,
+            fontSize:
+              label === "Positivo com ressalvas" ? 12 : 15,
             lineHeight: "15px",
             minHeight: 34,
             display: "flex",
@@ -477,28 +519,38 @@ export default function App() {
           {label}
         </span>
 
-        <small style={{ color: "#ffffff", fontWeight: "bold" }}>{percentual}%</small>
+        <small
+          style={{
+            color: "#ffffff",
+            fontWeight: "bold"
+          }}
+        >
+          {percentual}%
+        </small>
       </div>
     );
   }
 
   function barraHorizontal(label, valor, totalBase) {
-    const percentual = totalBase ? Math.round((valor / totalBase) * 100) : 0;
-    const cor = corIndicador(label);
+    const percentual = totalBase
+      ? Math.round((valor / totalBase) * 100)
+      : 0;
 
     return (
       <div style={styles.barraHorizontalItem}>
         <div style={styles.barraHorizontalTexto}>
           <span style={{ color: "#ffffff" }}>{label}</span>
-          <strong style={{ color: "#ffffff" }}>{valor} ({percentual}%)</strong>
+
+          <strong style={{ color: "#ffffff" }}>
+            {valor} ({percentual}%)
+          </strong>
         </div>
 
         <div style={styles.barraHorizontalFundo}>
           <div
             style={{
               ...styles.barraHorizontalValor,
-              width: `${percentual}%`,
-              background: cor
+              width: `${percentual}%`
             }}
           />
         </div>
@@ -513,7 +565,11 @@ export default function App() {
 
         {opcoes.map((opcao) => (
           <div key={opcao}>
-            {barraHorizontal(opcao, contarArray(campo, opcao), totalFormularios)}
+            {barraHorizontal(
+              opcao,
+              contarArray(campo, opcao),
+              totalFormularios
+            )}
           </div>
         ))}
       </section>
@@ -545,235 +601,33 @@ export default function App() {
     );
   }
 
-  if (formAberto) {
+  if (!autenticado) {
     return (
-      <div style={styles.relatorioPage}>
-        <h1>Radar Link MS</h1>
-        <h2>Formulário salvo</h2>
+      <div style={styles.loginPage}>
+        <div style={styles.loginBox}>
+          <div style={styles.logoGrande}>◎</div>
 
-        <button style={styles.buttonRelatorio} onClick={() => setFormAberto(null)}>
-          Voltar
-        </button>
+          <h1 style={styles.loginTitle}>Radar Link MS</h1>
 
-        <button style={styles.buttonRelatorio} onClick={gerarPDF}>
-          Imprimir / Salvar PDF
-        </button>
+          <p style={styles.loginSubtitle}>
+            Plataforma Estratégica de Gestão Regional
+          </p>
 
-        <button style={styles.buttonRelatorio} onClick={() => editarFormulario(formAberto)}>
-          Editar este formulário
-        </button>
+          <input
+            type="password"
+            placeholder="Digite a senha"
+            style={styles.input}
+            value={senhaDigitada}
+            onChange={(e) => setSenhaDigitada(e.target.value)}
+          />
 
-        <section style={styles.relatorioBox}>
-          <h2>Dados da reunião</h2>
-          <p><strong>Município:</strong> {formAberto.municipio}</p>
-          <p><strong>Escola:</strong> {formAberto.escola}</p>
-          <p><strong>Classificação da Escola:</strong> {formAberto.classificacaoEscola || "Não informada"}</p>
-          <p><strong>Data:</strong> {formAberto.data || "Não informada"}</p>
-          <p><strong>Diretor(a):</strong> {formAberto.diretor || "Não informado"}</p>
-          <p><strong>Diretor(a) Adjunto(a):</strong> {formAberto.adjunto || "Não informado"}</p>
-        </section>
-
-        <section style={styles.relatorioBox}>
-          <h2>Demandas da escola</h2>
-          <p><strong>Marcadas:</strong> {formAberto.demandas?.join(", ") || "Nenhuma"}</p>
-          <p><strong>Descrição:</strong> {formAberto.descricaoDemandas || "Sem descrição"}</p>
-        </section>
-
-        <section style={styles.relatorioBox}>
-          <h2>Questões administrativas</h2>
-          <p><strong>Marcadas:</strong> {formAberto.administrativas?.join(", ") || "Nenhuma"}</p>
-          <p><strong>Descrição:</strong> {formAberto.descricaoAdministrativas || "Sem descrição"}</p>
-        </section>
-
-        <section style={styles.relatorioBox}>
-          <h2>Percepção institucional</h2>
-          <p><strong>SED - Diretor:</strong> {formAberto.avaliacaoSedDiretor || "Não informado"}</p>
-          <p><strong>Governo - Diretor:</strong> {formAberto.avaliacaoGovernoDiretor || "Não informado"}</p>
-          <p><strong>SED - Adjunto:</strong> {formAberto.avaliacaoSedAdjunto || "Não informado"}</p>
-          <p><strong>Governo - Adjunto:</strong> {formAberto.avaliacaoGovernoAdjunto || "Não informado"}</p>
-        </section>
-
-        <section style={styles.relatorioBox}>
-          <h2>Engajamento e classificação</h2>
-          <p><strong>Engajamento Diretor:</strong> {formAberto.interesseAgendaDiretor || "Não informado"}</p>
-          <p><strong>Engajamento Adjunto:</strong> {formAberto.interesseAgendaAdjunto || "Não informado"}</p>
-          <p><strong>Classificação Diretor:</strong> {formAberto.classificacaoDiretor || "Não informado"}</p>
-          <p><strong>Classificação Adjunto:</strong> {formAberto.classificacaoAdjunto || "Não informado"}</p>
-        </section>
-
-        <section style={styles.relatorioBox}>
-          <h2>Observações estratégicas</h2>
-          <p><strong>Diretor(a):</strong> {formAberto.observacoesDiretor || "Sem observações"}</p>
-          <p><strong>Adjunto(a):</strong> {formAberto.observacoesAdjunto || "Sem observações"}</p>
-        </section>
-
-        <button style={styles.buttonExcluir} onClick={() => excluirRegistro(formAberto.id)}>
-          Excluir este formulário
-        </button>
-      </div>
-    );
-  }
-
-  if (modoFormularios) {
-    return (
-      <div style={styles.page}>
-        <header style={styles.header}>
-          <div style={styles.logo}>◎</div>
-
-          <div>
-            <h1 style={styles.title}>Formulários Salvos</h1>
-            <p style={styles.subtitle}>Abrir • Editar • Imprimir • Excluir</p>
-          </div>
-        </header>
-
-        <button style={styles.button} onClick={() => setModoFormularios(false)}>
-          Voltar ao painel principal
-        </button>
-
-        <button style={styles.button} onClick={gerarPDF}>
-          Imprimir lista / Salvar PDF
-        </button>
-
-        <section style={styles.panel}>
-          {registrosOrdenados.length === 0 && <p>Nenhum formulário salvo ainda.</p>}
-
-          {registrosOrdenados.map((r) => (
-            <div key={r.id} style={styles.registro}>
-              <h3>{r.escola}</h3>
-              <p><strong>Município:</strong> {r.municipio}</p>
-              <p><strong>Classificação Escola:</strong> {r.classificacaoEscola || "Não informada"}</p>
-              <p><strong>Diretor:</strong> {r.diretor || "Não informado"}</p>
-              <p><strong>Adjunto:</strong> {r.adjunto || "Não informado"}</p>
-
-              <button style={styles.button} onClick={() => setFormAberto(r)}>
-                Abrir formulário
-              </button>
-
-              <button style={styles.button} onClick={() => editarFormulario(r)}>
-                Editar formulário
-              </button>
-
-              <button style={styles.buttonSecundario} onClick={() => imprimirFormulario(r)}>
-                Imprimir formulário
-              </button>
-
-              <button style={styles.buttonExcluir} onClick={() => excluirRegistro(r.id)}>
-                Excluir
-              </button>
-            </div>
-          ))}
-        </section>
-      </div>
-    );
-  }
-
-  if (modoRelatorio) {
-    return (
-      <div style={styles.relatorioPage}>
-        <h1>Radar Link MS</h1>
-        <h2>Relatório Estratégico de Gestores</h2>
-        <p><strong>Filtro:</strong> {municipioIndicador === "GERAL" ? "Geral" : municipioIndicador}</p>
-        <p><strong>Data de geração:</strong> {new Date().toLocaleString()}</p>
-
-        <button style={styles.buttonRelatorio} onClick={() => setModoRelatorio(false)}>
-          Voltar ao painel
-        </button>
-
-        <button style={styles.buttonRelatorio} onClick={gerarPDF}>
-          Gerar PDF / Imprimir
-        </button>
-
-        <section style={styles.relatorioBox}>
-          <h2>1. Totais por Classificação</h2>
-          <p><strong>Verde:</strong> {verde}</p>
-          <p><strong>Amarelo:</strong> {amarelo}</p>
-          <p><strong>Vermelho:</strong> {vermelho}</p>
-        </section>
-
-        <section style={styles.relatorioBox}>
-          <h2>2. Totais por Engajamento</h2>
-          <p><strong>Alto:</strong> {alto}</p>
-          <p><strong>Médio:</strong> {medio}</p>
-          <p><strong>Baixo:</strong> {baixo}</p>
-        </section>
-
-        <section style={styles.relatorioBox}>
-          <h2>3. Lista de Diretores</h2>
-
-          {baseOrdenada.map((r) => (
-            <div key={`${r.id}-diretor`} style={styles.relatorioItem}>
-              <p><strong>Escola:</strong> {r.escola}</p>
-              <p><strong>Nome:</strong> {r.diretor || "Não informado"}</p>
-              <p><strong>Município:</strong> {r.municipio}</p>
-              <p><strong>Classificação Escola:</strong> {r.classificacaoEscola || "Não informada"}</p>
-              <p><strong>Classificação:</strong> {r.classificacaoDiretor || "Não informado"}</p>
-              <p><strong>Engajamento:</strong> {r.interesseAgendaDiretor || "Não informado"}</p>
-              <p><strong>Observações:</strong> {r.observacoesDiretor || "Sem observações"}</p>
-            </div>
-          ))}
-        </section>
-
-        <section style={styles.relatorioBox}>
-          <h2>4. Lista de Diretores Adjuntos</h2>
-
-          {baseOrdenada.map((r) => (
-            <div key={`${r.id}-adjunto`} style={styles.relatorioItem}>
-              <p><strong>Escola:</strong> {r.escola}</p>
-              <p><strong>Nome:</strong> {r.adjunto || "Não informado"}</p>
-              <p><strong>Município:</strong> {r.municipio}</p>
-              <p><strong>Classificação Escola:</strong> {r.classificacaoEscola || "Não informada"}</p>
-              <p><strong>Classificação:</strong> {r.classificacaoAdjunto || "Não informado"}</p>
-              <p><strong>Engajamento:</strong> {r.interesseAgendaAdjunto || "Não informado"}</p>
-              <p><strong>Observações:</strong> {r.observacoesAdjunto || "Sem observações"}</p>
-            </div>
-          ))}
-        </section>
-
-        <section style={styles.relatorioBox}>
-          <h2>5. Indicadores Demandas</h2>
-          {graficoCheckbox("Demandas da Escola", "demandas", demandasOpcoes)}
-          {graficoCheckbox("Questões Administrativas", "administrativas", administrativasOpcoes)}
-        </section>
-
-        <section style={styles.relatorioBox}>
-          <h2>6. Percepção Institucional</h2>
-          {graficoPercepcao("Diretor(a): Como avalia a SED?", "avaliacaoSedDiretor")}
-          {graficoPercepcao("Diretor(a): Como avalia o Governo?", "avaliacaoGovernoDiretor")}
-          {graficoPercepcao("Diretor(a) Adjunto(a): Como avalia a SED?", "avaliacaoSedAdjunto")}
-          {graficoPercepcao("Diretor(a) Adjunto(a): Como avalia o Governo?", "avaliacaoGovernoAdjunto")}
-        </section>
-      </div>
-    );
-  }
-
-  if (filtroAtivo) {
-    const lista = listaFiltrada();
-    const filtroLabel = typeof filtroAtivo === "object" ? filtroAtivo.label : filtroAtivo;
-    const filtroTitulo = typeof filtroAtivo === "object" ? filtroAtivo.titulo : `Lista: ${filtroLabel}`;
-    const cor = corIndicador(filtroLabel);
-
-    return (
-      <div style={styles.page}>
-        <button style={styles.button} onClick={() => setFiltroAtivo(null)}>
-          Voltar ao painel
-        </button>
-
-        <h1 style={{ color: cor }}>{filtroTitulo}</h1>
-        <h2 style={{ color: cor }}>{filtroLabel}</h2>
-
-        {lista.length === 0 && <p>Nenhum registro encontrado.</p>}
-
-        {lista.map((r) => (
-          <div key={r.id} style={{ ...styles.registro, borderLeft: `6px solid ${cor}` }}>
-            <h2>{r.nome}</h2>
-            <p><strong>Cargo:</strong> {r.cargo}</p>
-            <p><strong>Município:</strong> {r.municipio}</p>
-            <p><strong>Escola:</strong> {r.escola}</p>
-            {r.percepcao && <p><strong>Percepção:</strong> {r.percepcao}</p>}
-            {r.classificacao && <p><strong>Classificação:</strong> {r.classificacao}</p>}
-            {r.engajamento && <p><strong>Engajamento:</strong> {r.engajamento}</p>}
-          </div>
-        ))}
+          <button
+            style={styles.button}
+            onClick={entrarNaPlataforma}
+          >
+            🔐 Entrar na Plataforma
+          </button>
+        </div>
       </div>
     );
   }
@@ -785,23 +639,44 @@ export default function App() {
 
         <div>
           <h1 style={styles.title}>Radar Link MS</h1>
-          <p style={styles.subtitle}>Inteligência • Gestão • Articulação Regional</p>
+
+          <p style={styles.subtitle}>
+            Inteligência • Gestão • Articulação Regional
+          </p>
         </div>
       </header>
 
-      <button style={styles.button} onClick={() => setModoRelatorio(true)}>
-        Abrir Relatório Geral / Gerar PDF
+      <button
+        style={styles.button}
+        onClick={() => setModoRelatorio(true)}
+      >
+        📄 Abrir Relatório Geral / Gerar PDF
       </button>
 
-      <button style={styles.button} onClick={() => setModoFormularios(true)}>
-        Acessar Formulários Salvos
+      <button
+        style={styles.button}
+        onClick={() => setModoFormularios(true)}
+      >
+        📂 Acessar Formulários Salvos
+      </button>
+
+      <button
+        style={styles.button}
+        onClick={() => setModoGraficos(true)}
+      >
+        📊 Acessar Gráficos / Resultados
+      </button>
+
+      <button
+        style={styles.buttonSecundario}
+        onClick={sairDaPlataforma}
+      >
+        🚪 Sair da Plataforma
       </button>
 
       <main style={styles.grid}>
         <section style={styles.panel}>
-          <h2>Formulário de Reunião com Gestores</h2>
-
-          {editandoId && (
+          <h2>Formulário de Reunião com Gestores</h2>          {editandoId && (
             <div style={styles.avisoEdicao}>
               Editando formulário salvo
             </div>
@@ -819,7 +694,6 @@ export default function App() {
             }
           >
             <option value="">Selecione o município</option>
-
             {Object.keys(escolasPorMunicipio).map((municipio) => (
               <option key={municipio}>{municipio}</option>
             ))}
@@ -836,7 +710,6 @@ export default function App() {
             }
           >
             <option value="">Selecione a escola</option>
-
             {form.municipio &&
               escolasPorMunicipio[form.municipio]?.map((escola) => (
                 <option key={escola}>{escola}</option>
@@ -898,7 +771,12 @@ export default function App() {
             style={styles.textarea}
             placeholder="Descrição das demandas"
             value={form.descricaoDemandas}
-            onChange={(e) => setForm({ ...form, descricaoDemandas: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                descricaoDemandas: e.target.value
+              })
+            }
           />
 
           <h3>2. Questões Administrativas</h3>
@@ -918,17 +796,26 @@ export default function App() {
             style={styles.textarea}
             placeholder="Descrição das questões administrativas"
             value={form.descricaoAdministrativas}
-            onChange={(e) => setForm({ ...form, descricaoAdministrativas: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                descricaoAdministrativas: e.target.value
+              })
+            }
           />
 
           <h3>3. Percepção Institucional</h3>
 
           <h4>Diretor(a): Como avalia a SED?</h4>
-
           <select
             style={styles.input}
             value={form.avaliacaoSedDiretor}
-            onChange={(e) => setForm({ ...form, avaliacaoSedDiretor: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                avaliacaoSedDiretor: e.target.value
+              })
+            }
           >
             <option value="">Selecione</option>
             {percepcaoOpcoes.map((opcao) => (
@@ -937,11 +824,15 @@ export default function App() {
           </select>
 
           <h4>Diretor(a): Como avalia o Governo?</h4>
-
           <select
             style={styles.input}
             value={form.avaliacaoGovernoDiretor}
-            onChange={(e) => setForm({ ...form, avaliacaoGovernoDiretor: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                avaliacaoGovernoDiretor: e.target.value
+              })
+            }
           >
             <option value="">Selecione</option>
             {percepcaoOpcoes.map((opcao) => (
@@ -950,11 +841,15 @@ export default function App() {
           </select>
 
           <h4>Diretor(a) Adjunto(a): Como avalia a SED?</h4>
-
           <select
             style={styles.input}
             value={form.avaliacaoSedAdjunto}
-            onChange={(e) => setForm({ ...form, avaliacaoSedAdjunto: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                avaliacaoSedAdjunto: e.target.value
+              })
+            }
           >
             <option value="">Selecione</option>
             {percepcaoOpcoes.map((opcao) => (
@@ -963,11 +858,15 @@ export default function App() {
           </select>
 
           <h4>Diretor(a) Adjunto(a): Como avalia o Governo?</h4>
-
           <select
             style={styles.input}
             value={form.avaliacaoGovernoAdjunto}
-            onChange={(e) => setForm({ ...form, avaliacaoGovernoAdjunto: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                avaliacaoGovernoAdjunto: e.target.value
+              })
+            }
           >
             <option value="">Selecione</option>
             {percepcaoOpcoes.map((opcao) => (
@@ -980,7 +879,12 @@ export default function App() {
           <select
             style={styles.input}
             value={form.interesseAgendaDiretor}
-            onChange={(e) => setForm({ ...form, interesseAgendaDiretor: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                interesseAgendaDiretor: e.target.value
+              })
+            }
           >
             <option value="">Interesse Diretor</option>
             <option>Alto</option>
@@ -991,7 +895,12 @@ export default function App() {
           <select
             style={styles.input}
             value={form.interesseAgendaAdjunto}
-            onChange={(e) => setForm({ ...form, interesseAgendaAdjunto: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                interesseAgendaAdjunto: e.target.value
+              })
+            }
           >
             <option value="">Interesse Adjunto</option>
             <option>Alto</option>
@@ -1004,7 +913,12 @@ export default function App() {
           <select
             style={styles.input}
             value={form.classificacaoDiretor}
-            onChange={(e) => setForm({ ...form, classificacaoDiretor: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                classificacaoDiretor: e.target.value
+              })
+            }
           >
             <option value="">Classificação Diretor</option>
             <option>VERDE</option>
@@ -1015,7 +929,12 @@ export default function App() {
           <select
             style={styles.input}
             value={form.classificacaoAdjunto}
-            onChange={(e) => setForm({ ...form, classificacaoAdjunto: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                classificacaoAdjunto: e.target.value
+              })
+            }
           >
             <option value="">Classificação Adjunto</option>
             <option>VERDE</option>
@@ -1026,21 +945,29 @@ export default function App() {
           <h3>6. Observações Estratégicas</h3>
 
           <h4>Diretor(a)</h4>
-
           <textarea
             style={styles.textarea}
             placeholder="Observações estratégicas do Diretor(a)"
             value={form.observacoesDiretor}
-            onChange={(e) => setForm({ ...form, observacoesDiretor: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                observacoesDiretor: e.target.value
+              })
+            }
           />
 
           <h4>Diretor(a) Adjunto(a)</h4>
-
           <textarea
             style={styles.textarea}
             placeholder="Observações estratégicas do Adjunto(a)"
             value={form.observacoesAdjunto}
-            onChange={(e) => setForm({ ...form, observacoesAdjunto: e.target.value })}
+            onChange={(e) =>
+              setForm({
+                ...form,
+                observacoesAdjunto: e.target.value
+              })
+            }
           />
 
           <button style={styles.button} onClick={salvarRegistro}>
@@ -1059,52 +986,6 @@ export default function App() {
             </button>
           )}
         </section>
-
-        <section style={styles.panel}>
-          <h2>Indicadores por Gestor</h2>
-
-          <select
-            style={styles.input}
-            value={municipioIndicador}
-            onChange={(e) => setMunicipioIndicador(e.target.value)}
-          >
-            <option value="GERAL">Indicadores gerais</option>
-
-            {Object.keys(escolasPorMunicipio).map((municipio) => (
-              <option key={municipio} value={municipio}>
-                {municipio}
-              </option>
-            ))}
-          </select>
-
-          <h3 style={styles.tituloGrafico}>Classificação</h3>
-
-          <div style={styles.graficoVertical}>
-            {barraVertical("VERDE", verde, totalGestores)}
-            {barraVertical("AMARELO", amarelo, totalGestores)}
-            {barraVertical("VERMELHO", vermelho, totalGestores)}
-          </div>
-
-          <h3 style={styles.tituloGrafico}>Engajamento</h3>
-
-          <div style={styles.graficoVertical}>
-            {barraVertical("Alto", alto, totalGestores)}
-            {barraVertical("Médio", medio, totalGestores)}
-            {barraVertical("Baixo", baixo, totalGestores)}
-          </div>
-
-          <h2>Indicadores Demandas</h2>
-
-          {graficoCheckbox("1. Demandas da Escola", "demandas", demandasOpcoes)}
-          {graficoCheckbox("2. Questões Administrativas", "administrativas", administrativasOpcoes)}
-
-          <h2>Percepção Institucional</h2>
-
-          {graficoPercepcao("Diretor(a): Como avalia a SED?", "avaliacaoSedDiretor")}
-          {graficoPercepcao("Diretor(a): Como avalia o Governo?", "avaliacaoGovernoDiretor")}
-          {graficoPercepcao("Diretor(a) Adjunto(a): Como avalia a SED?", "avaliacaoSedAdjunto")}
-          {graficoPercepcao("Diretor(a) Adjunto(a): Como avalia o Governo?", "avaliacaoGovernoAdjunto")}
-        </section>
       </main>
     </div>
   );
@@ -1117,6 +998,49 @@ const styles = {
     color: "white",
     fontFamily: "Arial",
     padding: 15
+  },
+
+  loginPage: {
+    minHeight: "100vh",
+    background: "linear-gradient(135deg,#020617,#0f172a,#1e293b)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    padding: 20,
+    fontFamily: "Arial"
+  },
+
+  loginBox: {
+    width: "100%",
+    maxWidth: 420,
+    background: "rgba(15,23,42,.96)",
+    padding: 30,
+    borderRadius: 22,
+    boxShadow: "0 20px 60px rgba(0,0,0,.45)",
+    color: "white",
+    textAlign: "center"
+  },
+
+  logoGrande: {
+    width: 75,
+    height: 75,
+    borderRadius: "50%",
+    background: "linear-gradient(135deg,#2563eb,#facc15)",
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    fontSize: 42,
+    margin: "0 auto 15px auto"
+  },
+
+  loginTitle: {
+    margin: 0,
+    fontSize: 34
+  },
+
+  loginSubtitle: {
+    color: "#cbd5e1",
+    marginBottom: 25
   },
 
   header: {
@@ -1158,21 +1082,6 @@ const styles = {
     background: "rgba(15,23,42,.95)",
     padding: 20,
     borderRadius: 18
-  },
-
-  subPainel: {
-    background: "#0f172a",
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 18
-  },
-
-  tituloGrafico: {
-    textAlign: "center",
-    fontSize: 20,
-    fontWeight: "900",
-    marginBottom: 10,
-    color: "#ffffff"
   },
 
   input: {
@@ -1225,17 +1134,6 @@ const styles = {
     marginBottom: 10
   },
 
-  buttonExcluir: {
-    width: "100%",
-    padding: 14,
-    background: "#ef4444",
-    color: "white",
-    border: "none",
-    borderRadius: 10,
-    cursor: "pointer",
-    fontWeight: "bold"
-  },
-
   avisoEdicao: {
     background: "#eab308",
     color: "#111827",
@@ -1243,110 +1141,5 @@ const styles = {
     borderRadius: 10,
     fontWeight: "bold",
     marginBottom: 12
-  },
-
-  graficoVertical: {
-    display: "flex",
-    justifyContent: "space-evenly",
-    alignItems: "flex-end",
-    gap: 30,
-    height: 320,
-    marginBottom: 40,
-    paddingTop: 20,
-    overflowX: "auto"
-  },
-
-  colunaGrafico: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    justifyContent: "flex-end",
-    cursor: "pointer",
-    width: 90,
-    gap: 10,
-    flexShrink: 0
-  },
-
-  areaBarraVertical: {
-    height: 220,
-    width: 55,
-    background: "#334155",
-    borderRadius: 12,
-    display: "flex",
-    alignItems: "flex-end",
-    overflow: "hidden",
-    border: "1px solid #475569"
-  },
-
-  barraVertical: {
-    width: "100%",
-    borderRadius: 12,
-    transition: "0.4s"
-  },
-
-  barraHorizontalItem: {
-    marginBottom: 12
-  },
-
-  barraHorizontalTexto: {
-    display: "flex",
-    justifyContent: "space-between",
-    gap: 10,
-    fontWeight: "bold",
-    marginBottom: 5,
-    color: "#ffffff"
-  },
-
-  barraHorizontalFundo: {
-    height: 14,
-    background: "#334155",
-    borderRadius: 999,
-    overflow: "hidden"
-  },
-
-  barraHorizontalValor: {
-    height: 14,
-    borderRadius: 999,
-    transition: "0.3s",
-    boxShadow: "0 0 12px rgba(250,204,21,0.55)"
-  },
-
-  registro: {
-    background: "#1e293b",
-    padding: 18,
-    borderRadius: 14,
-    marginBottom: 15
-  },
-
-  relatorioPage: {
-    background: "white",
-    color: "black",
-    minHeight: "100vh",
-    padding: 30,
-    fontFamily: "Arial"
-  },
-
-  relatorioBox: {
-    border: "1px solid #ccc",
-    padding: 15,
-    borderRadius: 10,
-    marginBottom: 20
-  },
-
-  relatorioItem: {
-    borderBottom: "1px solid #ddd",
-    padding: "10px 0"
-  },
-
-  buttonRelatorio: {
-    padding: 12,
-    background: "#2563eb",
-    color: "white",
-    border: "none",
-    borderRadius: 8,
-    fontWeight: "bold",
-    cursor: "pointer",
-    marginRight: 10,
-    marginBottom: 10
   }
 };
