@@ -338,12 +338,13 @@ export default function App() {
   const medio = contarEngajamento("Médio");
   const baixo = contarEngajamento("Baixo");
 
-  function corIndicador(label) {
-    if (label === "VERDE" || label === "Alto" || label === "Positivo") return "#00ff66";
-    if (label === "AMARELO" || label === "Médio" || label === "Positivo com ressalvas") return "#ffd400";
-    if (label === "VERMELHO" || label === "Baixo" || label === "Negativo") return "#ff3333";
-    return "#38bdf8";
-  }
+ function corIndicador(label) {
+  if (label === "VERDE" || label === "Alto" || label === "Positivo") return "#00ff66";
+  if (label === "AMARELO" || label === "Médio" || label === "Positivo com ressalvas") return "#ffd400";
+  if (label === "VERMELHO" || label === "Baixo" || label === "Negativo") return "#ff3333";
+
+  return "#3b82f6";
+}
 
   function listaFiltrada() {
     if (!filtroAtivo) return [];
@@ -1296,17 +1297,18 @@ const styles = {
   },
 
   barraHorizontalFundo: {
-    height: 14,
-    background: "#334155",
-    borderRadius: 999,
-    overflow: "hidden"
-  },
+  height: 14,
+  background: "#334155",
+  borderRadius: 999,
+  overflow: "hidden"
+},
 
   barraHorizontalValor: {
-    height: 14,
-    borderRadius: 999,
-    transition: "0.3s"
-  },
+  height: 14,
+  borderRadius: 999,
+  transition: "0.3s",
+  boxShadow: "0 0 10px rgba(59,130,246,0.45)"
+},
 
   registro: {
     background: "#1e293b",
