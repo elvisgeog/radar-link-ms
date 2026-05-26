@@ -343,7 +343,7 @@ export default function App() {
   if (label === "AMARELO" || label === "Médio" || label === "Positivo com ressalvas") return "#ffd400";
   if (label === "VERMELHO" || label === "Baixo" || label === "Negativo") return "#ff3333";
 
-  return "#f59e0b";
+  return "#facc15";
 }
 
   function listaFiltrada() {
@@ -489,8 +489,8 @@ export default function App() {
     return (
       <div style={styles.barraHorizontalItem}>
         <div style={styles.barraHorizontalTexto}>
-          <span style={{ color: cor }}>{label}</span>
-          <strong style={{ color: cor }}>{valor} ({percentual}%)</strong>
+          <span style={{ color: "#ffffff" }}>{label}</span>
+          <strong style={{ color: "#ffffff" }}>valor} ({percentual}%)</strong>
         </div>
 
         <div style={styles.barraHorizontalFundo}>
@@ -1294,6 +1294,7 @@ const styles = {
     gap: 10,
     fontWeight: "bold",
     marginBottom: 5
+color: "#ffffff"
   },
 
   barraHorizontalFundo: {
@@ -1349,3 +1350,4 @@ const styles = {
     marginBottom: 10
   }
 };
+
