@@ -211,18 +211,16 @@ export default function App() {
 
     return (
       <div style={styles.colunaGrafico} onClick={aoClicar || (() => setFiltroAtivo(label))}>
-        <strong
+        <div
           style={{
+            ...styles.percentualGrafico,
             color: cor,
-            fontSize: 17,
-            fontWeight: "900",
-            marginBottom: 8,
             WebkitPrintColorAdjust: "exact",
             printColorAdjust: "exact"
           }}
         >
           {percentual}%
-        </strong>
+        </div>
 
         <div style={styles.areaBarraVertical}>
           <div
@@ -230,42 +228,35 @@ export default function App() {
               ...styles.barraVertical,
               height: `${percentual}%`,
               backgroundColor: cor,
+              boxShadow: `0 0 18px ${cor}`,
               WebkitPrintColorAdjust: "exact",
               printColorAdjust: "exact"
             }}
           />
         </div>
 
-        <strong
+        <div
           style={{
+            ...styles.valorGrafico,
             color: cor,
-            fontSize: 18,
-            fontWeight: "900",
-            marginTop: 8,
             WebkitPrintColorAdjust: "exact",
             printColorAdjust: "exact"
           }}
         >
           ({valor})
-        </strong>
+        </div>
 
-        <span
+        <div
           style={{
+            ...styles.rotuloGrafico,
             color: cor,
-            fontWeight: "900",
-            textAlign: "center",
             fontSize: label === "Positivo com ressalvas" ? 12 : 15,
-            lineHeight: "15px",
-            minHeight: 34,
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
             WebkitPrintColorAdjust: "exact",
             printColorAdjust: "exact"
           }}
         >
           {label}
-        </span>
+        </div>
       </div>
     );
   }
@@ -707,10 +698,13 @@ const styles = {
   buttonSecundario: { width: "100%", padding: 14, background: "#475569", color: "white", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: "bold", marginBottom: 10 },
   buttonExcluir: { width: "100%", padding: 14, background: "#ef4444", color: "white", border: "none", borderRadius: 10, cursor: "pointer", fontWeight: "bold" },
   avisoEdicao: { background: "#eab308", color: "#111827", padding: 12, borderRadius: 10, fontWeight: "bold", marginBottom: 12 },
-  graficoVertical: { display: "flex", justifyContent: "space-evenly", alignItems: "flex-end", gap: 30, height: 320, marginBottom: 40, paddingTop: 20, overflowX: "auto" },
-  colunaGrafico: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", cursor: "pointer", width: 90, gap: 10, flexShrink: 0 },
-  areaBarraVertical: { height: 220, width: 55, background: "#334155", borderRadius: 12, display: "flex", alignItems: "flex-end", overflow: "hidden", border: "1px solid #475569", WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" },
-  barraVertical: { width: "100%", borderRadius: 12, transition: "0.4s", WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" },
+  graficoVertical: { display: "flex", justifyContent: "space-evenly", alignItems: "flex-start", gap: 50, minHeight: 460, marginBottom: 60, paddingTop: 35, paddingBottom: 25, overflowX: "auto" },
+  colunaGrafico: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start", cursor: "pointer", width: 120, gap: 12, flexShrink: 0, minHeight: 410 },
+  areaBarraVertical: { height: 280, width: 65, background: "#334155", borderRadius: 14, display: "flex", alignItems: "flex-end", overflow: "hidden", border: "1px solid #475569", WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" },
+  barraVertical: { width: "100%", borderRadius: 14, transition: "0.4s", WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" },
+  percentualGrafico: { height: 34, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22, fontWeight: "900", lineHeight: "24px", marginBottom: 4 },
+  valorGrafico: { height: 32, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 24, fontWeight: "900", lineHeight: "26px", marginTop: 4 },
+  rotuloGrafico: { minHeight: 42, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", fontWeight: "900", lineHeight: "16px", marginTop: 2 },
   barraHorizontalItem: { marginBottom: 12 },
   barraHorizontalTexto: { display: "flex", justifyContent: "space-between", gap: 10, fontWeight: "bold", marginBottom: 5, color: "#ffffff" },
   barraHorizontalFundo: { height: 14, background: "#334155", borderRadius: 999, overflow: "hidden", WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" },
