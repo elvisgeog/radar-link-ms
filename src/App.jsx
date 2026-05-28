@@ -211,12 +211,61 @@ export default function App() {
 
     return (
       <div style={styles.colunaGrafico} onClick={aoClicar || (() => setFiltroAtivo(label))}>
+        <strong
+          style={{
+            color: cor,
+            fontSize: 17,
+            fontWeight: "900",
+            marginBottom: 8,
+            WebkitPrintColorAdjust: "exact",
+            printColorAdjust: "exact"
+          }}
+        >
+          {percentual}%
+        </strong>
+
         <div style={styles.areaBarraVertical}>
-          <div style={{ ...styles.barraVertical, height: `${percentual}%`, background: cor }} />
+          <div
+            style={{
+              ...styles.barraVertical,
+              height: `${percentual}%`,
+              backgroundColor: cor,
+              WebkitPrintColorAdjust: "exact",
+              printColorAdjust: "exact"
+            }}
+          />
         </div>
-        <strong style={{ color: cor, fontSize: 18 }}>{valor}</strong>
-        <span style={{ color: cor, fontWeight: "900", textAlign: "center", fontSize: label === "Positivo com ressalvas" ? 12 : 15, lineHeight: "15px", minHeight: 34, display: "flex", alignItems: "center", justifyContent: "center" }}>{label}</span>
-        <small style={{ color: "#ffffff", fontWeight: "bold" }}>{percentual}%</small>
+
+        <strong
+          style={{
+            color: cor,
+            fontSize: 18,
+            fontWeight: "900",
+            marginTop: 8,
+            WebkitPrintColorAdjust: "exact",
+            printColorAdjust: "exact"
+          }}
+        >
+          ({valor})
+        </strong>
+
+        <span
+          style={{
+            color: cor,
+            fontWeight: "900",
+            textAlign: "center",
+            fontSize: label === "Positivo com ressalvas" ? 12 : 15,
+            lineHeight: "15px",
+            minHeight: 34,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            WebkitPrintColorAdjust: "exact",
+            printColorAdjust: "exact"
+          }}
+        >
+          {label}
+        </span>
       </div>
     );
   }
@@ -637,7 +686,7 @@ autoFocus />
 }
 
 const styles = {
-  page: { minHeight: "100vh", background: "linear-gradient(135deg,#07111f,#0f172a,#111827)", color: "white", fontFamily: "Arial", padding: 15 },
+  page: { minHeight: "100vh", background: "linear-gradient(135deg,#07111f,#0f172a,#111827)", color: "white", fontFamily: "Arial", padding: 15, WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" },
   loginPage: { minHeight: "100vh", background: "linear-gradient(135deg,#020617,#0f172a,#1e293b)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, fontFamily: "Arial" },
   loginBox: { width: "100%", maxWidth: 420, background: "rgba(15,23,42,.96)", padding: 30, borderRadius: 22, boxShadow: "0 20px 60px rgba(0,0,0,.45)", color: "white", textAlign: "center" },
   logoGrande: { width: 75, height: 75, borderRadius: "50%", background: "linear-gradient(135deg,#2563eb,#facc15)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 42, margin: "0 auto 15px auto" },
@@ -648,8 +697,8 @@ const styles = {
   title: { margin: 0, fontSize: "clamp(26px, 5vw, 38px)" },
   subtitle: { margin: 0, color: "#cbd5e1" },
   grid: { display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(320px,1fr))", gap: 20 },
-  panel: { background: "rgba(15,23,42,.95)", padding: 20, borderRadius: 18 },
-  subPainel: { background: "#0f172a", padding: 14, borderRadius: 12, marginBottom: 18 },
+  panel: { background: "rgba(15,23,42,.95)", padding: 20, borderRadius: 18, WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" },
+  subPainel: { background: "#0f172a", padding: 14, borderRadius: 12, marginBottom: 18, WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" },
   tituloGrafico: { textAlign: "center", fontSize: 20, fontWeight: "900", marginBottom: 10, color: "#ffffff" },
   input: { width: "100%", padding: 13, marginBottom: 10, borderRadius: 8, border: "none", boxSizing: "border-box", fontSize: 16 },
   textarea: { width: "100%", padding: 13, marginBottom: 10, borderRadius: 8, border: "none", minHeight: 90, boxSizing: "border-box", fontSize: 16 },
@@ -660,14 +709,14 @@ const styles = {
   avisoEdicao: { background: "#eab308", color: "#111827", padding: 12, borderRadius: 10, fontWeight: "bold", marginBottom: 12 },
   graficoVertical: { display: "flex", justifyContent: "space-evenly", alignItems: "flex-end", gap: 30, height: 320, marginBottom: 40, paddingTop: 20, overflowX: "auto" },
   colunaGrafico: { display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", cursor: "pointer", width: 90, gap: 10, flexShrink: 0 },
-  areaBarraVertical: { height: 220, width: 55, background: "#334155", borderRadius: 12, display: "flex", alignItems: "flex-end", overflow: "hidden", border: "1px solid #475569" },
-  barraVertical: { width: "100%", borderRadius: 12, transition: "0.4s" },
+  areaBarraVertical: { height: 220, width: 55, background: "#334155", borderRadius: 12, display: "flex", alignItems: "flex-end", overflow: "hidden", border: "1px solid #475569", WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" },
+  barraVertical: { width: "100%", borderRadius: 12, transition: "0.4s", WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" },
   barraHorizontalItem: { marginBottom: 12 },
   barraHorizontalTexto: { display: "flex", justifyContent: "space-between", gap: 10, fontWeight: "bold", marginBottom: 5, color: "#ffffff" },
-  barraHorizontalFundo: { height: 14, background: "#334155", borderRadius: 999, overflow: "hidden" },
-  barraHorizontalValor: { height: 14, borderRadius: 999, transition: "0.3s", background: "#facc15", boxShadow: "0 0 12px rgba(250,204,21,0.55)" },
+  barraHorizontalFundo: { height: 14, background: "#334155", borderRadius: 999, overflow: "hidden", WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" },
+  barraHorizontalValor: { height: 14, borderRadius: 999, transition: "0.3s", background: "#facc15", boxShadow: "0 0 12px rgba(250,204,21,0.55)", WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" },
   registro: { background: "#1e293b", padding: 18, borderRadius: 14, marginBottom: 15 },
-  relatorioPage: { background: "white", color: "black", minHeight: "100vh", padding: 30, fontFamily: "Arial" },
+  relatorioPage: { background: "white", color: "black", minHeight: "100vh", padding: 30, fontFamily: "Arial", WebkitPrintColorAdjust: "exact", printColorAdjust: "exact" },
   relatorioBox: { border: "1px solid #ccc", padding: 15, borderRadius: 10, marginBottom: 20 },
   relatorioItem: { borderBottom: "1px solid #ddd", padding: "10px 0" },
   buttonRelatorio: { padding: 12, background: "#2563eb", color: "white", border: "none", borderRadius: 8, fontWeight: "bold", cursor: "pointer", marginRight: 10, marginBottom: 10 }
