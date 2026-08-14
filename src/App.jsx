@@ -164,6 +164,42 @@ export default function App() {
   const medio = contarEngajamento("Médio");
   const baixo = contarEngajamento("Baixo");
 
+  // Bases reais dos gráficos: considera somente respostas preenchidas.
+  // Isso evita que campos vazios de diretor/adjunto "consumam" percentual.
+  const totalClassificados = verde + amarelo + vermelho;
+  const totalEngajamento = alto + medio + baixo;
+
+  // Distribui o arredondamento para que categorias mutuamente exclusivas
+  // fechem visualmente exatamente em 100%.
+  function calcularPercentuais100(valores) {
+    const total = valores.reduce((soma, valor) => soma + valor, 0);
+    if (!total) return valores.map(() => 0);
+
+    const exatos = valores.map((valor) => (valor / total) * 100);
+    const inteiros = exatos.map((valor) => Math.floor(valor));
+
+    let faltam = 100 - inteiros.reduce((soma, valor) => soma + valor, 0);
+
+    const ordem = exatos
+      .map((valor, indice) => ({
+        indice,
+        resto: valor - inteiros[indice]
+      }))
+      .sort((a, b) => b.resto - a.resto);
+
+    for (let i = 0; i < faltam; i++) {
+      inteiros[ordem[i].indice] += 1;
+    }
+
+    return inteiros;
+  }
+
+  const [percentualVerde, percentualAmarelo, percentualVermelho] =
+    calcularPercentuais100([verde, amarelo, vermelho]);
+
+  const [percentualAlto, percentualMedio, percentualBaixo] =
+    calcularPercentuais100([alto, medio, baixo]);
+
   function corIndicador(label) {
     if (label === "VERDE" || label === "Alto" || label === "Positivo") return "#00ff66";
     if (label === "AMARELO" || label === "Médio" || label === "Positivo com ressalvas") return "#ffd400";
@@ -205,8 +241,14 @@ export default function App() {
     return ordenarPorEscola(lista);
   }
 
-  function barraVertical(label, valor, totalBase, aoClicar) {
-    const percentual = totalBase ? Math.round((valor / totalBase) * 100) : 0;
+  function barraVertical(label, valor, totalBase, aoClicar, percentualAjustado = null) {
+    const percentual =
+      percentualAjustado !== null
+        ? percentualAjustado
+        : totalBase
+          ? Math.round((valor / totalBase) * 100)
+          : 0;
+
     const cor = corIndicador(label);
 
     return (
@@ -286,13 +328,21 @@ export default function App() {
   }
 
   function graficoPercepcao(titulo, campo) {
+    const valores = percepcaoOpcoes.map((opcao) => contarPercepcao(campo, opcao));
+    const totalRespondidos = valores.reduce((soma, valor) => soma + valor, 0);
+    const percentuais = calcularPercentuais100(valores);
+
     return (
       <section style={styles.subPainel}>
         <h3 style={styles.tituloGrafico}>{titulo}</h3>
         <div style={styles.graficoVertical}>
-          {percepcaoOpcoes.map((opcao) =>
-            barraVertical(opcao, contarPercepcao(campo, opcao), totalFormularios, () =>
-              setFiltroAtivo({ tipo: "percepcao", label: opcao, campo, titulo })
+          {percepcaoOpcoes.map((opcao, indice) =>
+            barraVertical(
+              opcao,
+              valores[indice],
+              totalRespondidos,
+              () => setFiltroAtivo({ tipo: "percepcao", label: opcao, campo, titulo }),
+              percentuais[indice]
             )
           )}
         </div>
@@ -446,16 +496,16 @@ autoFocus />
 
           <h3 style={styles.tituloGrafico}>Classificação</h3>
           <div style={styles.graficoVertical}>
-            {barraVertical("VERDE", verde, totalGestores)}
-            {barraVertical("AMARELO", amarelo, totalGestores)}
-            {barraVertical("VERMELHO", vermelho, totalGestores)}
+            {barraVertical("VERDE", verde, totalClassificados, null, percentualVerde)}
+            {barraVertical("AMARELO", amarelo, totalClassificados, null, percentualAmarelo)}
+            {barraVertical("VERMELHO", vermelho, totalClassificados, null, percentualVermelho)}
           </div>
 
           <h3 style={styles.tituloGrafico}>Engajamento</h3>
           <div style={styles.graficoVertical}>
-            {barraVertical("Alto", alto, totalGestores)}
-            {barraVertical("Médio", medio, totalGestores)}
-            {barraVertical("Baixo", baixo, totalGestores)}
+            {barraVertical("Alto", alto, totalEngajamento, null, percentualAlto)}
+            {barraVertical("Médio", medio, totalEngajamento, null, percentualMedio)}
+            {barraVertical("Baixo", baixo, totalEngajamento, null, percentualBaixo)}
           </div>
 
           <h2>Indicadores Demandas</h2>
