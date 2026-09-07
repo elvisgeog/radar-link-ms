@@ -1819,6 +1819,184 @@ const GLOBAL_CSS = `
     .candidate-detail-head { grid-template-columns:1fr; }
   }
 
+
+  /* =========================================================
+     MOBILE — navegação completa visível sem rolagem horizontal
+     ========================================================= */
+  @media (max-width:780px) {
+    .radar-shell {
+      width:calc(100% - 14px);
+      padding-top:7px;
+    }
+
+    .radar-brandbar {
+      padding:13px 13px 12px;
+      gap:10px;
+      border-radius:14px;
+    }
+    .radar-brand {
+      width:100%;
+      gap:12px;
+    }
+    .radar-mark {
+      width:54px;
+      height:54px;
+      border-radius:15px;
+    }
+    .radar-brand h1 {
+      font-size:clamp(25px,7.2vw,30px);
+      line-height:1.02;
+    }
+    .radar-brand p {
+      margin-top:5px;
+      font-size:11.5px;
+      line-height:1.35;
+    }
+    .status-pill {
+      width:100%;
+      min-height:42px;
+      justify-content:center;
+      padding:8px 10px;
+      font-size:11.5px;
+    }
+
+    .radar-nav {
+      display:grid;
+      grid-template-columns:repeat(3,minmax(0,1fr));
+      gap:7px;
+      overflow:visible;
+      padding:8px;
+      margin:10px 0 12px;
+      border-radius:15px;
+    }
+    .nav-btn {
+      min-width:0 !important;
+      width:100% !important;
+      min-height:82px;
+      padding:8px 5px 9px;
+      gap:5px;
+      border-radius:12px;
+      flex-direction:column;
+      justify-content:center;
+      align-items:center;
+      text-align:center;
+    }
+    .nav-icon {
+      width:34px;
+      height:34px;
+      border-radius:10px;
+      flex:0 0 auto;
+    }
+    .nav-icon svg {
+      width:19px;
+      height:19px;
+    }
+    .nav-label-wrap {
+      width:100%;
+      align-items:center;
+      text-align:center;
+      gap:0;
+    }
+    .nav-label {
+      width:100%;
+      font-size:11.2px;
+      line-height:1.05;
+      letter-spacing:-.12px;
+      white-space:normal;
+      text-align:center;
+    }
+    .nav-sub {
+      display:none;
+    }
+    .nav-btn.active::after {
+      left:9px;
+      right:9px;
+      bottom:5px;
+      height:2px;
+    }
+    .nav-btn.logout {
+      grid-column:1 / -1;
+      min-height:43px;
+      flex-direction:row;
+      gap:8px;
+      padding:6px 12px;
+      margin-left:0;
+    }
+    .nav-btn.logout .nav-icon {
+      width:29px;
+      height:29px;
+    }
+    .nav-btn.logout .nav-label-wrap {
+      width:auto;
+      align-items:flex-start;
+    }
+    .nav-btn.logout .nav-label {
+      font-size:11.5px;
+      text-align:left;
+    }
+
+    /* O painel executivo vem imediatamente depois da navegação e fica compacto. */
+    .hero {
+      margin-top:0;
+      border-radius:14px;
+      padding:20px 17px 18px;
+    }
+    .hero h2 {
+      font-size:clamp(25px,7vw,31px);
+      line-height:1.08;
+    }
+    .hero p {
+      font-size:13px;
+      line-height:1.52;
+    }
+    .kpi-grid {
+      grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+      gap:8px;
+      margin-top:16px;
+    }
+    .kpi-card {
+      min-height:92px;
+      padding:12px;
+    }
+    .kpi-label {
+      font-size:10.5px;
+      line-height:1.25;
+    }
+    .kpi-value {
+      font-size:25px;
+    }
+    .kpi-note {
+      font-size:9.5px;
+      line-height:1.25;
+    }
+
+    .cards-grid,.people-grid,.politico-grid,.chart-grid,.field-grid,.field-grid.cols-3,.check-grid,.filter-row {
+      grid-template-columns:1fr;
+    }
+  }
+
+  @media (max-width:390px) {
+    .radar-nav {
+      gap:6px;
+      padding:7px;
+    }
+    .nav-btn {
+      min-height:78px;
+      padding-left:3px;
+      padding-right:3px;
+    }
+    .nav-label {
+      font-size:10.4px;
+    }
+    .nav-icon {
+      width:32px;
+      height:32px;
+    }
+    .kpi-grid {
+      grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    }
+  }
+
   @media print {
     @page { margin:12mm; }
     body,.radar-app,.report-page { background:#fff !important; color:#222 !important; }
