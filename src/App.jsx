@@ -384,7 +384,7 @@ const gestoresPoliticosBase = [
     "cargo": "Diretor",
     "nome": "Marcio Renato Gomes",
     "telefone": "(67) 9.9963-4896",
-    "estadual": "Londres Machado",
+    "estadual": "Marcelo Miranda",
     "federal": "Viviane Luiza"
   },
   {
@@ -573,7 +573,7 @@ const gestoresPoliticosBase = [
     "cargo": "Diretor",
     "nome": "Claudia Regina de O. e Silva Souza",
     "telefone": "(67) 9.9643-4014",
-    "estadual": "Londres Machado",
+    "estadual": "Renato Câmara",
     "federal": "Viviane Luiza"
   },
   {
@@ -851,7 +851,7 @@ const gestoresPoliticosBase = [
     "escola": "EE Jonas Belarmino da Silva",
     "cargo": "Adjunto",
     "nome": "Edilene de Fátima Lima",
-    "telefone": "*",
+    "telefone": "(67) 9.9955-1415",
     "estadual": "Londres Machado",
     "federal": "Viviane Luiza"
   },
@@ -888,7 +888,7 @@ const gestoresPoliticosBase = [
     "cargo": "Adjunto",
     "nome": "keli Tatiene Rodrigues de Sá",
     "telefone": "(67) 9.9826-7878",
-    "estadual": "Londres Machado",
+    "estadual": "Marcelo Miranda",
     "federal": "Viviane Luiza"
   },
   {
