@@ -555,8 +555,8 @@ const gestoresPoliticosBase = [
     "cargo": "Diretor",
     "nome": "Maria Divaldete Mello de Almeida",
     "telefone": "(67) 9.9642-8295",
-    "estadual": "Londres Machado",
-    "federal": "Jaime Verruck"
+    "estadual": "Marcelo Miranda",
+    "federal": "Mara Caseiro"
   },
   {
     "cidade": "VICENTINA",
