@@ -1239,8 +1239,22 @@ function agruparDobradinhas() {
   });
 
   return Array.from(mapa.values())
-    .map((item) => ({ ...item, municipios: Array.from(item.municipios).sort((a, b) => a.localeCompare(b, "pt-BR")) }))
-    .sort((a, b) => b.total - a.total || a.estadual.localeCompare(b.estadual, "pt-BR") || a.federal.localeCompare(b.federal, "pt-BR"));
+    .map((item) => ({
+      ...item,
+      municipios: Array.from(item.municipios).sort((a, b) =>
+        a.localeCompare(b, "pt-BR", { sensitivity: "base" })
+      ),
+      registros: [...item.registros].sort((a, b) =>
+        String(a.cidade || "").localeCompare(String(b.cidade || ""), "pt-BR", { sensitivity: "base" }) ||
+        String(a.escola || "").localeCompare(String(b.escola || ""), "pt-BR", { sensitivity: "base" }) ||
+        String(a.cargo || "").localeCompare(String(b.cargo || ""), "pt-BR", { sensitivity: "base" }) ||
+        String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { sensitivity: "base" })
+      )
+    }))
+    .sort((a, b) =>
+      String(a.estadual || "").localeCompare(String(b.estadual || ""), "pt-BR", { sensitivity: "base" }) ||
+      String(a.federal || "").localeCompare(String(b.federal || ""), "pt-BR", { sensitivity: "base" })
+    );
 }
 
 const dobradinhasBase = agruparDobradinhas();
@@ -2131,13 +2145,18 @@ export default function App() {
   const deputadosEstaduaisFiltrados = deputadosEstaduais.filter((item) => normalizarBusca(item.deputado).includes(normalizarBusca(buscaPolitica)));
   const deputadosFederaisFiltrados = deputadosFederais.filter((item) => normalizarBusca(item.deputado).includes(normalizarBusca(buscaPolitica)));
 
-  const dobradinhasFiltradas = dobradinhasBase.filter((item) => {
-    const busca = normalizarBusca(buscaDobradinha);
-    const correspondeBusca = !busca || normalizarBusca(`${item.estadual} ${item.federal}`).includes(busca);
-    const completa = item.estadual !== "Não informado" && item.federal !== "Não informado";
-    const correspondeTipo = filtroDobradinha === "TODAS" || (filtroDobradinha === "COMPLETAS" && completa) || (filtroDobradinha === "PARCIAIS" && !completa);
-    return correspondeBusca && correspondeTipo;
-  });
+  const dobradinhasFiltradas = dobradinhasBase
+    .filter((item) => {
+      const busca = normalizarBusca(buscaDobradinha);
+      const correspondeBusca = !busca || normalizarBusca(`${item.estadual} ${item.federal}`).includes(busca);
+      const completa = item.estadual !== "Não informado" && item.federal !== "Não informado";
+      const correspondeTipo = filtroDobradinha === "TODAS" || (filtroDobradinha === "COMPLETAS" && completa) || (filtroDobradinha === "PARCIAIS" && !completa);
+      return correspondeBusca && correspondeTipo;
+    })
+    .sort((a, b) =>
+      String(a.estadual || "").localeCompare(String(b.estadual || ""), "pt-BR", { sensitivity: "base" }) ||
+      String(a.federal || "").localeCompare(String(b.federal || ""), "pt-BR", { sensitivity: "base" })
+    );
 
   function registrosDoDeputado(item) {
     if (!item) return [];
@@ -2571,20 +2590,33 @@ export default function App() {
       mapa[registro.cidade].push(registro);
       return mapa;
     }, {});
-    return Object.keys(grupos).sort((a,b)=>a.localeCompare(b,"pt-BR")).map((cidade) => (
-      <section className="detail-city" key={cidade}>
-        <div className="detail-city-head"><h4>{cidade}</h4><span className="type-tag">{grupos[cidade].length} gestores</span></div>
-        <div className="people-grid">
-          {grupos[cidade].map((registro, indice) => {
-            const link = whatsappLink(registro.telefone);
-            return <div className="person-card" key={`${cidade}-${registro.escola}-${registro.nome}-${indice}`}>
-              <div className="school">{registro.escola}</div><div className="role">{registro.cargo}</div><div className="person-name">{registro.nome}</div>
-              {link ? <a className="wa" href={link} target="_blank" rel="noreferrer">💬 {registro.telefone} · WhatsApp</a> : <div className="phone-off">Telefone não informado</div>}
-            </div>;
-          })}
-        </div>
-      </section>
-    ));
+
+    const cidadesOrdenadas = Object.keys(grupos).sort((a, b) =>
+      String(a).localeCompare(String(b), "pt-BR", { sensitivity: "base" })
+    );
+
+    return cidadesOrdenadas.map((cidade) => {
+      const registrosOrdenados = [...grupos[cidade]].sort((a, b) =>
+        String(a.escola || "").localeCompare(String(b.escola || ""), "pt-BR", { sensitivity: "base" }) ||
+        String(a.cargo || "").localeCompare(String(b.cargo || ""), "pt-BR", { sensitivity: "base" }) ||
+        String(a.nome || "").localeCompare(String(b.nome || ""), "pt-BR", { sensitivity: "base" })
+      );
+
+      return (
+        <section className="detail-city" key={cidade}>
+          <div className="detail-city-head"><h4>{cidade}</h4><span className="type-tag">{registrosOrdenados.length} gestores</span></div>
+          <div className="people-grid">
+            {registrosOrdenados.map((registro, indice) => {
+              const link = whatsappLink(registro.telefone);
+              return <div className="person-card" key={`${cidade}-${registro.escola}-${registro.nome}-${indice}`}>
+                <div className="school">{registro.escola}</div><div className="role">{registro.cargo}</div><div className="person-name">{registro.nome}</div>
+                {link ? <a className="wa" href={link} target="_blank" rel="noreferrer">💬 {registro.telefone} · WhatsApp</a> : <div className="phone-off">Telefone não informado</div>}
+              </div>;
+            })}
+          </div>
+        </section>
+      );
+    });
   }
 
   function TelaPolitica() {
@@ -2673,7 +2705,7 @@ export default function App() {
       </section>
 
       <section className="panel">
-        <div className="section-heading"><div><h3>Combinações consolidadas</h3><p>Ordenadas pela quantidade de gestores.</p></div><button className="btn secondary no-print" onClick={gerarPDF}>Imprimir painel</button></div>
+        <div className="section-heading"><div><h3>Combinações consolidadas</h3><p>Ordenadas alfabeticamente pelo deputado estadual e, em seguida, pelo federal.</p></div><button className="btn secondary no-print" onClick={gerarPDF}>Imprimir painel</button></div>
         <div className="cards-grid">
           {dobradinhasFiltradas.map((item)=><button className="double-card" key={item.chave} onClick={()=>{ setDetalheDobradinha(item); rolarParaTopo(); }}>
             <div className="card-top"><PairStatus item={item}/><div className="count-badge">{item.total}</div></div>
