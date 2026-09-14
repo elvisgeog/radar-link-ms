@@ -2720,6 +2720,200 @@ export default function App() {
     window.setTimeout(() => URL.revokeObjectURL(url), 1500);
   }
 
+
+  function gerarPDFTransmissao() {
+    const selecionados = contatosSelecionadosTransmissao();
+    if (!selecionados.length) return alert("Selecione ao menos um contato.");
+
+    function escaparHTML(valor) {
+      return String(valor ?? "")
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    const nomeCandidato = String(detalhePolitico?.deputado || "Candidato");
+    const diretores = selecionados.filter((item) => item.cargo === "Diretor").length;
+    const adjuntos = selecionados.filter((item) => item.cargo === "Adjunto").length;
+    const municipios = new Set(selecionados.map((item) => item.cidade).filter(Boolean)).size;
+
+    const contatosHTML = selecionados.map((item, indice) => `
+      <article class="contato">
+        <div class="numero">${String(indice + 1).padStart(2, "0")}.</div>
+        <div class="dados">
+          <div class="nome">${escaparHTML(item.nome)}</div>
+          <div class="telefone">${escaparHTML(item.telefone || item.telefoneE164)}</div>
+          <div class="cargo">${escaparHTML(item.cargo || "")}</div>
+          <div class="escola">${escaparHTML(item.escola || "")} — ${escaparHTML(item.cidade || "")}</div>
+        </div>
+      </article>
+    `).join("");
+
+    const janela = window.open("", "_blank", "width=1000,height=800");
+    if (!janela) {
+      alert("O navegador bloqueou a janela de impressão. Autorize pop-ups para o Radar Link e tente novamente.");
+      return;
+    }
+
+    janela.document.open();
+    janela.document.write(`
+      <!doctype html>
+      <html lang="pt-BR">
+      <head>
+        <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>Linha de Transmissão - ${escaparHTML(nomeCandidato)}</title>
+        <style>
+          @page { size: A4; margin: 12mm; }
+          * { box-sizing: border-box; }
+          body {
+            margin: 0;
+            font-family: Arial, Helvetica, sans-serif;
+            color: #172334;
+            background: #fff;
+          }
+          .cabecalho {
+            border-bottom: 3px solid #004F9F;
+            padding-bottom: 10px;
+            margin-bottom: 12px;
+          }
+          .marca {
+            font-size: 12px;
+            font-weight: 800;
+            letter-spacing: .08em;
+            color: #004F9F;
+            text-transform: uppercase;
+          }
+          h1 {
+            margin: 4px 0 2px;
+            font-size: 22px;
+            line-height: 1.15;
+          }
+          .subtitulo {
+            margin: 0;
+            color: #58687a;
+            font-size: 13px;
+          }
+          .resumo {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin: 12px 0 14px;
+          }
+          .kpi {
+            border: 1px solid #d7e0e9;
+            border-radius: 8px;
+            padding: 8px 10px;
+            background: #f7f9fb;
+          }
+          .kpi strong {
+            display: block;
+            font-size: 17px;
+            color: #14387F;
+          }
+          .kpi span {
+            font-size: 10px;
+            color: #68788b;
+            text-transform: uppercase;
+            font-weight: 700;
+          }
+          .lista {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+          }
+          .contato {
+            display: flex;
+            gap: 9px;
+            border: 1px solid #d7e0e9;
+            border-radius: 8px;
+            padding: 9px 10px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+            min-height: 88px;
+          }
+          .numero {
+            width: 28px;
+            flex: 0 0 28px;
+            font-weight: 800;
+            color: #004F9F;
+            font-size: 12px;
+            padding-top: 2px;
+          }
+          .dados { min-width: 0; }
+          .nome {
+            font-size: 13px;
+            font-weight: 800;
+            line-height: 1.2;
+            margin-bottom: 3px;
+          }
+          .telefone {
+            font-size: 13px;
+            font-weight: 800;
+            color: #006B2D;
+            margin-bottom: 5px;
+          }
+          .cargo {
+            font-size: 11px;
+            font-weight: 700;
+            color: #49596a;
+            margin-bottom: 2px;
+          }
+          .escola {
+            font-size: 10.5px;
+            line-height: 1.25;
+            color: #667789;
+          }
+          .rodape {
+            margin-top: 12px;
+            padding-top: 7px;
+            border-top: 1px solid #d7e0e9;
+            font-size: 9px;
+            color: #7a8896;
+            text-align: right;
+          }
+          @media print {
+            .no-print { display: none !important; }
+          }
+        </style>
+      </head>
+      <body>
+        <header class="cabecalho">
+          <div class="marca">Radar Link MS · WhatsApp</div>
+          <h1>Linha de Transmissão — ${escaparHTML(nomeCandidato)}</h1>
+          <p class="subtitulo">Relação dos contatos selecionados para conferência e impressão.</p>
+        </header>
+
+        <section class="resumo">
+          <div class="kpi"><strong>${selecionados.length}</strong><span>Total</span></div>
+          <div class="kpi"><strong>${diretores}</strong><span>Diretores</span></div>
+          <div class="kpi"><strong>${adjuntos}</strong><span>Adjuntos</span></div>
+          <div class="kpi"><strong>${municipios}</strong><span>Municípios</span></div>
+        </section>
+
+        <main class="lista">
+          ${contatosHTML}
+        </main>
+
+        <footer class="rodape">
+          Gerado pelo Radar Link MS em ${new Date().toLocaleString("pt-BR")}
+        </footer>
+
+        <script>
+          window.addEventListener("load", function () {
+            setTimeout(function () {
+              window.print();
+            }, 250);
+          });
+        </script>
+      </body>
+      </html>
+    `);
+    janela.document.close();
+  }
+
   function ModalTransmissao({ candidato }) {
     if (!transmissaoAberta) return null;
     const todosMarcados = contatosTransmissao.length > 0 && selecionadosTransmissao.length === contatosTransmissao.length;
@@ -2738,12 +2932,13 @@ export default function App() {
           </div>
 
           <div className="broadcast-note">
-            Exporte o arquivo CSV e importe no Google Contatos. Após a sincronização com o telefone, os contatos poderão ser usados na criação da lista de transmissão dentro do WhatsApp/WhatsApp Business.
+            Use “Gerar PDF / Imprimir” para conferir a lista. Para levar os contatos ao telefone, exporte o CSV e importe no Google Contatos.
           </div>
 
           <div className="broadcast-actions">
             <button className="btn secondary" onClick={selecionarTodosTransmissao}>{todosMarcados ? "Desmarcar todos" : "Selecionar todos"}</button>
             <button className="btn secondary" onClick={copiarTelefonesTransmissao}>📋 Copiar telefones</button>
+            <button className="btn secondary" onClick={gerarPDFTransmissao}>🖨️ Gerar PDF / Imprimir</button>
             <button className="btn primary" onClick={exportarCSVTransmissao}>👥 Exportar Google Contatos (.CSV)</button>
           </div>
 
