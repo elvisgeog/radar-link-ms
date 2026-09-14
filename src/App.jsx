@@ -2662,39 +2662,57 @@ export default function App() {
     }
   }
 
-  function exportarVCardTransmissao() {
+  function exportarCSVTransmissao() {
     const selecionados = contatosSelecionadosTransmissao();
     if (!selecionados.length) return alert("Selecione ao menos um contato.");
 
-    const vcf = selecionados.map((item, indice) => {
-      const nome = escaparVCard(item.nome);
-      const organizacao = escaparVCard(`${item.escola} - ${item.cidade}`);
-      const cargo = escaparVCard(item.cargo);
-      const uidBase = String(item._idTransmissao || `${item.nome}-${indice}`)
-        .replace(/[^a-zA-Z0-9_-]+/g, "-");
+    function csvEscape(valor) {
+      const texto = String(valor ?? "");
+      return `"${texto.replace(/"/g, '""')}"`;
+    }
+
+    // Cabeçalhos compatíveis com importação no Google Contatos.
+    const cabecalho = [
+      "Name",
+      "Given Name",
+      "Organization 1 - Name",
+      "Organization 1 - Title",
+      "Phone 1 - Type",
+      "Phone 1 - Value",
+      "Notes"
+    ];
+
+    const linhas = selecionados.map((item) => {
+      const observacao = [
+        `Cargo: ${item.cargo || ""}`,
+        `Escola: ${item.escola || ""}`,
+        `Município: ${item.cidade || ""}`
+      ].join(" | ");
 
       return [
-        "BEGIN:VCARD",
-        "VERSION:3.0",
-        "PRODID:-//Radar Link MS//Linha de Transmissao//PT-BR",
-        `UID:radar-link-${uidBase}`,
-        `FN:${nome}`,
-        `N:;${nome};;;`,
-        `ORG:${organizacao}`,
-        `TITLE:${cargo}`,
-        `TEL;TYPE=CELL:${item.telefoneE164}`,
-        "END:VCARD"
-      ].join("\r\n");
-    }).join("\r\n\r\n") + "\r\n";
+        csvEscape(item.nome),
+        csvEscape(item.nome),
+        csvEscape(item.escola),
+        csvEscape(item.cargo),
+        csvEscape("Mobile"),
+        csvEscape(item.telefoneE164),
+        csvEscape(observacao)
+      ].join(",");
+    });
 
-    const blob = new Blob(["\uFEFF", vcf], { type: "text/vcard;charset=utf-8" });
+    // BOM UTF-8 evita problemas com acentos no Excel/Google Contatos.
+    const csv = "\uFEFF" + [cabecalho.join(","), ...linhas].join("\r\n") + "\r\n";
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
+
     const nomeCandidato = String(detalhePolitico?.deputado || "contatos")
       .replace(/[^a-zA-Z0-9À-ÿ_-]+/g, "_");
 
     a.href = url;
-    a.download = `linha_transmissao_${nomeCandidato}_${selecionados.length}_contatos.vcf`;
+    a.download = `google_contatos_${nomeCandidato}_${selecionados.length}_contatos.csv`;
+
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -2720,13 +2738,13 @@ export default function App() {
           </div>
 
           <div className="broadcast-note">
-            Exporte os contatos e importe/salve no telefone. A criação da lista de transmissão é concluída dentro do WhatsApp/WhatsApp Business.
+            Exporte o arquivo CSV e importe no Google Contatos. Após a sincronização com o telefone, os contatos poderão ser usados na criação da lista de transmissão dentro do WhatsApp/WhatsApp Business.
           </div>
 
           <div className="broadcast-actions">
             <button className="btn secondary" onClick={selecionarTodosTransmissao}>{todosMarcados ? "Desmarcar todos" : "Selecionar todos"}</button>
             <button className="btn secondary" onClick={copiarTelefonesTransmissao}>📋 Copiar telefones</button>
-            <button className="btn primary" onClick={exportarVCardTransmissao}>⬇️ Exportar contatos (.VCF)</button>
+            <button className="btn primary" onClick={exportarCSVTransmissao}>👥 Exportar Google Contatos (.CSV)</button>
           </div>
 
           <div className="broadcast-list">
