@@ -1188,6 +1188,20 @@ function whatsappLink(telefone) {
   return `https://wa.me/${numero}`;
 }
 
+function telefoneE164(telefone) {
+  const digitos = String(telefone || "").replace(/\D/g, "");
+  if (digitos.length < 10) return "";
+  return digitos.startsWith("55") ? `+${digitos}` : `+55${digitos}`;
+}
+
+function escaparVCard(valor) {
+  return String(valor || "")
+    .replace(/\\/g, "\\\\")
+    .replace(/;/g, "\\;")
+    .replace(/,/g, "\\,")
+    .replace(/\n/g, "\\n");
+}
+
 const escolasPorMunicipio = gestoresPoliticosBase.reduce((mapa, item) => {
   if (!mapa[item.cidade]) mapa[item.cidade] = [];
   if (!mapa[item.cidade].includes(item.escola)) mapa[item.cidade].push(item.escola);
@@ -2011,6 +2025,49 @@ const GLOBAL_CSS = `
     }
   }
 
+  .whatsapp-broadcast {
+    background:#147A44;
+    color:#fff;
+    border-color:#147A44;
+  }
+  .whatsapp-broadcast:hover { filter:brightness(.96); transform:translateY(-1px); }
+  .broadcast-backdrop {
+    position:fixed; inset:0; z-index:9999; background:rgba(2,18,34,.68);
+    display:flex; align-items:center; justify-content:center; padding:18px;
+    backdrop-filter:blur(3px);
+  }
+  .broadcast-modal {
+    width:min(860px,100%); max-height:92vh; overflow:hidden; background:#fff; color:#172434;
+    border-radius:22px; box-shadow:0 24px 80px rgba(0,0,0,.32); display:flex; flex-direction:column;
+  }
+  .broadcast-head { display:flex; justify-content:space-between; gap:18px; padding:22px 24px 14px; border-bottom:1px solid #e5ebf1; }
+  .broadcast-head h3 { margin:4px 0 5px; font-size:24px; }
+  .broadcast-head p { margin:0; color:#5c6d7e; }
+  .broadcast-close { border:0; background:#eef3f7; width:38px; height:38px; border-radius:50%; font-size:25px; cursor:pointer; color:#294158; }
+  .broadcast-note { margin:14px 24px 0; padding:12px 14px; background:#eef8f2; border:1px solid #cce8d6; border-radius:12px; color:#285f3e; font-size:13px; line-height:1.5; }
+  .broadcast-actions { display:flex; flex-wrap:wrap; gap:9px; padding:14px 24px; }
+  .broadcast-list { overflow:auto; padding:0 24px 12px; display:grid; gap:8px; }
+  .broadcast-row { display:flex; align-items:flex-start; gap:12px; border:1px solid #dde6ee; border-radius:13px; padding:11px 13px; cursor:pointer; background:#fff; }
+  .broadcast-row:hover { background:#f7fafc; }
+  .broadcast-row input { margin-top:4px; width:18px; height:18px; accent-color:#147A44; }
+  .broadcast-person { display:flex; flex-direction:column; gap:2px; min-width:0; }
+  .broadcast-person strong { font-size:14px; }
+  .broadcast-person span { font-size:12.5px; color:#42566a; }
+  .broadcast-person small { font-size:11.5px; color:#758596; }
+  .broadcast-footer { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:13px 24px 18px; border-top:1px solid #e5ebf1; font-size:13px; font-weight:700; }
+
+  @media (max-width:640px) {
+    .broadcast-backdrop { padding:8px; align-items:flex-end; }
+    .broadcast-modal { max-height:95vh; border-radius:18px 18px 8px 8px; }
+    .broadcast-head { padding:17px 16px 12px; }
+    .broadcast-head h3 { font-size:20px; }
+    .broadcast-note { margin:12px 16px 0; }
+    .broadcast-actions { padding:12px 16px; }
+    .broadcast-actions .btn { width:100%; }
+    .broadcast-list { padding:0 16px 10px; }
+    .broadcast-footer { padding:12px 16px 14px; }
+  }
+
   @media print {
     @page { margin:12mm; }
     body,.radar-app,.report-page { background:#fff !important; color:#222 !important; }
@@ -2060,6 +2117,9 @@ export default function App() {
   const [buscaDobradinha, setBuscaDobradinha] = useState("");
   const [filtroDobradinha, setFiltroDobradinha] = useState("TODAS");
   const [erroSistema, setErroSistema] = useState("");
+  const [transmissaoAberta, setTransmissaoAberta] = useState(false);
+  const [contatosTransmissao, setContatosTransmissao] = useState([]);
+  const [selecionadosTransmissao, setSelecionadosTransmissao] = useState([]);
 
   useEffect(() => { if (autenticado) carregarRegistros(); }, [autenticado]);
 
@@ -2111,6 +2171,9 @@ export default function App() {
     setSenhaDigitada("");
     setDetalhePolitico(null);
     setDetalheDobradinha(null);
+    setTransmissaoAberta(false);
+    setContatosTransmissao([]);
+    setSelecionadosTransmissao([]);
   }
 
   function navegar(destino) {
@@ -2118,6 +2181,9 @@ export default function App() {
     setDetalhePolitico(null);
     setDetalheDobradinha(null);
     setFiltroAtivo(null);
+    setTransmissaoAberta(false);
+    setContatosTransmissao([]);
+    setSelecionadosTransmissao([]);
     rolarParaTopo();
   }
 
@@ -2552,6 +2618,135 @@ export default function App() {
     );
   }
 
+  function prepararLinhaTransmissao(item) {
+    const lista = registrosDoDeputado(item)
+      .map((registro, indice) => ({
+        ...registro,
+        _idTransmissao: `${item.tipo}-${item.deputado}-${registro.cidade}-${registro.escola}-${registro.nome}-${indice}`,
+        telefoneE164: telefoneE164(registro.telefone)
+      }))
+      .filter((registro) => registro.telefoneE164);
+
+    setContatosTransmissao(lista);
+    setSelecionadosTransmissao(lista.map((registro) => registro._idTransmissao));
+    setTransmissaoAberta(true);
+  }
+
+  function alternarContatoTransmissao(id) {
+    setSelecionadosTransmissao((atuais) =>
+      atuais.includes(id) ? atuais.filter((item) => item !== id) : [...atuais, id]
+    );
+  }
+
+  function selecionarTodosTransmissao() {
+    if (selecionadosTransmissao.length === contatosTransmissao.length) {
+      setSelecionadosTransmissao([]);
+    } else {
+      setSelecionadosTransmissao(contatosTransmissao.map((item) => item._idTransmissao));
+    }
+  }
+
+  function contatosSelecionadosTransmissao() {
+    return contatosTransmissao.filter((item) => selecionadosTransmissao.includes(item._idTransmissao));
+  }
+
+  async function copiarTelefonesTransmissao() {
+    const selecionados = contatosSelecionadosTransmissao();
+    const texto = selecionados.map((item) => item.telefoneE164).join("\n");
+    if (!texto) return alert("Selecione ao menos um contato.");
+    try {
+      await navigator.clipboard.writeText(texto);
+      alert(`${selecionados.length} telefone(s) copiado(s).`);
+    } catch {
+      alert("Não foi possível copiar automaticamente. Use a exportação de contatos.");
+    }
+  }
+
+  function exportarVCardTransmissao() {
+    const selecionados = contatosSelecionadosTransmissao();
+    if (!selecionados.length) return alert("Selecione ao menos um contato.");
+
+    const vcf = selecionados.map((item) => {
+      const nome = escaparVCard(item.nome);
+      const organizacao = escaparVCard(`${item.escola} - ${item.cidade}`);
+      const cargo = escaparVCard(item.cargo);
+      return [
+        "BEGIN:VCARD",
+        "VERSION:3.0",
+        `FN:${nome}`,
+        `N:${nome};;;;`,
+        `ORG:${organizacao}`,
+        `TITLE:${cargo}`,
+        `TEL;TYPE=CELL:${item.telefoneE164}`,
+        "END:VCARD"
+      ].join("\r\n");
+    }).join("\r\n");
+
+    const blob = new Blob([vcf], { type: "text/vcard;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    const nomeCandidato = String(detalhePolitico?.deputado || "contatos").replace(/[^a-zA-Z0-9À-ÿ_-]+/g, "_");
+    a.href = url;
+    a.download = `linha_transmissao_${nomeCandidato}.vcf`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+  }
+
+  function ModalTransmissao({ candidato }) {
+    if (!transmissaoAberta) return null;
+    const todosMarcados = contatosTransmissao.length > 0 && selecionadosTransmissao.length === contatosTransmissao.length;
+    const selecionados = contatosSelecionadosTransmissao();
+
+    return (
+      <div className="broadcast-backdrop no-print" onClick={() => setTransmissaoAberta(false)}>
+        <div className="broadcast-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="broadcast-head">
+            <div>
+              <div className="eyebrow">WhatsApp · preparação</div>
+              <h3>📲 Preparar Linha de Transmissão</h3>
+              <p>{candidato?.deputado || "Candidato"} · {selecionados.length} de {contatosTransmissao.length} contatos selecionados</p>
+            </div>
+            <button className="broadcast-close" onClick={() => setTransmissaoAberta(false)} aria-label="Fechar">×</button>
+          </div>
+
+          <div className="broadcast-note">
+            Exporte os contatos e importe/salve no telefone. A criação da lista de transmissão é concluída dentro do WhatsApp/WhatsApp Business.
+          </div>
+
+          <div className="broadcast-actions">
+            <button className="btn secondary" onClick={selecionarTodosTransmissao}>{todosMarcados ? "Desmarcar todos" : "Selecionar todos"}</button>
+            <button className="btn secondary" onClick={copiarTelefonesTransmissao}>📋 Copiar telefones</button>
+            <button className="btn primary" onClick={exportarVCardTransmissao}>⬇️ Exportar contatos (.VCF)</button>
+          </div>
+
+          <div className="broadcast-list">
+            {contatosTransmissao.map((registro) => (
+              <label className="broadcast-row" key={registro._idTransmissao}>
+                <input
+                  type="checkbox"
+                  checked={selecionadosTransmissao.includes(registro._idTransmissao)}
+                  onChange={() => alternarContatoTransmissao(registro._idTransmissao)}
+                />
+                <div className="broadcast-person">
+                  <strong>{registro.nome}</strong>
+                  <span>{registro.cargo} · {registro.escola}</span>
+                  <small>{registro.cidade} · {registro.telefone} · {registro.telefoneE164}</small>
+                </div>
+              </label>
+            ))}
+          </div>
+
+          <div className="broadcast-footer">
+            <span>{selecionados.length} contato(s) selecionado(s)</span>
+            <button className="btn secondary" onClick={() => setTransmissaoAberta(false)}>Concluir</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   function CardDeputado({ item }) {
     const perfil = perfilCandidato(item.deputado);
     const nomeExibicao = nomeCandidatoExibicao(perfil.nome, true);
@@ -2635,7 +2830,15 @@ export default function App() {
           </div>
           <div className="kpi-grid"><Kpi label="Total" value={detalhePolitico.total}/><Kpi label="Diretores" value={detalhePolitico.diretores}/><Kpi label="Adjuntos" value={detalhePolitico.adjuntos}/><Kpi label="Municípios" value={municipios}/><Kpi label="Base" value="Word" note="Anexos atuais"/></div>
         </section>
-        <section className="panel"><div className="actions no-print"><button className="btn secondary" onClick={() => setDetalhePolitico(null)}>← Voltar</button><button className="btn primary" onClick={gerarPDF}>Imprimir / Salvar PDF</button></div><ListaPessoas registrosLista={lista} /></section>
+        <section className="panel">
+          <div className="actions no-print">
+            <button className="btn secondary" onClick={() => setDetalhePolitico(null)}>← Voltar</button>
+            <button className="btn whatsapp-broadcast" onClick={() => prepararLinhaTransmissao(detalhePolitico)}>📲 Preparar Linha de Transmissão</button>
+            <button className="btn primary" onClick={gerarPDF}>Imprimir / Salvar PDF</button>
+          </div>
+          <ListaPessoas registrosLista={lista} />
+        </section>
+        <ModalTransmissao candidato={detalhePolitico} />
       </StableShell>;
     }
 
