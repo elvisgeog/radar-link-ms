@@ -2666,32 +2666,40 @@ export default function App() {
     const selecionados = contatosSelecionadosTransmissao();
     if (!selecionados.length) return alert("Selecione ao menos um contato.");
 
-    const vcf = selecionados.map((item) => {
+    const vcf = selecionados.map((item, indice) => {
       const nome = escaparVCard(item.nome);
       const organizacao = escaparVCard(`${item.escola} - ${item.cidade}`);
       const cargo = escaparVCard(item.cargo);
+      const uidBase = String(item._idTransmissao || `${item.nome}-${indice}`)
+        .replace(/[^a-zA-Z0-9_-]+/g, "-");
+
       return [
         "BEGIN:VCARD",
         "VERSION:3.0",
+        "PRODID:-//Radar Link MS//Linha de Transmissao//PT-BR",
+        `UID:radar-link-${uidBase}`,
         `FN:${nome}`,
-        `N:${nome};;;;`,
+        `N:;${nome};;;`,
         `ORG:${organizacao}`,
         `TITLE:${cargo}`,
         `TEL;TYPE=CELL:${item.telefoneE164}`,
         "END:VCARD"
       ].join("\r\n");
-    }).join("\r\n");
+    }).join("\r\n\r\n") + "\r\n";
 
-    const blob = new Blob([vcf], { type: "text/vcard;charset=utf-8" });
+    const blob = new Blob(["\uFEFF", vcf], { type: "text/vcard;charset=utf-8" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
-    const nomeCandidato = String(detalhePolitico?.deputado || "contatos").replace(/[^a-zA-Z0-9À-ÿ_-]+/g, "_");
+    const nomeCandidato = String(detalhePolitico?.deputado || "contatos")
+      .replace(/[^a-zA-Z0-9À-ÿ_-]+/g, "_");
+
     a.href = url;
-    a.download = `linha_transmissao_${nomeCandidato}.vcf`;
+    a.download = `linha_transmissao_${nomeCandidato}_${selecionados.length}_contatos.vcf`;
     document.body.appendChild(a);
     a.click();
     a.remove();
-    URL.revokeObjectURL(url);
+
+    window.setTimeout(() => URL.revokeObjectURL(url), 1500);
   }
 
   function ModalTransmissao({ candidato }) {
