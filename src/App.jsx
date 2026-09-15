@@ -34,7 +34,7 @@ const gestoresPoliticosBase = [
     "nome": "Valdinei Marques Mendonça",
     "telefone": "(67)9.9642-9814",
     "estadual": "Marcelo Miranda",
-    "federal": "Viviane Luiza"
+    "federal": "Mara Caseiro"
   },
   {
     "cidade": "CAARAPÓ",
@@ -42,7 +42,7 @@ const gestoresPoliticosBase = [
     "cargo": "Diretor",
     "nome": "Eduardo Bonfa",
     "telefone": "(67)99921-9887",
-    "estadual": "Zé Teixeira",
+    "estadual": "Marcelo Miranda",
     "federal": "Mara Caseiro"
   },
   {
@@ -52,7 +52,7 @@ const gestoresPoliticosBase = [
     "nome": "Nilza Elena Zambão",
     "telefone": "(67) 9.9912 4658",
     "estadual": "Marcelo Miranda",
-    "federal": "Viviane Luiza"
+    "federal": "Mara Caseiro"
   },
   {
     "cidade": "CAARAPÓ",
@@ -79,7 +79,7 @@ const gestoresPoliticosBase = [
     "nome": "Vagna Dias de Azevedo Lourenço",
     "telefone": "(67) 9.9337-3468",
     "estadual": "Marcelo Miranda",
-    "federal": "Viviane Luiza"
+    "federal": "Oposição"
   },
   {
     "cidade": "DEODÁPOLIS",
@@ -492,7 +492,7 @@ const gestoresPoliticosBase = [
     "cargo": "Diretor",
     "nome": "Katiane Silva de Souza",
     "telefone": "(67) 9.8422-4228",
-    "estadual": "Hélio Peluffo",
+    "estadual": "Pedrossian Neto",
     "federal": "Mara Caseiro"
   },
   {
