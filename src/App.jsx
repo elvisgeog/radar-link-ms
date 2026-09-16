@@ -42,7 +42,7 @@ const gestoresPoliticosBase = [
     "cargo": "Diretor",
     "nome": "Eduardo Bonfa",
     "telefone": "(67)99921-9887",
-    "estadual": "Marcelo Miranda",
+    "estadual": "Zé Teixeira",
     "federal": "Mara Caseiro"
   },
   {
@@ -465,7 +465,7 @@ const gestoresPoliticosBase = [
     "cargo": "Diretor",
     "nome": "Robson Assunção dos Santos",
     "telefone": "(67) 9.9927-6072",
-    "estadual": "Zé Teixeira",
+    "estadual": "Marcelo Miranda",
     "federal": "Jaime Verruck"
   },
   {
