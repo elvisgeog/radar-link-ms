@@ -1,0 +1,7 @@
+{
+  "functions": {
+    "api/tse-sync.js": {
+      "maxDuration": 60
+    }
+  }
+}
