@@ -21,15 +21,19 @@ function padEleicao(valor) { return String(valor).padStart(6, "0"); }
 
 function iniciarFirebaseAdmin() {
   if (!getApps().length) {
-    const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
-    if (!process.env.FIREBASE_PROJECT_ID || !process.env.FIREBASE_CLIENT_EMAIL || !privateKey) {
-      throw new Error("Configure FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL e FIREBASE_PRIVATE_KEY na Vercel.");
+    if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+      throw new Error("FIREBASE_SERVICE_ACCOUNT não configurada na Vercel.");
     }
-    initializeApp({ credential: cert({ projectId: process.env.FIREBASE_PROJECT_ID, clientEmail: process.env.FIREBASE_CLIENT_EMAIL, privateKey }) });
+
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+
+    initializeApp({
+      credential: cert(serviceAccount),
+    });
   }
+
   return getFirestore();
 }
-
 function raizTSE() {
   const base = (process.env.TSE_BASE_URL || "https://resultados-sim.tse.jus.br/simulado").replace(/\/+$/, "");
   const ambiente = process.env.TSE_AMBIENTE || "simulado2026";
