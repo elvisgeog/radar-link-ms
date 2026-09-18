@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { collection, addDoc, getDocs, deleteDoc, updateDoc, doc } from "firebase/firestore";
 import { db } from "./firebase";
+import ResultadosTSE2026 from "./ResultadosTSE2026";
 
 // ============================================================
 // RADAR LINK MS — BASE POLÍTICA
@@ -2490,6 +2491,7 @@ export default function App() {
       { id: "inicio", label: "Painel", sub: "Visão geral" },
       { id: "formularios", label: "Formulários", sub: "Cadastro técnico" },
       { id: "graficos", label: "Indicadores", sub: "Resultados" },
+      { id: "resultadosTSE", label: "Resultados TSE", sub: "Eleições 2026" },
       { id: "politico", label: "Cenário Político", sub: "Base regional" },
       { id: "dobradinha", label: "Dobradinha", sub: "Estadual + Federal" },
       { id: "relatorio", label: "Relatório", sub: "Impressão / PDF" }
@@ -3198,6 +3200,7 @@ export default function App() {
   if (filtroAtivo) return TelaListaFiltro();
   if (tela === "formularios") return TelaFormularios();
   if (tela === "graficos") return TelaGraficos();
+  if (tela === "resultadosTSE") return <ResultadosTSE2026 onVoltar={() => setTela("inicio")} />;
   if (tela === "politico") return TelaPolitica();
   if (tela === "dobradinha") return TelaDobradinha();
   if (tela === "relatorio") return TelaRelatorio();
