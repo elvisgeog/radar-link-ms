@@ -126,7 +126,23 @@ export default async function handler(req, res) {
   if (!autorizado(req)) return res.status(401).json({ ok: false, erro: "Não autorizado." });
   const inicio = Date.now();
   const db = iniciarFirebaseAdmin();
+if (req.query?.debug === "auth") {
+  try {
+    const token = await getApps()[0].options.credential.getAccessToken();
 
+    return res.status(200).json({
+      ok: true,
+      auth: "token-gerado",
+      expiracao: token.expirationTime
+    });
+  } catch (e) {
+    return res.status(500).json({
+      ok: false,
+      auth: "falhou",
+      erro: e.message
+    });
+  }
+}
   try {
     const config = await obterJSON(urlMunicipios());
     const uf = (process.env.TSE_UF || "ms").toLowerCase();
