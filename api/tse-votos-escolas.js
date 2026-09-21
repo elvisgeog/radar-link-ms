@@ -153,15 +153,7 @@ async function consultarSecao({
   }
 
   const dados = await resposta.json();
-if (String(secao) === "113") {
-  console.log("EA18 RAW SECAO 113:", JSON.stringify(dados));
 
-  return {
-    secao: String(secao),
-    disponivel: true,
-    debugRaw: dados,
-  };
-}
   const hashes = Array.isArray(dados.hashes)
     ? dados.hashes
     : [];
