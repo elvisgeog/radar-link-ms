@@ -191,10 +191,15 @@ export default async function handler(req, res) {
 
     const resposta = await fetch(TSE_URL, {
       cache: "no-store",
-      headers: {
-        Accept: "application/zip,*/*",
-        "User-Agent": "RadarLinkMS/1.0",
-      },
+     headers: {
+  Accept: "application/zip,application/octet-stream,*/*",
+  "User-Agent":
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/152.0.0.0 Safari/537.36",
+  "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+  Referer:
+    "https://dadosabertos.tse.jus.br/dataset/eleitorado-2026/resource/bfc7d118-2d99-445c-bf75-11c64d0e3cbb",
+  "Cache-Control": "no-cache",
+},
     });
 
     if (!resposta.ok) {
