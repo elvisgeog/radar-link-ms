@@ -21,11 +21,16 @@ function padEleicao(valor) { return String(valor).padStart(6, "0"); }
 
 function iniciarFirebaseAdmin() {
   if (!getApps().length) {
-    if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
-      throw new Error("FIREBASE_SERVICE_ACCOUNT não configurada na Vercel.");
+    if (!process.env.FIREBASE_SERVICE_ACCOUNT_B64) {
+      throw new Error("FIREBASE_SERVICE_ACCOUNT_B64 não configurada na Vercel.");
     }
 
-    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    const json = Buffer.from(
+      process.env.FIREBASE_SERVICE_ACCOUNT_B64,
+      "base64"
+    ).toString("utf8");
+
+    const serviceAccount = JSON.parse(json);
 
     initializeApp({
       credential: cert(serviceAccount),
@@ -34,6 +39,7 @@ function iniciarFirebaseAdmin() {
 
   return getFirestore();
 }
+ 
 function raizTSE() {
   const base = (process.env.TSE_BASE_URL || "https://resultados-sim.tse.jus.br/simulado").replace(/\/+$/, "");
   const ambiente = process.env.TSE_AMBIENTE || "simulado2026";
