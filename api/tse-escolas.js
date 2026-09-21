@@ -3,7 +3,7 @@ import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import { inflateRawSync } from "node:zlib";
 
 const TSE_URL =
-  "https://cdn.tse.jus.br/estatistica/sead/odsele/perfil_eleitor_secao/perfil_eleitor_secao_2026_MS.zip";
+  "https://dadosabertos.tse.jus.br/dataset/eleitorado-2026/resource/bfc7d118-2d99-445c-bf75-11c64d0e3cbb/download/perfil_eleitor_secao_2026_ms.zip";
 
 const MUNICIPIOS_CRE5 = [
   "CAARAPÓ",
