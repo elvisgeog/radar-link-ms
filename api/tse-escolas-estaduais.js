@@ -299,8 +299,8 @@ export default async function handler(req, res) {
           totalEscolasRadar:
             escolasRadar.size,
 
-          encontradas,
-          naoEncontradas,
+          encontradas: encontrados,
+naoEncontradas: naoEncontrados,
 
           atualizadoEm:
             FieldValue.serverTimestamp(),
@@ -314,8 +314,8 @@ export default async function handler(req, res) {
       totalEscolasRadar:
         escolasRadar.size,
 
-      encontradas,
-      naoEncontradas,
+      encontradas: encontrados,
+naoEncontradas: naoEncontrados,
 
       pendentes:
         pendentes.slice(0, 30),
