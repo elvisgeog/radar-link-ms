@@ -94,7 +94,23 @@ function similaridade(a, b) {
 
   return intersecao / uniao.size;
 }
+function pareceEscolaEstadual(nome = "") {
+  const n = String(nome)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
+    .trim();
 
+  return (
+    n.startsWith("EE ") ||
+    n.startsWith("E.E. ") ||
+    n.startsWith("ESCOLA ESTADUAL ") ||
+    n.startsWith("ESC ESTADUAL ") ||
+    n.startsWith("CEEP ") ||
+    n.startsWith("CEEJA ") ||
+    n.startsWith("CENTRO ESTADUAL ")
+  );
+}
 function idSeguro(texto = "") {
   return normalizar(texto)
     .toLowerCase()
@@ -179,7 +195,22 @@ export default async function handler(req, res) {
         String(d.secao)
       );
     }
+for (const locais of locaisPorMunicipio.values()) {
+  for (const local of locais.values()) {
+    if (!pareceEscolaEstadual(local.nomeLocalVotacao)) continue;
 
+    const chave =
+      `${normalizar(local.municipio)}|${normalizar(local.nomeLocalVotacao)}`;
+
+    if (!escolasRadar.has(chave)) {
+      escolasRadar.set(chave, {
+        escola: local.nomeLocalVotacao,
+        municipio: local.municipio,
+        origem: "TSE",
+      });
+    }
+  }
+}
     let batch = db.batch();
     let operacoes = 0;
 
