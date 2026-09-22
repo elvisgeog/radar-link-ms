@@ -374,7 +374,19 @@ export default async function handler(req, res) {
     }
 
     await salvarBatch();
+const testeCaarapo = await db
+  .collection("secoes_tse_2026")
+  .where("municipioNormalizado", "==", "CAARAPO")
+  .limit(5)
+  .get();
 
+const debugCaarapo = testeCaarapo.docs.map((doc) => ({
+  id: doc.id,
+  municipio: doc.data().municipio,
+  municipioNormalizado: doc.data().municipioNormalizado,
+  zona: doc.data().zona,
+  secao: doc.data().secao,
+}));
     const municipios = {};
 
     for (const [nome, dados] of Object.entries(resumo)) {
@@ -402,6 +414,7 @@ export default async function handler(req, res) {
     return res.status(200).json({
       ok: true,
       totalSecoesVinculadas: gravados,
+      debugCaarapo,
       municipios,
       duracaoMs: Date.now() - inicio,
     });
