@@ -123,7 +123,17 @@ function idSeguro(texto = "") {
     .replace(/[^a-z0-9_]/g, "")
     .slice(0, 120);
 }
+function ehCeepCeejaDourados(nome = "", municipio = "") {
+  const n = normalizar(nome);
+  const m = normalizar(municipio);
 
+  if (m !== "DOURADOS") return false;
+
+  return (
+    n.includes("CEEJA") ||
+    n.includes("CENTRO ESTADUAL DE EDUCACAO PROFISSIONAL")
+  );
+}
 export default async function handler(req, res) {
   const inicio = Date.now();
 
@@ -147,10 +157,15 @@ export default async function handler(req, res) {
     for (const doc of snapGestores.docs) {
       const d = doc.data();
 
-      const escola = String(d.escola || "").trim();
-      const municipio = String(
-        d.municipio || d["município"] || ""
-      ).trim();
+      const escolaOriginal = String(d.escola || "").trim();
+
+const municipio = String(
+  d.municipio || d["município"] || ""
+).trim();
+
+const escola = ehCeepCeejaDourados(escolaOriginal, municipio)
+  ? "CENTRO ESTADUAL DE EDUCAÇÃO PROFISSIONAL E CEEJA/MS"
+  : escolaOriginal;
 
       if (!escola || !municipio) continue;
 
@@ -204,12 +219,19 @@ for (const locais of locaisPorMunicipio.values()) {
   for (const local of locais.values()) {
     if (!pareceEscolaEstadual(local.nomeLocalVotacao)) continue;
 
-    const chave =
-      `${normalizar(local.municipio)}|${normalizar(local.nomeLocalVotacao)}`;
+    const nomeLocalUnificado = ehCeepCeejaDourados(
+  local.nomeLocalVotacao,
+  local.municipio
+)
+  ? "CENTRO ESTADUAL DE EDUCAÇÃO PROFISSIONAL E CEEJA/MS"
+  : local.nomeLocalVotacao;
+
+const chave =
+  `${normalizar(local.municipio)}|${normalizar(nomeLocalUnificado)}`;
 
     if (!escolasRadar.has(chave)) {
       escolasRadar.set(chave, {
-        escola: local.nomeLocalVotacao,
+        escola: nomeLocalUnificado,
         municipio: local.municipio,
         origem: "TSE",
       });
