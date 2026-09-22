@@ -206,7 +206,11 @@ useEffect(() => {
       </section>
 
       {filtrados.length === 0 && (
-        <section style={s.panel}><p>Nenhum resultado sincronizado ainda para este filtro.</p></section>
+        <section style={s.panel}><p>
+  {escolaId !== "GERAL"
+    ? "Aguardando os boletins de urna (BU) das seções desta escola. Assim que estiverem disponíveis no TSE, os resultados poderão ser sincronizados por escola."
+    : "Nenhum resultado sincronizado ainda para este filtro."}
+</p></section>
       )}
 
       {filtrados.map((d) => (
