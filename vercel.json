@@ -3,5 +3,11 @@
     "api/tse-sync.js": {
       "maxDuration": 60
     }
-  }
+  },
+  "crons": [
+    {
+      "path": "/api/tse-sync",
+      "schedule": "0 21 * * *"
+    }
+  ]
 }
