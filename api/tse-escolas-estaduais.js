@@ -245,10 +245,19 @@ for (const locais of locaisPorMunicipio.values()) {
 
       if (locais) {
         for (const local of locais.values()) {
-          const score = similaridade(
-            escolaRadar.escola,
-            local.nomeLocalVotacao
-          );
+          const scoreBase = similaridade(
+  escolaRadar.escola,
+  local.nomeLocalVotacao
+);
+
+const escolaNorm = normalizar(escolaRadar.escola);
+const localNorm = normalizar(local.nomeLocalVotacao);
+
+const score =
+  escolaNorm.includes("CEEJA") &&
+  localNorm.includes("CEEJA")
+    ? 1
+    : scoreBase;
 
           if (score > melhorScore) {
             melhorScore = score;
