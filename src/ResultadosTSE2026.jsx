@@ -29,7 +29,8 @@ export default function ResultadosTSE2026({ onVoltar }) {
   const [erro, setErro] = useState("");
   const [municipio, setMunicipio] = useState("GERAL");
   const [cargo, setCargo] = useState("3");
-
+const [escolasTSE, setEscolasTSE] = useState([]);
+const [escolaId, setEscolaId] = useState("GERAL");
   useEffect(() => {
     const cancelar = onSnapshot(
       collection(db, "resultados_tse_2026"),
@@ -41,15 +42,49 @@ export default function ResultadosTSE2026({ onVoltar }) {
     );
     return () => cancelar();
   }, []);
+useEffect(() => {
+  const cancelar = onSnapshot(
+    collection(db, "escolas_tse_2026"),
+    (snapshot) => {
+      setEscolasTSE(
+        snapshot.docs.map((d) => ({
+          id: d.id,
+          ...d.data(),
+        }))
+      );
+    },
+    (e) => setErro(e.message || "Falha ao ler escolas no Firestore.")
+  );
 
+  return () => cancelar();
+}, []);
   const municipios = useMemo(
     () => [...new Set(dados.map((d) => d.municipio).filter(Boolean))]
       .sort((a, b) => a.localeCompare(b, "pt-BR")),
     [dados]
   );
+  const escolasDoMunicipio = useMemo(() => {
+  if (municipio === "GERAL") return [];
 
+  return escolasTSE
+    .filter(
+      (e) =>
+        String(e.municipio || "").toUpperCase() ===
+        String(municipio).toUpperCase()
+    )
+    .sort((a, b) =>
+      String(a.escolaRadar || "").localeCompare(
+        String(b.escolaRadar || ""),
+        "pt-BR"
+      )
+    );
+}, [escolasTSE, municipio]);
+  const escolaSelecionada = useMemo(() => {
+  if (escolaId === "GERAL") return null;
+  return escolasTSE.find((e) => e.id === escolaId) || null;
+}, [escolasTSE, escolaId]);
   const filtrados = useMemo(() => {
-    return dados
+      return dados
       .filter((d) => String(d.cargoCodigo) === String(cargo))
       .filter((d) => municipio === "GERAL" || d.municipio === municipio)
       .sort((a, b) => String(a.municipio).localeCompare(String(b.municipio), "pt-BR"));
@@ -99,14 +134,61 @@ export default function ResultadosTSE2026({ onVoltar }) {
             ))}
           </select>
 
-          <select style={s.input} value={municipio} onChange={(e) => setMunicipio(e.target.value)}>
+          <select style={s.input} value={municipio} onChange={(e) => {
+  setMunicipio(e.target.value);
+  setEscolaId("GERAL");
+}}>
             <option value="GERAL">Todos os municípios CRE-5</option>
             {municipios.map((m) => <option key={m}>{m}</option>)}
           </select>
+          <select
+  style={s.input}
+  value={escolaId}
+  onChange={(e) => setEscolaId(e.target.value)}
+  disabled={municipio === "GERAL"}
+>
+  <option value="GERAL">
+    {municipio === "GERAL"
+      ? "Selecione um município primeiro"
+      : "Todas as escolas estaduais"}
+  </option>
+
+  {escolasDoMunicipio.map((e) => (
+    <option key={e.id} value={e.id}>
+      {e.escolaRadar}
+    </option>
+  ))}
+</select>
         </div>
 
         {erro && <div style={s.erro}>{erro}</div>}
+{escolaSelecionada && (
+  <div
+    style={{
+      marginTop: 14,
+      padding: 14,
+      borderRadius: 12,
+      background: "#172238",
+      border: "1px solid #2C3A56",
+    }}
+  >
+    <div style={{ fontWeight: 800, fontSize: 17 }}>
+      🏫 {escolaSelecionada.escolaRadar}
+    </div>
 
+    <div style={{ marginTop: 6 }}>
+      Local TSE: {escolaSelecionada.nomeLocalVotacaoTSE}
+    </div>
+
+    <div>
+      Zona: {escolaSelecionada.zona}
+    </div>
+
+    <div>
+      Seções: {(escolaSelecionada.secoes || []).join(", ")}
+    </div>
+  </div>
+)}
         <div style={s.cards}>
           <Card titulo="Seções totalizadas" valor={`${numero(resumo.secoesTotalizadas)} / ${numero(resumo.secoesTotal)}`} />
           <Card titulo="% de seções" valor={percentual(pctSecoes)} />
