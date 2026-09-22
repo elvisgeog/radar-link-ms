@@ -84,11 +84,15 @@ useEffect(() => {
   return escolasTSE.find((e) => e.id === escolaId) || null;
 }, [escolasTSE, escolaId]);
   const filtrados = useMemo(() => {
-      return dados
-      .filter((d) => String(d.cargoCodigo) === String(cargo))
-      .filter((d) => municipio === "GERAL" || d.municipio === municipio)
-      .sort((a, b) => String(a.municipio).localeCompare(String(b.municipio), "pt-BR"));
-  }, [dados, cargo, municipio]);
+  if (escolaId !== "GERAL") return [];
+
+  return dados
+    .filter((d) => String(d.cargoCodigo) === String(cargo))
+    .filter((d) => municipio === "GERAL" || d.municipio === municipio)
+    .sort((a, b) =>
+      String(a.municipio).localeCompare(String(b.municipio), "pt-BR")
+    );
+}, [dados, cargo, municipio, escolaId]);
 
   const resumo = useMemo(() => filtrados.reduce((acc, d) => {
     acc.secoesTotal += Number(d.secoesTotal || 0);
