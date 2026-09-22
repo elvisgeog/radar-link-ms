@@ -5,6 +5,9 @@
     },
     "api/tse-bus-sync.js": {
       "maxDuration": 60
+    },
+    "api/tse-bu-process.py": {
+      "maxDuration": 60
     }
   },
   "crons": [
@@ -15,6 +18,10 @@
     {
       "path": "/api/tse-bus-sync",
       "schedule": "0 23 * * *"
+    },
+    {
+      "path": "/api/tse-bu-process",
+      "schedule": "30 23 * * *"
     }
   ]
 }
