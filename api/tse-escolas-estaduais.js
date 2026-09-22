@@ -343,25 +343,10 @@ naoEncontradas: naoEncontrados,
         },
         { merge: true }
       );
-const debugLocais = {};
 
-for (const nomeMunicipio of [
-  "LAGUNA CARAPÃ",
-  "JATEÍ",
-  "GLÓRIA DE DOURADOS",
-  "FÁTIMA DO SUL",
-  "DEODÁPOLIS",
-  "CAARAPÓ",
-]) {
-  const locais = locaisPorMunicipio.get(normalizar(nomeMunicipio));
-
-  debugLocais[nomeMunicipio] = locais
-    ? [...locais.values()].map((local) => local.nomeLocalVotacao)
-    : [];
-}
     return res.status(200).json({
       ok: true,
-debugLocais,
+
       totalEscolasRadar:
         escolasRadar.size,
 
