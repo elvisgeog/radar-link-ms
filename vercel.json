@@ -2,12 +2,19 @@
   "functions": {
     "api/tse-sync.js": {
       "maxDuration": 60
+    },
+    "api/tse-bus-sync.js": {
+      "maxDuration": 60
     }
   },
   "crons": [
     {
       "path": "/api/tse-sync",
       "schedule": "0 21 * * *"
+    },
+    {
+      "path": "/api/tse-bus-sync",
+      "schedule": "0 23 * * *"
     }
   ]
 }
