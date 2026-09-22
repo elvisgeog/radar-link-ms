@@ -99,6 +99,26 @@ function pareceEscolaEstadual(nome = "") {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
+    .replace(/\./g, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return (
+    n.startsWith("EE ") ||
+    n.startsWith("E E ") ||
+    n.startsWith("EEPG ") ||
+    n.startsWith("EEPSG ") ||
+    n.startsWith("ESCOLA ESTADUAL ") ||
+    n.startsWith("ESC ESTADUAL ") ||
+    n.startsWith("CEEP ") ||
+    n.startsWith("CEEJA ") ||
+    n.startsWith("CENTRO ESTADUAL ")
+  );
+}
+  const n = String(nome)
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toUpperCase()
     .trim();
 
   return (
