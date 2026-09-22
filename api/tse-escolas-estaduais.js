@@ -352,47 +352,10 @@ naoEncontradas: naoEncontrados,
         },
         { merge: true }
       );
-const debugGuateka = [
-  ...(locaisPorMunicipio.get(normalizar("DOURADOS"))?.values() || []),
-]
-  .filter((local) => {
-    const nome = normalizar(local.nomeLocalVotacao);
 
-    return (
-      nome.includes("GUATEKA") ||
-      nome.includes("MARCAL") ||
-      nome.includes("INDIGENA")
-    );
-  })
-  .map((local) => ({
-    nome: local.nomeLocalVotacao,
-    zona: local.zona,
-    numeroLocal: local.numeroLocalVotacao,
-    secoes: local.secoes,
-  }));
-    const debugCEEJA = [
-  ...(locaisPorMunicipio.get(normalizar("DOURADOS"))?.values() || []),
-]
-  .filter((local) => {
-    const nome = normalizar(local.nomeLocalVotacao);
-
-    return (
-      nome.includes("CEEJA") ||
-      nome.includes("EDUCACAO JOVENS") ||
-      nome.includes("EDUCACAO DE JOVENS")
-    );
-  })
-  .map((local) => ({
-    nome: local.nomeLocalVotacao,
-    zona: local.zona,
-    numeroLocal: local.numeroLocalVotacao,
-    secoes: local.secoes,
-  }));
     return res.status(200).json({
       ok: true,
-debugGuateka,
-      debugCEEJA,
-      totalEscolasRadar:
+           totalEscolasRadar:
         escolasRadar.size,
 
       encontradas: encontrados,
