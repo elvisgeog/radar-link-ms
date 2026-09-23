@@ -8,15 +8,23 @@ import zipfile
 from collections import defaultdict
 from http.server import BaseHTTPRequestHandler
 from urllib.request import Request, urlopen
+from urllib.error import HTTPError, URLError
 
 import firebase_admin
 from firebase_admin import credentials, firestore
 
 
-TSE_URL = (
-    "https://cdn.tse.jus.br/estatistica/sead/odsele/"
-    "perfil_eleitor_secao/perfil_eleitor_secao_2026_MS.zip"
-)
+TSE_URLS = [
+    (
+        "https://dadosabertos.tse.jus.br/dataset/eleitorado-2026/"
+        "resource/bfc7d118-2d99-445c-bf75-11c64d0e3cbb/"
+        "download/perfil_eleitor_secao_2026_MS.zip"
+    ),
+    (
+        "https://cdn.tse.jus.br/estatistica/sead/odsele/"
+        "perfil_eleitor_secao/perfil_eleitor_secao_2026_MS.zip"
+    ),
+]
 
 MUNICIPIOS_CRE5 = {
     "CAARAPO": "CAARAPÓ",
@@ -88,30 +96,115 @@ def banco():
 
 
 def baixar_zip():
-    req = Request(
-        TSE_URL,
-        headers={
-            "User-Agent": (
-                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                "AppleWebKit/537.36 Chrome/152 Safari/537.36"
-            ),
-            "Accept": (
-                "application/zip,application/octet-stream,"
-                "*/*;q=0.8"
-            ),
-            "Referer": "https://dadosabertos.tse.jus.br/",
-        },
+    erros = []
+
+    headers = {
+        "User-Agent": (
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+            "AppleWebKit/537.36 (KHTML, like Gecko) "
+            "Chrome/152.0.0.0 Safari/537.36"
+        ),
+        "Accept": (
+            "text/html,application/xhtml+xml,application/xml;q=0.9,"
+            "image/avif,image/webp,image/apng,*/*;q=0.8,"
+            "application/signed-exchange;v=b3;q=0.7"
+        ),
+        "Accept-Language": "pt-BR,pt;q=0.9,en;q=0.8",
+        "Accept-Encoding": "identity",
+        "Cache-Control": "no-cache",
+        "Pragma": "no-cache",
+        "Referer": "https://dadosabertos.tse.jus.br/dataset/eleitorado-2026",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "same-origin",
+        "Upgrade-Insecure-Requests": "1",
+    }
+
+    for url in TSE_URLS:
+        try:
+            req = Request(
+                url,
+                headers=headers,
+                method="GET",
+            )
+
+            with urlopen(
+                req,
+                timeout=45,
+            ) as resposta:
+                conteudo = resposta.read()
+
+                status = getattr(
+                    resposta,
+                    "status",
+                    200,
+                )
+
+                content_type = str(
+                    resposta.headers.get(
+                        "Content-Type",
+                        "",
+                    )
+                )
+
+            if status != 200:
+                erros.append(
+                    f"{url} -> HTTP {status}"
+                )
+                continue
+
+            if not conteudo:
+                erros.append(
+                    f"{url} -> resposta vazia"
+                )
+                continue
+
+            if not zipfile.is_zipfile(
+                io.BytesIO(conteudo)
+            ):
+                inicio = conteudo[:120].decode(
+                    "utf-8",
+                    errors="replace",
+                )
+
+                erros.append(
+                    f"{url} -> conteúdo não é ZIP "
+                    f"(Content-Type={content_type}; início={inicio!r})"
+                )
+                continue
+
+            return conteudo
+
+        except HTTPError as erro:
+            corpo = ""
+
+            try:
+                corpo = erro.read(200).decode(
+                    "utf-8",
+                    errors="replace",
+                )
+            except Exception:
+                pass
+
+            erros.append(
+                f"{url} -> HTTP {erro.code} "
+                f"{erro.reason}; resposta={corpo!r}"
+            )
+
+        except URLError as erro:
+            erros.append(
+                f"{url} -> erro de rede: {erro.reason}"
+            )
+
+        except Exception as erro:
+            erros.append(
+                f"{url} -> {type(erro).__name__}: {erro}"
+            )
+
+    raise RuntimeError(
+        "Falha ao baixar o arquivo oficial do TSE. "
+        + " | ".join(erros)
     )
-
-    with urlopen(req, timeout=45) as resposta:
-        conteudo = resposta.read()
-
-    if not conteudo:
-        raise RuntimeError(
-            "O arquivo oficial do eleitorado retornou vazio."
-        )
-
-    return conteudo
 
 
 def localizar_csv(conteudo_zip):
@@ -619,6 +712,7 @@ class handler(BaseHTTPRequestHandler):
                 500,
                 {
                     "ok": False,
+                    "tipoErro": type(erro).__name__,
                     "erro": str(erro),
                 },
             )
