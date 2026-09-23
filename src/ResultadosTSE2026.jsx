@@ -43,6 +43,25 @@ function somaVotosCandidatos(registro) {
 }
 
 function votosValidosDocumento(registro) {
+  const cargo = Number(registro?.cargoCodigo || 0);
+  const comparecimento = Number(registro?.comparecimento || 0);
+  const brancos = Number(registro?.brancos || 0);
+  const nulos = Number(registro?.nulos || 0);
+
+  // Em 2026, para Senador (cargo 5), cada eleitor dispõe de dois votos.
+  // Nos demais cargos desta tela, cada eleitor dispõe de um voto.
+  const multiplicadorVotos = cargo === 5 ? 2 : 1;
+
+  // Esta é a base mais segura para o total de votos válidos:
+  // total de votos possíveis no cargo menos brancos e nulos.
+  if (comparecimento > 0) {
+    return Math.max(
+      0,
+      comparecimento * multiplicadorVotos - brancos - nulos
+    );
+  }
+
+  // Fallback para documentos sem comparecimento informado.
   const informado = Number(registro?.votosValidos || 0);
   const somaCandidatos = somaVotosCandidatos(registro);
   const votosLegenda = Number(
@@ -53,16 +72,6 @@ function votosValidosDocumento(registro) {
   );
 
   const calculado = somaCandidatos + Math.max(0, votosLegenda);
-
-  // Se o total informado vier menor que a própria soma dos candidatos,
-  // ele é internamente inconsistente. Nesse caso usamos a soma dos votos
-  // do documento, preservando votos de legenda quando disponíveis.
-  if (
-    calculado > 0 &&
-    (informado <= 0 || informado < somaCandidatos)
-  ) {
-    return calculado;
-  }
 
   return informado > 0 ? informado : calculado;
 }
