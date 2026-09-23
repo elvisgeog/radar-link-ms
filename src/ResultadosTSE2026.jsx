@@ -117,6 +117,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
   const [escolasTSE, setEscolasTSE] = useState([]);
   const [escolaId, setEscolaId] = useState("GERAL");
   const [resultadosEscolas, setResultadosEscolas] = useState([]);
+  const [eleitoradoMunicipios, setEleitoradoMunicipios] = useState([]);
 
   const dadosOficiais = useMemo(
     () => dados.filter((d) => d.fase === "o"),
@@ -183,6 +184,28 @@ export default function ResultadosTSE2026({ onVoltar }) {
         setErro(
           e.message ||
             "Falha ao ler resultados das escolas no Firestore."
+        )
+    );
+
+    return () => cancelar();
+  }, []);
+
+  useEffect(() => {
+    const cancelar = onSnapshot(
+      collection(db, "eleitorado_tse_2026"),
+      (snapshot) => {
+        setEleitoradoMunicipios(
+          snapshot.docs.map((d) => ({
+            id: d.id,
+            ...d.data(),
+          }))
+        );
+        setErro("");
+      },
+      (e) =>
+        setErro(
+          e.message ||
+            "Falha ao ler o eleitorado oficial do TSE no Firestore."
         )
     );
 
@@ -266,6 +289,58 @@ export default function ResultadosTSE2026({ onVoltar }) {
         )
       );
   }, [dadosOficiais, cargo, municipio, escolaId]);
+
+  const eleitoradoSelecionado = useMemo(() => {
+    if (municipio === "GERAL") {
+      return eleitoradoMunicipios.reduce(
+        (acc, item) => {
+          acc.eleitoresMunicipio += Number(
+            item.eleitoresMunicipio || 0
+          );
+          acc.eleitoresEscolasEstaduais += Number(
+            item.eleitoresEscolasEstaduais || 0
+          );
+          acc.totalEscolasEstaduais += Number(
+            item.totalEscolasEstaduais || 0
+          );
+          acc.totalSecoesEstaduais += Number(
+            item.totalSecoesEstaduais || 0
+          );
+          return acc;
+        },
+        {
+          eleitoresMunicipio: 0,
+          eleitoresEscolasEstaduais: 0,
+          totalEscolasEstaduais: 0,
+          totalSecoesEstaduais: 0,
+        }
+      );
+    }
+
+    const encontrado = eleitoradoMunicipios.find(
+      (item) =>
+        normalizar(item.municipio) === normalizar(municipio)
+    );
+
+    return {
+      eleitoresMunicipio: Number(
+        encontrado?.eleitoresMunicipio || 0
+      ),
+      eleitoresEscolasEstaduais: Number(
+        encontrado?.eleitoresEscolasEstaduais || 0
+      ),
+      totalEscolasEstaduais: Number(
+        encontrado?.totalEscolasEstaduais || 0
+      ),
+      totalSecoesEstaduais: Number(
+        encontrado?.totalSecoesEstaduais || 0
+      ),
+    };
+  }, [eleitoradoMunicipios, municipio]);
+
+  const eleitoresEscolaSelecionada = Number(
+    escolaSelecionada?.eleitoresCadastrados || 0
+  );
 
   const consolidadosCadastro = useMemo(() => {
     const base = escolasTSE.filter(
@@ -451,7 +526,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
             🗳️ Resultados Eleitorais 2026
           </h1>
           <p style={s.sub}>
-            Dados consolidados do eleitorado. Resultados de votação serão exibidos somente quando a divulgação oficial do TSE estiver disponível.
+            Eleitorado oficial do TSE por município e escola estadual. Resultados de votação serão exibidos somente quando a divulgação oficial estiver disponível.
           </p>
         </div>
       </div>
@@ -537,81 +612,82 @@ export default function ResultadosTSE2026({ onVoltar }) {
                 ? (escolaSelecionada.secoes || []).join(", ")
                 : "-"}
             </div>
+
+            <div style={{ marginTop: 6 }}>
+              <strong>Eleitores cadastrados:</strong>{" "}
+              {numero(eleitoresEscolaSelecionada)}
+            </div>
           </div>
         )}
 
         {escolaId === "GERAL" ? (
-          temResultadosOficiais ? (
-            <div style={s.cards}>
-              <Card
-                titulo="Seções totalizadas"
-                valor={`${numero(
-                  resumoMunicipal.secoesTotalizadas
-                )} / ${numero(resumoMunicipal.secoesTotal)}`}
-              />
-              <Card
-                titulo="% de seções"
-                valor={percentual(pctSecoesMunicipal)}
-              />
-              <Card
-                titulo="Eleitores"
-                valor={numero(resumoMunicipal.eleitores)}
-              />
-              <Card
-                titulo="Comparecimento"
-                valor={numero(resumoMunicipal.comparecimento)}
-              />
-              <Card
-                titulo="Abstenção"
-                valor={numero(resumoMunicipal.abstencao)}
-              />
-              <Card
-                titulo="Votos válidos"
-                valor={numero(resumoMunicipal.votosValidos)}
-              />
-              <Card
-                titulo="Brancos"
-                valor={numero(resumoMunicipal.brancos)}
-              />
-              <Card
-                titulo="Nulos"
-                valor={numero(resumoMunicipal.nulos)}
-              />
-            </div>
-          ) : (
-            <div style={s.cards}>
-              <Card
-                titulo="Escolas estaduais vinculadas"
-                valor={numero(consolidadosCadastro.escolas)}
-              />
-              <Card
-                titulo="Seções vinculadas"
-                valor={numero(consolidadosCadastro.secoes)}
-              />
-              <Card
-                titulo="Municípios"
-                valor={numero(consolidadosCadastro.municipios)}
-              />
-              <Card
-                titulo="Apuração oficial"
-                valor="Aguardando TSE"
-              />
-            </div>
-          )
+          <div style={s.cards}>
+            <Card
+              titulo={
+                municipio === "GERAL"
+                  ? "Eleitores nos 12 municípios CRE-5"
+                  : "Eleitores do município"
+              }
+              valor={numero(
+                eleitoradoSelecionado.eleitoresMunicipio
+              )}
+            />
+
+            <Card
+              titulo={
+                municipio === "GERAL"
+                  ? "Eleitores nas escolas estaduais CRE-5"
+                  : "Eleitores nas escolas estaduais"
+              }
+              valor={numero(
+                eleitoradoSelecionado.eleitoresEscolasEstaduais
+              )}
+            />
+
+            <Card
+              titulo="Escolas estaduais vinculadas"
+              valor={numero(
+                eleitoradoSelecionado.totalEscolasEstaduais
+              )}
+            />
+
+            <Card
+              titulo="Seções eleitorais vinculadas"
+              valor={numero(
+                eleitoradoSelecionado.totalSecoesEstaduais
+              )}
+            />
+
+            <Card
+              titulo="Apuração oficial"
+              valor={
+                temResultadosOficiais
+                  ? "Em andamento"
+                  : "Aguardando TSE"
+              }
+            />
+          </div>
         ) : (
           <div style={s.cards}>
+            <Card
+              titulo="Eleitores cadastrados na escola"
+              valor={numero(eleitoresEscolaSelecionada)}
+            />
+
             <Card
               titulo="Seções vinculadas"
               valor={numero(resumoEscola.secoesTotal)}
             />
+
             <Card
               titulo="BUs oficiais processados"
               valor={numero(resumoEscola.secoesTotalizadas)}
             />
+
             <Card
               titulo="Situação"
               valor={
-                temResultadoCargoEscola
+                temResultadoCargoEscola && temResultadosOficiais
                   ? "Com resultados"
                   : "Aguardando TSE"
               }
