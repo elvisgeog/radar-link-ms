@@ -118,6 +118,11 @@ export default function ResultadosTSE2026({ onVoltar }) {
   const [escolaId, setEscolaId] = useState("GERAL");
   const [resultadosEscolas, setResultadosEscolas] = useState([]);
 
+  const dadosOficiais = useMemo(
+    () => dados.filter((d) => d.fase === "o"),
+    [dados]
+  );
+
   useEffect(() => {
     const cancelar = onSnapshot(
       collection(db, "resultados_tse_2026"),
@@ -247,7 +252,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
   const filtrados = useMemo(() => {
     if (escolaId !== "GERAL") return [];
 
-    return dados
+    return dadosOficiais
       .filter((d) => String(d.cargoCodigo) === String(cargo))
       .filter(
         (d) =>
@@ -260,7 +265,38 @@ export default function ResultadosTSE2026({ onVoltar }) {
           "pt-BR"
         )
       );
-  }, [dados, cargo, municipio, escolaId]);
+  }, [dadosOficiais, cargo, municipio, escolaId]);
+
+  const consolidadosCadastro = useMemo(() => {
+    const base = escolasTSE.filter(
+      (e) =>
+        municipio === "GERAL" ||
+        normalizar(e.municipio) === normalizar(municipio)
+    );
+
+    const municipiosCadastro = new Set();
+    const secoesCadastro = new Set();
+
+    base.forEach((e) => {
+      if (e.municipio) {
+        municipiosCadastro.add(String(e.municipio));
+      }
+
+      (e.secoes || []).forEach((secao) => {
+        secoesCadastro.add(
+          `${normalizar(e.municipio)}|${String(e.zona ?? "")}|${String(secao)}`
+        );
+      });
+    });
+
+    return {
+      escolas: base.length,
+      secoes: secoesCadastro.size,
+      municipios: municipiosCadastro.size,
+    };
+  }, [escolasTSE, municipio]);
+
+  const temResultadosOficiais = filtrados.length > 0;
 
   const resumoMunicipal = useMemo(
     () =>
@@ -346,7 +382,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
   const metadadosCandidatos = useMemo(() => {
     const mapa = new Map();
 
-    dados
+    dadosOficiais
       .filter((d) => String(d.cargoCodigo) === String(cargo))
       .filter(
         (d) =>
@@ -369,7 +405,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
       });
 
     return mapa;
-  }, [dados, cargo, municipio]);
+  }, [dadosOficiais, cargo, municipio]);
 
   const candidatosEscola = useMemo(() => {
     const totalValidos = Number(
@@ -415,7 +451,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
             🗳️ Resultados Eleitorais 2026
           </h1>
           <p style={s.sub}>
-            Dados do TSE sincronizados pelo servidor do Radar Link MS. O ambiente utilizado é identificado em cada resultado como OFICIAL ou SIMULADO.
+            Dados consolidados do eleitorado. Resultados de votação serão exibidos somente quando a divulgação oficial do TSE estiver disponível.
           </p>
         </div>
       </div>
@@ -505,77 +541,80 @@ export default function ResultadosTSE2026({ onVoltar }) {
         )}
 
         {escolaId === "GERAL" ? (
-          <div style={s.cards}>
-            <Card
-              titulo="Seções totalizadas"
-              valor={`${numero(
-                resumoMunicipal.secoesTotalizadas
-              )} / ${numero(resumoMunicipal.secoesTotal)}`}
-            />
-            <Card
-              titulo="% de seções"
-              valor={percentual(pctSecoesMunicipal)}
-            />
-            <Card
-              titulo="Eleitores"
-              valor={numero(resumoMunicipal.eleitores)}
-            />
-            <Card
-              titulo="Comparecimento"
-              valor={numero(resumoMunicipal.comparecimento)}
-            />
-            <Card
-              titulo="Abstenção"
-              valor={numero(resumoMunicipal.abstencao)}
-            />
-            <Card
-              titulo="Votos válidos"
-              valor={numero(resumoMunicipal.votosValidos)}
-            />
-            <Card
-              titulo="Brancos"
-              valor={numero(resumoMunicipal.brancos)}
-            />
-            <Card
-              titulo="Nulos"
-              valor={numero(resumoMunicipal.nulos)}
-            />
-          </div>
+          temResultadosOficiais ? (
+            <div style={s.cards}>
+              <Card
+                titulo="Seções totalizadas"
+                valor={`${numero(
+                  resumoMunicipal.secoesTotalizadas
+                )} / ${numero(resumoMunicipal.secoesTotal)}`}
+              />
+              <Card
+                titulo="% de seções"
+                valor={percentual(pctSecoesMunicipal)}
+              />
+              <Card
+                titulo="Eleitores"
+                valor={numero(resumoMunicipal.eleitores)}
+              />
+              <Card
+                titulo="Comparecimento"
+                valor={numero(resumoMunicipal.comparecimento)}
+              />
+              <Card
+                titulo="Abstenção"
+                valor={numero(resumoMunicipal.abstencao)}
+              />
+              <Card
+                titulo="Votos válidos"
+                valor={numero(resumoMunicipal.votosValidos)}
+              />
+              <Card
+                titulo="Brancos"
+                valor={numero(resumoMunicipal.brancos)}
+              />
+              <Card
+                titulo="Nulos"
+                valor={numero(resumoMunicipal.nulos)}
+              />
+            </div>
+          ) : (
+            <div style={s.cards}>
+              <Card
+                titulo="Escolas estaduais vinculadas"
+                valor={numero(consolidadosCadastro.escolas)}
+              />
+              <Card
+                titulo="Seções vinculadas"
+                valor={numero(consolidadosCadastro.secoes)}
+              />
+              <Card
+                titulo="Municípios"
+                valor={numero(consolidadosCadastro.municipios)}
+              />
+              <Card
+                titulo="Apuração oficial"
+                valor="Aguardando TSE"
+              />
+            </div>
+          )
         ) : (
           <div style={s.cards}>
             <Card
-              titulo="Seções com BU"
-              valor={`${numero(
-                resumoEscola.secoesTotalizadas
-              )} / ${numero(resumoEscola.secoesTotal)}`}
+              titulo="Seções vinculadas"
+              valor={numero(resumoEscola.secoesTotal)}
             />
             <Card
-              titulo="% de seções com BU"
-              valor={percentual(pctSecoesEscola)}
+              titulo="BUs oficiais processados"
+              valor={numero(resumoEscola.secoesTotalizadas)}
             />
             <Card
-              titulo="Comparecimento"
-              valor={numero(resumoEscola.comparecimento)}
-            />
-            <Card
-              titulo="Votos válidos"
-              valor={numero(resumoEscola.votosValidos)}
-            />
-            <Card
-              titulo="Votos nominais"
-              valor={numero(resumoEscola.votosNominais)}
-            />
-            <Card
-              titulo="Votos de legenda"
-              valor={numero(resumoEscola.votosLegenda)}
-            />
-            <Card
-              titulo="Brancos"
-              valor={numero(resumoEscola.brancos)}
-            />
-            <Card
-              titulo="Nulos"
-              valor={numero(resumoEscola.nulos)}
+              titulo="Situação"
+              valor={
+                temResultadoCargoEscola
+                  ? "Com resultados"
+                  : "Aguardando TSE"
+              }
             />
           </div>
         )}
@@ -584,9 +623,10 @@ export default function ResultadosTSE2026({ onVoltar }) {
       {escolaId !== "GERAL" && !temResultadoCargoEscola && (
         <section style={s.panel}>
           <p style={{ margin: 0 }}>
-            Aguardando os boletins de urna (BU) das seções desta escola.
-            Assim que o TSE disponibilizar os arquivos, o Radar Link MS
-            processará e somará os resultados automaticamente.
+            Aguardando os boletins de urna oficiais das seções desta escola.
+            Dados de simulação não são exibidos. Quando o TSE iniciar a
+            divulgação oficial, o Radar Link MS processará e somará os
+            resultados automaticamente.
           </p>
 
           {resultadoEscolaSelecionada && (
@@ -605,7 +645,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
         </section>
       )}
 
-      {temResultadoCargoEscola && (
+      {temResultadoCargoEscola && temResultadosOficiais && (
         <section style={s.panel}>
           <div style={s.municipioTopo}>
             <div>
@@ -695,10 +735,12 @@ export default function ResultadosTSE2026({ onVoltar }) {
         </section>
       )}
 
-      {escolaId === "GERAL" && filtrados.length === 0 && (
+      {escolaId === "GERAL" && !temResultadosOficiais && (
         <section style={s.panel}>
           <p style={{ margin: 0 }}>
-            Nenhum resultado sincronizado ainda para este filtro.
+            Aguardando o início da divulgação oficial dos resultados pelo TSE.
+            Dados simulados, candidaturas simuladas e votos de teste não são
+            exibidos nesta tela.
           </p>
         </section>
       )}
@@ -717,7 +759,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
             </div>
 
             <div style={s.selo}>
-              {d.fase === "o" ? "OFICIAL" : "SIMULADO"}
+              OFICIAL
             </div>
           </div>
 
