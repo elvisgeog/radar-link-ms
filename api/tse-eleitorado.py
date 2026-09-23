@@ -664,6 +664,56 @@ class handler(BaseHTTPRequestHandler):
                     },
                 )
 
+            if "diagnostico=1" in self.path:
+                try:
+                    conteudo_zip = baixar_zip()
+                    arquivo_zip, nome_csv = localizar_csv(
+                        conteudo_zip
+                    )
+
+                    with arquivo_zip.open(nome_csv) as bruto:
+                        texto_csv = io.TextIOWrapper(
+                            bruto,
+                            encoding="latin-1",
+                            newline="",
+                        )
+
+                        leitor = csv.reader(
+                            texto_csv,
+                            delimiter=";",
+                            quotechar='"',
+                        )
+
+                        cabecalho = next(
+                            leitor,
+                            [],
+                        )
+
+                    return self.responder(
+                        200,
+                        {
+                            "ok": True,
+                            "zipBytes":
+                                len(conteudo_zip),
+                            "arquivoCSV":
+                                nome_csv,
+                            "cabecalho":
+                                cabecalho,
+                        },
+                    )
+
+                except Exception as erro:
+                    return self.responder(
+                        500,
+                        {
+                            "ok": False,
+                            "tipoErro":
+                                type(erro).__name__,
+                            "erro":
+                                str(erro),
+                        },
+                    )
+
             if not self.autorizado():
                 return self.responder(
                     401,
