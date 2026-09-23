@@ -720,24 +720,25 @@ export default function ResultadosTSE2026({ onVoltar }) {
   }
 
   return (
-    <div style={s.page}>
-      <div style={s.header}>
+    <div className="resultados-page" style={s.page}>
+      <div className="resultados-header" style={s.header}>
         <div>
-          <h1 style={{ margin: 0 }}>
+          <h1 className="resultados-titulo" style={{ margin: 0 }}>
             🗳️ Resultados Eleitorais 2026
           </h1>
-          <p style={s.sub}>
+          <p className="resultados-sub" style={s.sub}>
             Eleitorado oficial do TSE por município e escola estadual. Resultados de votação serão exibidos somente quando a divulgação oficial estiver disponível.
           </p>
         </div>
       </div>
 
-      <button style={s.button} onClick={onVoltar}>
+      <button className="botao-voltar" style={s.button} onClick={onVoltar}>
         Voltar ao painel principal
       </button>
 
-      <div style={s.acoesRelatorio}>
+      <div className="acoes-relatorio" style={s.acoesRelatorio}>
         <button
+          className="botao-relatorio"
           style={s.buttonRelatorio}
           onClick={() => imprimirRelatorio("CRE5")}
         >
@@ -745,6 +746,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
         </button>
 
         <button
+          className="botao-relatorio"
           style={{
             ...s.buttonRelatorio,
             ...(municipio === "GERAL" ? s.buttonDesabilitado : {}),
@@ -756,6 +758,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
         </button>
 
         <button
+          className="botao-relatorio"
           style={{
             ...s.buttonRelatorio,
             ...(!escolaSelecionada ? s.buttonDesabilitado : {}),
@@ -767,9 +770,10 @@ export default function ResultadosTSE2026({ onVoltar }) {
         </button>
       </div>
 
-      <section style={s.panel}>
-        <div style={s.filtros}>
+      <section className="resultados-panel" style={s.panel}>
+        <div className="resultados-filtros" style={s.filtros}>
           <select
+            className="resultados-select"
             style={s.input}
             value={cargo}
             onChange={(e) => setCargo(e.target.value)}
@@ -782,6 +786,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
           </select>
 
           <select
+            className="resultados-select"
             style={s.input}
             value={municipio}
             onChange={(e) => {
@@ -801,6 +806,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
           </select>
 
           <select
+            className="resultados-select"
             style={s.input}
             value={escolaId}
             onChange={(e) => setEscolaId(e.target.value)}
@@ -823,7 +829,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
         {erro && <div style={s.erro}>{erro}</div>}
 
         {escolaSelecionada && (
-          <div style={s.escolaBox}>
+          <div className="escola-box" style={s.escolaBox}>
             <div style={s.escolaTitulo}>
               🏫 {escolaSelecionada.escolaRadar}
             </div>
@@ -853,7 +859,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
         )}
 
         {escolaId === "GERAL" ? (
-          <div style={s.cards}>
+          <div className="resultados-cards" style={s.cards}>
             <Card
               titulo={
                 municipio === "GERAL"
@@ -900,7 +906,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
             />
           </div>
         ) : (
-          <div style={s.cards}>
+          <div className="resultados-cards" style={s.cards}>
             <Card
               titulo="Eleitores cadastrados na escola"
               valor={numero(eleitoresEscolaSelecionada)}
@@ -929,7 +935,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
       </section>
 
       {escolaId !== "GERAL" && !temResultadoCargoEscola && (
-        <section style={s.panel}>
+        <section className="resultados-panel" style={s.panel}>
           <p style={{ margin: 0 }}>
             Aguardando os boletins de urna oficiais das seções desta escola.
             Dados de simulação não são exibidos. Quando o TSE iniciar a
@@ -954,8 +960,8 @@ export default function ResultadosTSE2026({ onVoltar }) {
       )}
 
       {temResultadoCargoEscola && temResultadosOficiais && (
-        <section style={s.panel}>
-          <div style={s.municipioTopo}>
+        <section className="resultados-panel" style={s.panel}>
+          <div className="municipio-topo" style={s.municipioTopo}>
             <div>
               <h2 style={{ margin: 0 }}>
                 {escolaSelecionada?.escolaRadar ||
@@ -974,7 +980,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
             <div style={s.selo}>BU TSE</div>
           </div>
 
-          <div style={s.resumoLinha}>
+          <div className="resumo-linha" style={s.resumoLinha}>
             <span>
               <strong>Seções com BU:</strong>{" "}
               {numero(resumoEscola.secoesTotalizadas)} /{" "}
@@ -997,8 +1003,8 @@ export default function ResultadosTSE2026({ onVoltar }) {
             </span>
           </div>
 
-          <div style={s.tabelaWrap}>
-            <table style={s.table}>
+          <div className="tabela-wrap" style={s.tabelaWrap}>
+            <table className="resultados-table" style={s.table}>
               <thead>
                 <tr>
                   <th style={s.th}>Número</th>
@@ -1033,7 +1039,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
             </table>
           </div>
 
-          <div style={s.rodape}>
+          <div className="rodape-resultados" style={s.rodape}>
             Resultado calculado a partir dos BUs publicados pelo TSE para
             as seções vinculadas a esta escola. Última agregação:{" "}
             {formatarDataFirestore(
@@ -1044,7 +1050,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
       )}
 
       {escolaId === "GERAL" && !temResultadosOficiais && (
-        <section style={s.panel}>
+        <section className="resultados-panel" style={s.panel}>
           <p style={{ margin: 0 }}>
             Aguardando o início da divulgação oficial dos resultados pelo TSE.
             Dados simulados, candidaturas simuladas e votos de teste não são
@@ -1054,8 +1060,8 @@ export default function ResultadosTSE2026({ onVoltar }) {
       )}
 
       {filtrados.map((d) => (
-        <section key={d.id} style={s.panel}>
-          <div style={s.municipioTopo}>
+        <section key={d.id} className="resultados-panel" style={s.panel}>
+          <div className="municipio-topo" style={s.municipioTopo}>
             <div>
               <h2 style={{ margin: 0 }}>{d.municipio}</h2>
               <div style={s.meta}>
@@ -1071,7 +1077,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
             </div>
           </div>
 
-          <div style={s.resumoLinha}>
+          <div className="resumo-linha" style={s.resumoLinha}>
             <span>
               <strong>Seções:</strong>{" "}
               {numero(d.secoesTotalizadas)} / {numero(d.secoesTotal)}
@@ -1090,8 +1096,8 @@ export default function ResultadosTSE2026({ onVoltar }) {
             </span>
           </div>
 
-          <div style={s.tabelaWrap}>
-            <table style={s.table}>
+          <div className="tabela-wrap" style={s.tabelaWrap}>
+            <table className="resultados-table" style={s.table}>
               <thead>
                 <tr>
                   <th style={s.th}>Número</th>
@@ -1145,7 +1151,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
             </table>
           </div>
 
-          <div style={s.rodape}>
+          <div className="rodape-resultados" style={s.rodape}>
             Gerado pelo TSE: {d.dataGeracao || "-"}{" "}
             {d.horaGeracao || ""} · Sincronizado no Radar:{" "}
             {d.sincronizadoEmTexto || "-"} · ID geração TSE:{" "}
@@ -1174,6 +1180,169 @@ export default function ResultadosTSE2026({ onVoltar }) {
       )}
 
       <style>{`
+        @media screen and (max-width: 640px) {
+          html,
+          body,
+          #root {
+            max-width: 100%;
+            overflow-x: hidden;
+          }
+
+          .resultados-page {
+            width: 100% !important;
+            max-width: 100% !important;
+            padding: 10px !important;
+            box-sizing: border-box !important;
+          }
+
+          .resultados-header {
+            margin-bottom: 12px !important;
+          }
+
+          .resultados-titulo {
+            font-size: 24px !important;
+            line-height: 1.12 !important;
+            letter-spacing: -0.3px !important;
+          }
+
+          .resultados-sub {
+            margin-top: 7px !important;
+            font-size: 14px !important;
+            line-height: 1.42 !important;
+          }
+
+          .resultados-panel {
+            padding: 12px !important;
+            border-radius: 14px !important;
+            margin-bottom: 12px !important;
+            box-sizing: border-box !important;
+          }
+
+          .resultados-filtros {
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 8px !important;
+          }
+
+          .resultados-select {
+            min-width: 0 !important;
+            min-height: 48px !important;
+            padding: 10px 12px !important;
+            font-size: 16px !important;
+            border-radius: 10px !important;
+          }
+
+          .acoes-relatorio {
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 8px !important;
+            margin-bottom: 12px !important;
+          }
+
+          .botao-voltar,
+          .botao-relatorio {
+            min-height: 46px !important;
+            padding: 11px 12px !important;
+            font-size: 14px !important;
+            line-height: 1.2 !important;
+          }
+
+          .escola-box {
+            padding: 12px !important;
+            font-size: 14px !important;
+            line-height: 1.45 !important;
+          }
+
+          .resultados-cards {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+            gap: 8px !important;
+            margin-top: 10px !important;
+          }
+
+          .metric-card {
+            min-width: 0 !important;
+            min-height: 112px !important;
+            padding: 12px !important;
+            border-radius: 12px !important;
+            box-sizing: border-box !important;
+            display: flex !important;
+            flex-direction: column !important;
+            justify-content: space-between !important;
+          }
+
+          .metric-title {
+            font-size: 12px !important;
+            line-height: 1.3 !important;
+            overflow-wrap: anywhere !important;
+          }
+
+          .metric-value {
+            margin-top: 8px !important;
+            font-size: 22px !important;
+            line-height: 1.05 !important;
+            letter-spacing: -0.4px !important;
+            overflow-wrap: anywhere !important;
+            word-break: normal !important;
+          }
+
+          .metric-card-compacto {
+            grid-column: 1 / -1 !important;
+            min-height: 88px !important;
+          }
+
+          .metric-card-compacto .metric-value {
+            font-size: 18px !important;
+            line-height: 1.15 !important;
+            letter-spacing: 0 !important;
+          }
+
+          .municipio-topo {
+            gap: 8px !important;
+          }
+
+          .municipio-topo h2 {
+            font-size: 20px !important;
+            line-height: 1.2 !important;
+          }
+
+          .resumo-linha {
+            gap: 8px 12px !important;
+            padding: 10px 0 !important;
+            font-size: 13px !important;
+            line-height: 1.35 !important;
+          }
+
+          .tabela-wrap {
+            width: 100% !important;
+            overflow-x: auto !important;
+            -webkit-overflow-scrolling: touch;
+          }
+
+          .resultados-table {
+            min-width: 680px !important;
+            font-size: 12px !important;
+          }
+
+          .rodape-resultados {
+            font-size: 11px !important;
+            line-height: 1.35 !important;
+          }
+        }
+
+        @media screen and (max-width: 380px) {
+          .resultados-cards {
+            grid-template-columns: minmax(0, 1fr) !important;
+          }
+
+          .metric-card,
+          .metric-card-compacto {
+            grid-column: auto !important;
+            min-height: 92px !important;
+          }
+
+          .resultados-titulo {
+            font-size: 22px !important;
+          }
+        }
+
         @media print {
           @page {
             size: A4 portrait;
@@ -1557,10 +1726,20 @@ function TabelaRelatorio({ colunas, linhas }) {
 }
 
 function Card({ titulo, valor }) {
+  const textoValor = String(valor ?? "");
+  const compacto = textoValor.length > 10;
+
   return (
-    <div style={s.card}>
-      <div style={s.cardTitulo}>{titulo}</div>
-      <div style={s.cardValor}>{valor}</div>
+    <div
+      className={`metric-card${compacto ? " metric-card-compacto" : ""}`}
+      style={s.card}
+    >
+      <div className="metric-title" style={s.cardTitulo}>
+        {titulo}
+      </div>
+      <div className="metric-value" style={s.cardValor}>
+        {valor}
+      </div>
     </div>
   );
 }
