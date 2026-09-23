@@ -273,7 +273,7 @@ def ler_eleitorado_por_secao(conteudo_zip):
             "NM_MUNICIPIO",
             "NR_ZONA",
             "NR_SECAO",
-            "QT_ELEITORES_PERFIL",
+            "QT_ELEITORES",
         }
 
         faltando = obrigatorios.difference(
@@ -297,7 +297,7 @@ def ler_eleitorado_por_secao(conteudo_zip):
             zona = inteiro(linha.get("NR_ZONA"))
             secao = inteiro(linha.get("NR_SECAO"))
             quantidade = inteiro(
-                linha.get("QT_ELEITORES_PERFIL")
+                linha.get("QT_ELEITORES")
             )
 
             if not zona or not secao:
