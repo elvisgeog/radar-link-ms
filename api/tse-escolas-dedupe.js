@@ -189,7 +189,22 @@ function resumoDocumento(item) {
 }
 
 export default async function handler(req, res) {
-  if (!autorizado(req)) {
+  const aplicar =
+    String(req.query?.aplicar || "") === "1";
+
+  const diagnosticoPublico =
+    String(req.query?.diagnostico || "") === "1";
+
+  // O diagnóstico é somente leitura e pode ser aberto no navegador.
+  // Qualquer alteração/exclusão continua exigindo CRON_SECRET.
+  if (aplicar && !autorizado(req)) {
+    return res.status(401).json({
+      ok: false,
+      erro: "Não autorizado",
+    });
+  }
+
+  if (!aplicar && !diagnosticoPublico && !autorizado(req)) {
     return res.status(401).json({
       ok: false,
       erro: "Não autorizado",
@@ -198,9 +213,6 @@ export default async function handler(req, res) {
 
   try {
     const db = iniciarFirebase();
-
-    const aplicar =
-      String(req.query?.aplicar || "") === "1";
 
     const snap = await db
       .collection("escolas_tse_2026")
@@ -262,12 +274,13 @@ export default async function handler(req, res) {
       return res.status(200).json({
         ok: true,
         modo: "diagnostico",
+        somenteLeitura: true,
         totalDourados: dourados.length,
         gruposDuplicados:
           duplicidades.length,
         duplicidades,
         instrucao:
-          "Revise a lista. Para aplicar somente as duplicidades reconhecidas, execute com ?aplicar=1.",
+          "Revise esta lista antes de aplicar qualquer exclusão. A aplicação continua protegida por CRON_SECRET.",
       });
     }
 
