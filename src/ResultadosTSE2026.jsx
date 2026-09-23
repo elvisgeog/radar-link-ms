@@ -415,7 +415,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
             🗳️ Resultados Eleitorais 2026
           </h1>
           <p style={s.sub}>
-            Dados oficiais do TSE sincronizados pelo servidor do Radar Link MS.
+            Dados do TSE sincronizados pelo servidor do Radar Link MS. O ambiente utilizado é identificado em cada resultado como OFICIAL ou SIMULADO.
           </p>
         </div>
       </div>
