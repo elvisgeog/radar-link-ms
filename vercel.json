@@ -11,9 +11,16 @@
     },
     "api/tse-escolas-resultados.js": {
       "maxDuration": 60
+    },
+    "api/tse-eleitorado.py": {
+      "maxDuration": 60
     }
   },
   "crons": [
+    {
+      "path": "/api/tse-eleitorado",
+      "schedule": "30 20 * * *"
+    },
     {
       "path": "/api/tse-sync",
       "schedule": "0 21 * * *"
