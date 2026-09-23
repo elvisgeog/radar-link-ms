@@ -35,17 +35,51 @@ function normalizar(valor = "") {
     .trim();
 }
 
-function percentualCandidato(votos, totalValidos, percentualInformado) {
-  const informado = Number(percentualInformado);
+function somaVotosCandidatos(registro) {
+  return (registro?.candidatos || []).reduce(
+    (total, candidato) => total + Number(candidato?.votos || 0),
+    0
+  );
+}
 
-  if (Number.isFinite(informado) && informado > 0) {
-    return informado;
+function votosValidosDocumento(registro) {
+  const informado = Number(registro?.votosValidos || 0);
+  const somaCandidatos = somaVotosCandidatos(registro);
+  const votosLegenda = Number(
+    registro?.votosLegenda ??
+      registro?.votosLegendaPartido ??
+      registro?.legenda ??
+      0
+  );
+
+  const calculado = somaCandidatos + Math.max(0, votosLegenda);
+
+  // Se o total informado vier menor que a própria soma dos candidatos,
+  // ele é internamente inconsistente. Nesse caso usamos a soma dos votos
+  // do documento, preservando votos de legenda quando disponíveis.
+  if (
+    calculado > 0 &&
+    (informado <= 0 || informado < somaCandidatos)
+  ) {
+    return calculado;
   }
 
+  return informado > 0 ? informado : calculado;
+}
+
+function percentualCandidato(votos, totalValidos, percentualInformado) {
   const total = Number(totalValidos || 0);
   const qtd = Number(votos || 0);
 
-  return total > 0 ? (qtd / total) * 100 : 0;
+  if (total > 0) {
+    return (qtd / total) * 100;
+  }
+
+  const informado = Number(percentualInformado);
+
+  return Number.isFinite(informado) && informado >= 0
+    ? informado
+    : 0;
 }
 
 function formatarDataFirestore(valor) {
@@ -228,7 +262,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
           acc.eleitores += Number(d.eleitores || 0);
           acc.comparecimento += Number(d.comparecimento || 0);
           acc.abstencao += Number(d.abstencao || 0);
-          acc.votosValidos += Number(d.votosValidos || 0);
+          acc.votosValidos += votosValidosDocumento(d);
           acc.brancos += Number(d.brancos || 0);
           acc.nulos += Number(d.nulos || 0);
           return acc;
@@ -685,7 +719,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
             </span>
             <span>
               <strong>Válidos:</strong>{" "}
-              {numero(d.votosValidos)}
+              {numero(votosValidosDocumento(d))}
             </span>
             <span>
               <strong>Brancos:</strong>{" "}
@@ -705,7 +739,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
                   <th style={s.th}>Candidatura</th>
                   <th style={s.th}>Partido</th>
                   <th style={s.thDireita}>Votos</th>
-                  <th style={s.thDireita}>% TSE</th>
+                  <th style={s.thDireita}>% válidos</th>
                   <th style={s.th}>Situação</th>
                 </tr>
               </thead>
@@ -738,7 +772,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
                         {percentual(
                           percentualCandidato(
                             c.votos,
-                            d.votosValidos,
+                            votosValidosDocumento(d),
                             c.percentual
                           )
                         )}
