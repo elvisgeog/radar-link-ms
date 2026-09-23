@@ -39,10 +39,6 @@
     {
       "path": "/api/tse-escolas-resultados",
       "schedule": "45 23 * * *"
-    },
-    {
-      "path": "/api/tse-escolas-estaduais",
-      "schedule": "15 22 * * *"
     }
   ]
 }
