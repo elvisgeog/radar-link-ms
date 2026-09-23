@@ -109,6 +109,96 @@ function formatarDataFirestore(valor) {
   }
 }
 
+function consolidarResultados(registros = []) {
+  const resumo = {
+    secoesTotal: 0,
+    secoesTotalizadas: 0,
+    eleitores: 0,
+    comparecimento: 0,
+    abstencao: 0,
+    votosValidos: 0,
+    brancos: 0,
+    nulos: 0,
+  };
+
+  const candidatos = new Map();
+
+  registros.forEach((registro) => {
+    resumo.secoesTotal += Number(registro?.secoesTotal || 0);
+    resumo.secoesTotalizadas += Number(
+      registro?.secoesTotalizadas || 0
+    );
+    resumo.eleitores += Number(registro?.eleitores || 0);
+    resumo.comparecimento += Number(
+      registro?.comparecimento || 0
+    );
+    resumo.abstencao += Number(registro?.abstencao || 0);
+    resumo.votosValidos += votosValidosDocumento(registro);
+    resumo.brancos += Number(registro?.brancos || 0);
+    resumo.nulos += Number(registro?.nulos || 0);
+
+    (registro?.candidatos || []).forEach((candidato) => {
+      const chave = String(candidato?.numero ?? "");
+      if (!chave) return;
+
+      const atual = candidatos.get(chave) || {
+        numero: candidato?.numero ?? "-",
+        nomeUrna:
+          candidato?.nomeUrna ||
+          candidato?.nome ||
+          `Candidato nº ${candidato?.numero ?? "-"}`,
+        partido: candidato?.partido || "-",
+        situacao: candidato?.situacao || "-",
+        votos: 0,
+      };
+
+      atual.votos += Number(candidato?.votos || 0);
+
+      if (!atual.nomeUrna || atual.nomeUrna.startsWith("Candidato nº")) {
+        atual.nomeUrna =
+          candidato?.nomeUrna ||
+          candidato?.nome ||
+          atual.nomeUrna;
+      }
+
+      if ((!atual.partido || atual.partido === "-") && candidato?.partido) {
+        atual.partido = candidato.partido;
+      }
+
+      if ((!atual.situacao || atual.situacao === "-") && candidato?.situacao) {
+        atual.situacao = candidato.situacao;
+      }
+
+      candidatos.set(chave, atual);
+    });
+  });
+
+  const listaCandidatos = [...candidatos.values()]
+    .map((candidato) => ({
+      ...candidato,
+      percentual: percentualCandidato(
+        candidato.votos,
+        resumo.votosValidos,
+        null
+      ),
+    }))
+    .sort(
+      (a, b) =>
+        Number(a.numero || 0) - Number(b.numero || 0)
+    );
+
+  return { resumo, candidatos: listaCandidatos };
+}
+
+function nomeArquivoSeguro(valor = "") {
+  return normalizar(valor)
+    .toLowerCase()
+    .replace(/\s+/g, "-")
+    .replace(/[^a-z0-9-]/g, "")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
 export default function ResultadosTSE2026({ onVoltar }) {
   const [dados, setDados] = useState([]);
   const [erro, setErro] = useState("");
@@ -118,6 +208,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
   const [escolaId, setEscolaId] = useState("GERAL");
   const [resultadosEscolas, setResultadosEscolas] = useState([]);
   const [eleitoradoMunicipios, setEleitoradoMunicipios] = useState([]);
+  const [relatorioTipo, setRelatorioTipo] = useState(null);
 
   const dadosOficiais = useMemo(
     () => dados.filter((d) => d.fase === "o"),
@@ -518,6 +609,116 @@ export default function ResultadosTSE2026({ onVoltar }) {
     resultadoCargoEscola &&
     resumoEscola.secoesTotalizadas > 0;
 
+  const eleitoradoCRE5 = useMemo(
+    () =>
+      eleitoradoMunicipios.reduce(
+        (acc, item) => {
+          acc.eleitoresMunicipio += Number(
+            item.eleitoresMunicipio || 0
+          );
+          acc.eleitoresEscolasEstaduais += Number(
+            item.eleitoresEscolasEstaduais || 0
+          );
+          acc.totalEscolasEstaduais += Number(
+            item.totalEscolasEstaduais || 0
+          );
+          acc.totalSecoesEstaduais += Number(
+            item.totalSecoesEstaduais || 0
+          );
+          return acc;
+        },
+        {
+          eleitoresMunicipio: 0,
+          eleitoresEscolasEstaduais: 0,
+          totalEscolasEstaduais: 0,
+          totalSecoesEstaduais: 0,
+        }
+      ),
+    [eleitoradoMunicipios]
+  );
+
+  const resultadosCargoCRE5 = useMemo(
+    () =>
+      dadosOficiais.filter(
+        (d) => String(d.cargoCodigo) === String(cargo)
+      ),
+    [dadosOficiais, cargo]
+  );
+
+  const consolidadoCRE5 = useMemo(
+    () => consolidarResultados(resultadosCargoCRE5),
+    [resultadosCargoCRE5]
+  );
+
+  const resultadosCargoMunicipio = useMemo(() => {
+    if (municipio === "GERAL") return [];
+
+    return dadosOficiais.filter(
+      (d) =>
+        String(d.cargoCodigo) === String(cargo) &&
+        normalizar(d.municipio) === normalizar(municipio)
+    );
+  }, [dadosOficiais, cargo, municipio]);
+
+  const consolidadoMunicipio = useMemo(
+    () => consolidarResultados(resultadosCargoMunicipio),
+    [resultadosCargoMunicipio]
+  );
+
+  const municipiosRelatorio = useMemo(
+    () =>
+      [...eleitoradoMunicipios].sort((a, b) =>
+        String(a.municipio || "").localeCompare(
+          String(b.municipio || ""),
+          "pt-BR"
+        )
+      ),
+    [eleitoradoMunicipios]
+  );
+
+  const escolasMunicipioRelatorio = useMemo(() => {
+    if (municipio === "GERAL") return [];
+
+    return escolasTSE
+      .filter(
+        (e) =>
+          normalizar(e.municipio) === normalizar(municipio)
+      )
+      .sort((a, b) =>
+        String(a.escolaRadar || "").localeCompare(
+          String(b.escolaRadar || ""),
+          "pt-BR"
+        )
+      );
+  }, [escolasTSE, municipio]);
+
+  function imprimirRelatorio(tipo) {
+    if (tipo === "MUNICIPIO" && municipio === "GERAL") return;
+    if (tipo === "ESCOLA" && !escolaSelecionada) return;
+
+    const tituloAnterior = document.title;
+    let titulo = "Radar Link MS - Relatório CRE-5";
+
+    if (tipo === "MUNICIPIO") {
+      titulo = `Radar Link MS - ${municipio}`;
+    }
+
+    if (tipo === "ESCOLA") {
+      titulo = `Radar Link MS - ${
+        escolaSelecionada?.escolaRadar || "Escola"
+      }`;
+    }
+
+    setRelatorioTipo(tipo);
+    document.title = nomeArquivoSeguro(titulo) || "radar-link-ms";
+
+    window.setTimeout(() => {
+      window.print();
+      document.title = tituloAnterior;
+      window.setTimeout(() => setRelatorioTipo(null), 0);
+    }, 180);
+  }
+
   return (
     <div style={s.page}>
       <div style={s.header}>
@@ -534,6 +735,37 @@ export default function ResultadosTSE2026({ onVoltar }) {
       <button style={s.button} onClick={onVoltar}>
         Voltar ao painel principal
       </button>
+
+      <div style={s.acoesRelatorio}>
+        <button
+          style={s.buttonRelatorio}
+          onClick={() => imprimirRelatorio("CRE5")}
+        >
+          Imprimir / PDF CRE-5
+        </button>
+
+        <button
+          style={{
+            ...s.buttonRelatorio,
+            ...(municipio === "GERAL" ? s.buttonDesabilitado : {}),
+          }}
+          onClick={() => imprimirRelatorio("MUNICIPIO")}
+          disabled={municipio === "GERAL"}
+        >
+          Imprimir / PDF Município
+        </button>
+
+        <button
+          style={{
+            ...s.buttonRelatorio,
+            ...(!escolaSelecionada ? s.buttonDesabilitado : {}),
+          }}
+          onClick={() => imprimirRelatorio("ESCOLA")}
+          disabled={!escolaSelecionada}
+        >
+          Imprimir / PDF Escola
+        </button>
+      </div>
 
       <section style={s.panel}>
         <div style={s.filtros}>
@@ -921,7 +1153,406 @@ export default function ResultadosTSE2026({ onVoltar }) {
           </div>
         </section>
       ))}
+
+      {relatorioTipo && (
+        <RelatorioImpressao
+          tipo={relatorioTipo}
+          cargo={cargo}
+          municipio={municipio}
+          escolaSelecionada={escolaSelecionada}
+          eleitoradoCRE5={eleitoradoCRE5}
+          eleitoradoMunicipio={eleitoradoSelecionado}
+          municipios={municipiosRelatorio}
+          escolasMunicipio={escolasMunicipioRelatorio}
+          consolidadoCRE5={consolidadoCRE5}
+          consolidadoMunicipio={consolidadoMunicipio}
+          resultadoCargoEscola={resultadoCargoEscola}
+          candidatosEscola={candidatosEscola}
+          resumoEscola={resumoEscola}
+          eleitoresEscola={eleitoresEscolaSelecionada}
+        />
+      )}
+
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 12mm;
+          }
+
+          html, body {
+            background: #fff !important;
+          }
+
+          body * {
+            visibility: hidden !important;
+          }
+
+          .relatorio-impressao,
+          .relatorio-impressao * {
+            visibility: visible !important;
+          }
+
+          .relatorio-impressao {
+            display: block !important;
+            position: absolute !important;
+            left: 0 !important;
+            top: 0 !important;
+            width: 100% !important;
+            color: #000 !important;
+            background: #fff !important;
+            font-family: Arial, sans-serif !important;
+            font-size: 10pt !important;
+          }
+
+          .relatorio-impressao table {
+            width: 100% !important;
+            border-collapse: collapse !important;
+          }
+
+          .relatorio-impressao th,
+          .relatorio-impressao td {
+            border: 1px solid #777 !important;
+            padding: 5px 6px !important;
+            color: #000 !important;
+          }
+
+          .relatorio-impressao th {
+            background: #eee !important;
+          }
+
+          .relatorio-impressao tr,
+          .relatorio-impressao .bloco-relatorio {
+            break-inside: avoid !important;
+          }
+        }
+      `}</style>
     </div>
+  );
+}
+
+function RelatorioImpressao({
+  tipo,
+  cargo,
+  municipio,
+  escolaSelecionada,
+  eleitoradoCRE5,
+  eleitoradoMunicipio,
+  municipios,
+  escolasMunicipio,
+  consolidadoCRE5,
+  consolidadoMunicipio,
+  resultadoCargoEscola,
+  candidatosEscola,
+  resumoEscola,
+  eleitoresEscola,
+}) {
+  const cargoNome = CARGOS[cargo] || `Cargo ${cargo}`;
+  const agora = new Date().toLocaleString("pt-BR");
+
+  const titulo =
+    tipo === "CRE5"
+      ? "Relatório CRE-5"
+      : tipo === "MUNICIPIO"
+      ? `Relatório municipal - ${municipio}`
+      : `Relatório da escola - ${
+          escolaSelecionada?.escolaRadar || "-"
+        }`;
+
+  const consolidado =
+    tipo === "CRE5"
+      ? consolidadoCRE5
+      : tipo === "MUNICIPIO"
+      ? consolidadoMunicipio
+      : null;
+
+  const candidatos =
+    tipo === "ESCOLA"
+      ? candidatosEscola
+      : consolidado?.candidatos || [];
+
+  const resumoResultado =
+    tipo === "ESCOLA"
+      ? resumoEscola
+      : consolidado?.resumo || {};
+
+  const temResultado =
+    tipo === "ESCOLA"
+      ? Boolean(
+          resultadoCargoEscola &&
+            Number(resumoEscola?.secoesTotalizadas || 0) > 0
+        )
+      : candidatos.length > 0 ||
+        Number(resumoResultado?.secoesTotalizadas || 0) > 0;
+
+  return (
+    <div className="relatorio-impressao" style={s.relatorioImpressao}>
+      <div style={s.relatorioCabecalho}>
+        <div>
+          <h1 style={s.relatorioH1}>Radar Link MS</h1>
+          <h2 style={s.relatorioH2}>{titulo}</h2>
+        </div>
+        <div style={s.relatorioData}>
+          Gerado em {agora}
+        </div>
+      </div>
+
+      <div style={s.relatorioLinha}>
+        <strong>Cargo:</strong> {cargoNome}
+      </div>
+
+      {tipo === "CRE5" && (
+        <>
+          <ResumoRelatorio
+            itens={[
+              [
+                "Eleitores nos 12 municípios",
+                numero(eleitoradoCRE5.eleitoresMunicipio),
+              ],
+              [
+                "Eleitores nas escolas estaduais",
+                numero(eleitoradoCRE5.eleitoresEscolasEstaduais),
+              ],
+              [
+                "Escolas estaduais vinculadas",
+                numero(eleitoradoCRE5.totalEscolasEstaduais),
+              ],
+              [
+                "Seções estaduais vinculadas",
+                numero(eleitoradoCRE5.totalSecoesEstaduais),
+              ],
+            ]}
+          />
+
+          <BlocoRelatorio titulo="Eleitorado por município">
+            <TabelaRelatorio
+              colunas={[
+                "Município",
+                "Eleitores",
+                "Nas escolas estaduais",
+                "Escolas",
+                "Seções",
+              ]}
+              linhas={municipios.map((item) => [
+                item.municipio || "-",
+                numero(item.eleitoresMunicipio),
+                numero(item.eleitoresEscolasEstaduais),
+                numero(item.totalEscolasEstaduais),
+                numero(item.totalSecoesEstaduais),
+              ])}
+            />
+          </BlocoRelatorio>
+        </>
+      )}
+
+      {tipo === "MUNICIPIO" && (
+        <>
+          <ResumoRelatorio
+            itens={[
+              [
+                "Eleitores do município",
+                numero(eleitoradoMunicipio.eleitoresMunicipio),
+              ],
+              [
+                "Eleitores nas escolas estaduais",
+                numero(eleitoradoMunicipio.eleitoresEscolasEstaduais),
+              ],
+              [
+                "Escolas estaduais vinculadas",
+                numero(eleitoradoMunicipio.totalEscolasEstaduais),
+              ],
+              [
+                "Seções estaduais vinculadas",
+                numero(eleitoradoMunicipio.totalSecoesEstaduais),
+              ],
+            ]}
+          />
+
+          <BlocoRelatorio titulo="Escolas estaduais do município">
+            <TabelaRelatorio
+              colunas={[
+                "Escola",
+                "Zona",
+                "Seções",
+                "Eleitores",
+              ]}
+              linhas={escolasMunicipio.map((escola) => [
+                escola.escolaRadar || "-",
+                escola.zona ?? "-",
+                numero((escola.secoes || []).length),
+                numero(escola.eleitoresCadastrados),
+              ])}
+            />
+          </BlocoRelatorio>
+        </>
+      )}
+
+      {tipo === "ESCOLA" && escolaSelecionada && (
+        <>
+          <ResumoRelatorio
+            itens={[
+              ["Município", escolaSelecionada.municipio || "-"],
+              ["Zona eleitoral", escolaSelecionada.zona ?? "-"],
+              ["Eleitores cadastrados", numero(eleitoresEscola)],
+              [
+                "Seções vinculadas",
+                numero((escolaSelecionada.secoes || []).length),
+              ],
+            ]}
+          />
+
+          <BlocoRelatorio titulo="Identificação do local de votação">
+            <div style={s.relatorioTexto}>
+              <strong>Escola:</strong>{" "}
+              {escolaSelecionada.escolaRadar || "-"}
+            </div>
+            <div style={s.relatorioTexto}>
+              <strong>Local TSE:</strong>{" "}
+              {escolaSelecionada.nomeLocalVotacaoTSE || "-"}
+            </div>
+            <div style={s.relatorioTexto}>
+              <strong>Seções:</strong>{" "}
+              {(escolaSelecionada.secoes || []).join(", ") || "-"}
+            </div>
+          </BlocoRelatorio>
+
+          {(escolaSelecionada.eleitoresPorSecao || []).length > 0 && (
+            <BlocoRelatorio titulo="Eleitorado por seção">
+              <TabelaRelatorio
+                colunas={["Seção", "Eleitores"]}
+                linhas={[...(escolaSelecionada.eleitoresPorSecao || [])]
+                  .sort(
+                    (a, b) =>
+                      Number(a.secao || 0) - Number(b.secao || 0)
+                  )
+                  .map((item) => [
+                    item.secao ?? "-",
+                    numero(item.eleitores),
+                  ])}
+              />
+            </BlocoRelatorio>
+          )}
+        </>
+      )}
+
+      <BlocoRelatorio titulo={`Resultado oficial - ${cargoNome}`}>
+        {temResultado ? (
+          <>
+            <div style={s.relatorioResumoResultado}>
+              <span>
+                <strong>Seções:</strong>{" "}
+                {numero(resumoResultado.secoesTotalizadas)} /{" "}
+                {numero(resumoResultado.secoesTotal)}
+              </span>
+              <span>
+                <strong>Válidos:</strong>{" "}
+                {numero(resumoResultado.votosValidos)}
+              </span>
+              <span>
+                <strong>Brancos:</strong>{" "}
+                {numero(resumoResultado.brancos)}
+              </span>
+              <span>
+                <strong>Nulos:</strong>{" "}
+                {numero(resumoResultado.nulos)}
+              </span>
+            </div>
+
+            <TabelaRelatorio
+              colunas={[
+                "Número",
+                "Candidatura",
+                "Partido",
+                "Votos",
+                "% válidos",
+                "Situação",
+              ]}
+              linhas={candidatos.map((c) => [
+                c.numero ?? "-",
+                c.nomeUrna || c.nome || "-",
+                c.partido || "-",
+                numero(c.votos),
+                percentual(c.percentual),
+                c.situacao || "-",
+              ])}
+            />
+          </>
+        ) : (
+          <div style={s.relatorioAviso}>
+            Aguardando a divulgação oficial do TSE. Dados simulados não são
+            incluídos neste relatório.
+          </div>
+        )}
+      </BlocoRelatorio>
+
+      <div style={s.relatorioFonte}>
+        Fonte: Tribunal Superior Eleitoral (TSE), dados sincronizados pelo
+        Radar Link MS. As candidaturas são apresentadas em ordem numérica.
+      </div>
+    </div>
+  );
+}
+
+function ResumoRelatorio({ itens }) {
+  return (
+    <div style={s.relatorioCards} className="bloco-relatorio">
+      {itens.map(([titulo, valor]) => (
+        <div key={titulo} style={s.relatorioCard}>
+          <div style={s.relatorioCardTitulo}>{titulo}</div>
+          <div style={s.relatorioCardValor}>{valor}</div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function BlocoRelatorio({ titulo, children }) {
+  return (
+    <section style={s.relatorioBloco} className="bloco-relatorio">
+      <h3 style={s.relatorioH3}>{titulo}</h3>
+      {children}
+    </section>
+  );
+}
+
+function TabelaRelatorio({ colunas, linhas }) {
+  return (
+    <table style={s.relatorioTabela}>
+      <thead>
+        <tr>
+          {colunas.map((coluna) => (
+            <th key={coluna} style={s.relatorioTh}>
+              {coluna}
+            </th>
+          ))}
+        </tr>
+      </thead>
+      <tbody>
+        {linhas.length ? (
+          linhas.map((linha, indice) => (
+            <tr key={indice}>
+              {linha.map((valor, indiceColuna) => (
+                <td
+                  key={`${indice}-${indiceColuna}`}
+                  style={s.relatorioTd}
+                >
+                  {valor}
+                </td>
+              ))}
+            </tr>
+          ))
+        ) : (
+          <tr>
+            <td
+              style={s.relatorioTd}
+              colSpan={Math.max(1, colunas.length)}
+            >
+              Nenhum registro disponível.
+            </td>
+          </tr>
+        )}
+      </tbody>
+    </table>
   );
 }
 
@@ -974,6 +1605,25 @@ const s = {
     cursor: "pointer",
     fontWeight: "bold",
     marginBottom: 10,
+  },
+  acoesRelatorio: {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit,minmax(210px,1fr))",
+    gap: 10,
+    marginBottom: 16,
+  },
+  buttonRelatorio: {
+    padding: 12,
+    background: "#0f766e",
+    color: "white",
+    border: "none",
+    borderRadius: 10,
+    cursor: "pointer",
+    fontWeight: 800,
+  },
+  buttonDesabilitado: {
+    opacity: 0.45,
+    cursor: "not-allowed",
   },
   escolaBox: {
     marginTop: 14,
@@ -1080,5 +1730,102 @@ const s = {
     padding: 12,
     borderRadius: 10,
     marginTop: 12,
+  },
+  relatorioImpressao: {
+    display: "none",
+    background: "white",
+    color: "#111",
+  },
+  relatorioCabecalho: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 18,
+    borderBottom: "2px solid #111",
+    paddingBottom: 10,
+    marginBottom: 12,
+  },
+  relatorioH1: {
+    margin: 0,
+    fontSize: 22,
+  },
+  relatorioH2: {
+    margin: "4px 0 0",
+    fontSize: 16,
+  },
+  relatorioH3: {
+    margin: "0 0 8px",
+    fontSize: 13,
+  },
+  relatorioData: {
+    fontSize: 10,
+    textAlign: "right",
+  },
+  relatorioLinha: {
+    marginBottom: 10,
+    fontSize: 11,
+  },
+  relatorioCards: {
+    display: "grid",
+    gridTemplateColumns: "repeat(4,1fr)",
+    gap: 7,
+    marginBottom: 12,
+  },
+  relatorioCard: {
+    border: "1px solid #777",
+    padding: 7,
+  },
+  relatorioCardTitulo: {
+    fontSize: 9,
+    color: "#333",
+  },
+  relatorioCardValor: {
+    marginTop: 3,
+    fontWeight: 800,
+    fontSize: 14,
+  },
+  relatorioBloco: {
+    marginTop: 12,
+    marginBottom: 12,
+  },
+  relatorioTabela: {
+    width: "100%",
+    borderCollapse: "collapse",
+    fontSize: 9.5,
+  },
+  relatorioTh: {
+    border: "1px solid #777",
+    background: "#eee",
+    color: "#000",
+    padding: "5px 6px",
+    textAlign: "left",
+  },
+  relatorioTd: {
+    border: "1px solid #777",
+    color: "#000",
+    padding: "5px 6px",
+    verticalAlign: "top",
+  },
+  relatorioTexto: {
+    marginBottom: 4,
+    fontSize: 10,
+  },
+  relatorioResumoResultado: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: 14,
+    marginBottom: 8,
+    fontSize: 10,
+  },
+  relatorioAviso: {
+    border: "1px solid #999",
+    padding: 9,
+    fontSize: 10,
+  },
+  relatorioFonte: {
+    borderTop: "1px solid #777",
+    paddingTop: 8,
+    marginTop: 14,
+    fontSize: 9,
   },
 };
