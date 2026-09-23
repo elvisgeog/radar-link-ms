@@ -94,6 +94,7 @@ function similaridade(a, b) {
 
   return intersecao / uniao.size;
 }
+
 function pareceEscolaEstadual(nome = "") {
   const n = String(nome)
     .normalize("NFD")
@@ -115,7 +116,7 @@ function pareceEscolaEstadual(nome = "") {
     n.startsWith("CENTRO ESTADUAL ")
   );
 }
- 
+
 function idSeguro(texto = "") {
   return normalizar(texto)
     .toLowerCase()
@@ -123,6 +124,7 @@ function idSeguro(texto = "") {
     .replace(/[^a-z0-9_]/g, "")
     .slice(0, 120);
 }
+
 function ehCeepCeejaDourados(nome = "", municipio = "") {
   const n = normalizar(nome);
   const m = normalizar(municipio);
@@ -134,6 +136,79 @@ function ehCeepCeejaDourados(nome = "", municipio = "") {
     n.includes("CENTRO ESTADUAL DE EDUCACAO PROFISSIONAL")
   );
 }
+
+function canonizarNomeEscola(nome = "", municipio = "") {
+  const original = String(nome || "").trim();
+
+  if (!original) return "";
+
+  if (ehCeepCeejaDourados(original, municipio)) {
+    return "CENTRO ESTADUAL DE EDUCAÇÃO PROFISSIONAL E CEEJA/MS";
+  }
+
+  if (normalizar(municipio) !== "DOURADOS") {
+    return original;
+  }
+
+  const n = normalizar(original);
+
+  if (
+    n.includes("ALICIO ARAUJO") ||
+    n.includes("ALICIO DE ARAUJO")
+  ) {
+    return "EE PROF. ALÍCIO ARAÚJO";
+  }
+
+  if (n.includes("CELSO MULLER DO AMARAL")) {
+    return "EE PROF. CELSO MÜLLER DO AMARAL";
+  }
+
+  if (
+    n === "DJALMA BARROS" ||
+    n.includes("MOACIR DJALMA BARROS")
+  ) {
+    return "EE VEREADOR MOACIR DJALMA BARROS";
+  }
+
+  if (n.includes("GETULIO VARGAS")) {
+    return "EE PRES. GETÚLIO VARGAS";
+  }
+
+  if (n.includes("JOAO PAULO DOS REIS VELOSO")) {
+    return "EE MIN. JOÃO PAULO DOS REIS VELOSO";
+  }
+
+  return original;
+}
+
+function chaveLocal(municipio, zona, numeroLocalVotacao) {
+  return [
+    normalizar(municipio),
+    String(zona ?? ""),
+    String(numeroLocalVotacao ?? ""),
+  ].join("|");
+}
+
+function escolherCandidato(atual, novo) {
+  if (!atual) return novo;
+
+  const atualRadar = atual.origem !== "TSE";
+  const novoRadar = novo.origem !== "TSE";
+
+  if (novoRadar && !atualRadar) return novo;
+  if (atualRadar && !novoRadar) return atual;
+
+  if (novo.melhorScore > atual.melhorScore) return novo;
+  if (atual.melhorScore > novo.melhorScore) return atual;
+
+  return String(novo.escolaRadar.escola).localeCompare(
+    String(atual.escolaRadar.escola),
+    "pt-BR"
+  ) < 0
+    ? novo
+    : atual;
+}
+
 export default async function handler(req, res) {
   const inicio = Date.now();
 
@@ -159,13 +234,14 @@ export default async function handler(req, res) {
 
       const escolaOriginal = String(d.escola || "").trim();
 
-const municipio = String(
-  d.municipio || d["município"] || ""
-).trim();
+      const municipio = String(
+        d.municipio || d["município"] || ""
+      ).trim();
 
-const escola = ehCeepCeejaDourados(escolaOriginal, municipio)
-  ? "CENTRO ESTADUAL DE EDUCAÇÃO PROFISSIONAL E CEEJA/MS"
-  : escolaOriginal;
+      const escola = canonizarNomeEscola(
+        escolaOriginal,
+        municipio
+      );
 
       if (!escola || !municipio) continue;
 
@@ -176,6 +252,7 @@ const escola = ehCeepCeejaDourados(escolaOriginal, municipio)
         escolasRadar.set(chave, {
           escola,
           municipio,
+          origem: "RADAR",
         });
       }
     }
@@ -190,72 +267,77 @@ const escola = ehCeepCeejaDourados(escolaOriginal, municipio)
       const municipioNorm = normalizar(d.municipio);
 
       if (!locaisPorMunicipio.has(municipioNorm)) {
-        locaisPorMunicipio.set(municipioNorm, new Map());
+        locaisPorMunicipio.set(
+          municipioNorm,
+          new Map()
+        );
       }
 
-      const chaveLocal =
+      const chave =
         `${d.zona}|${d.numeroLocalVotacao}`;
 
-      const locais = locaisPorMunicipio.get(municipioNorm);
+      const locais =
+        locaisPorMunicipio.get(municipioNorm);
 
-      if (!locais.has(chaveLocal)) {
-        locais.set(chaveLocal, {
+      if (!locais.has(chave)) {
+        locais.set(chave, {
           municipio: d.municipio,
-          codigoMunicipio: d.codigoMunicipio || null,
+          codigoMunicipio:
+            d.codigoMunicipio || null,
           zona: d.zona,
-          numeroLocalVotacao: d.numeroLocalVotacao,
-          nomeLocalVotacao: d.nomeLocalVotacao,
+          numeroLocalVotacao:
+            d.numeroLocalVotacao,
+          nomeLocalVotacao:
+            d.nomeLocalVotacao,
           enderecoLocalVotacao:
             d.enderecoLocalVotacao || "",
           secoes: [],
         });
       }
 
-      locais.get(chaveLocal).secoes.push(
+      locais.get(chave).secoes.push(
         String(d.secao)
       );
     }
-for (const locais of locaisPorMunicipio.values()) {
-  for (const local of locais.values()) {
-    if (!pareceEscolaEstadual(local.nomeLocalVotacao)) continue;
 
-    const nomeLocalUnificado = ehCeepCeejaDourados(
-  local.nomeLocalVotacao,
-  local.municipio
-)
-  ? "CENTRO ESTADUAL DE EDUCAÇÃO PROFISSIONAL E CEEJA/MS"
-  : local.nomeLocalVotacao;
+    for (
+      const locais of locaisPorMunicipio.values()
+    ) {
+      for (const local of locais.values()) {
+        if (
+          !pareceEscolaEstadual(
+            local.nomeLocalVotacao
+          )
+        ) {
+          continue;
+        }
 
-const chave =
-  `${normalizar(local.municipio)}|${normalizar(nomeLocalUnificado)}`;
+        const nomeLocalUnificado =
+          canonizarNomeEscola(
+            local.nomeLocalVotacao,
+            local.municipio
+          );
 
-    if (!escolasRadar.has(chave)) {
-      escolasRadar.set(chave, {
-        escola: nomeLocalUnificado,
-        municipio: local.municipio,
-        origem: "TSE",
-      });
+        const chave =
+          `${normalizar(local.municipio)}|` +
+          `${normalizar(nomeLocalUnificado)}`;
+
+        if (!escolasRadar.has(chave)) {
+          escolasRadar.set(chave, {
+            escola: nomeLocalUnificado,
+            municipio: local.municipio,
+            origem: "TSE",
+          });
+        }
+      }
     }
-  }
-}
-    let batch = db.batch();
-    let operacoes = 0;
 
-    let encontrados = 0;
-    let naoEncontrados = 0;
-
+    const candidatosEncontrados = [];
     const pendentes = [];
 
-    async function salvarBatch() {
-      if (operacoes === 0) return;
-
-      await batch.commit();
-
-      batch = db.batch();
-      operacoes = 0;
-    }
-
-    for (const escolaRadar of escolasRadar.values()) {
+    for (
+      const escolaRadar of escolasRadar.values()
+    ) {
       const municipioNorm =
         normalizar(escolaRadar.municipio);
 
@@ -268,18 +350,21 @@ const chave =
       if (locais) {
         for (const local of locais.values()) {
           const scoreBase = similaridade(
-  escolaRadar.escola,
-  local.nomeLocalVotacao
-);
+            escolaRadar.escola,
+            local.nomeLocalVotacao
+          );
 
-const escolaNorm = normalizar(escolaRadar.escola);
-const localNorm = normalizar(local.nomeLocalVotacao);
+          const escolaNorm =
+            normalizar(escolaRadar.escola);
 
-const score =
-  escolaNorm.includes("CEEJA") &&
-  localNorm.includes("CEEJA")
-    ? 1
-    : scoreBase;
+          const localNorm =
+            normalizar(local.nomeLocalVotacao);
+
+          const score =
+            escolaNorm.includes("CEEJA") &&
+            localNorm.includes("CEEJA")
+              ? 1
+              : scoreBase;
 
           if (score > melhorScore) {
             melhorScore = score;
@@ -289,62 +374,14 @@ const score =
       }
 
       if (melhor && melhorScore >= 0.68) {
-        encontrados++;
-
-        const id =
-          `${idSeguro(escolaRadar.municipio)}_` +
-          `${idSeguro(escolaRadar.escola)}`;
-
-        const ref = db
-          .collection("escolas_tse_2026")
-          .doc(id);
-
-        batch.set(
-          ref,
-          {
-            escolaRadar: escolaRadar.escola,
-            municipio: escolaRadar.municipio,
-
-            codigoMunicipio:
-              melhor.codigoMunicipio,
-
-            zona: melhor.zona,
-
-            numeroLocalVotacao:
-              melhor.numeroLocalVotacao,
-
-            nomeLocalVotacaoTSE:
-              melhor.nomeLocalVotacao,
-
-            enderecoLocalVotacao:
-              melhor.enderecoLocalVotacao,
-
-            secoes: melhor.secoes.sort(
-              (a, b) => Number(a) - Number(b)
-            ),
-
-            totalSecoes: melhor.secoes.length,
-
-            similaridade:
-              Number(melhorScore.toFixed(3)),
-
-            confirmadoAutomaticamente:
-              melhorScore >= 0.8,
-
-            atualizadoEm:
-              FieldValue.serverTimestamp(),
-          },
-          { merge: true }
-        );
-
-        operacoes++;
-
-        if (operacoes >= 400) {
-          await salvarBatch();
-        }
+        candidatosEncontrados.push({
+          escolaRadar,
+          melhor,
+          melhorScore,
+          origem:
+            escolaRadar.origem || "RADAR",
+        });
       } else {
-        naoEncontrados++;
-
         pendentes.push({
           municipio: escolaRadar.municipio,
           escola: escolaRadar.escola,
@@ -356,7 +393,144 @@ const score =
       }
     }
 
+    const porLocalTSE = new Map();
+    const duplicidadesEliminadas = [];
+
+    for (const candidato of candidatosEncontrados) {
+      const chave = chaveLocal(
+        candidato.melhor.municipio,
+        candidato.melhor.zona,
+        candidato.melhor.numeroLocalVotacao
+      );
+
+      const atual = porLocalTSE.get(chave);
+
+      if (!atual) {
+        porLocalTSE.set(chave, candidato);
+        continue;
+      }
+
+      const escolhido = escolherCandidato(
+        atual,
+        candidato
+      );
+
+      const descartado =
+        escolhido === atual
+          ? candidato
+          : atual;
+
+      porLocalTSE.set(chave, escolhido);
+
+      duplicidadesEliminadas.push({
+        chaveLocalTSE: chave,
+        mantida:
+          escolhido.escolaRadar.escola,
+        descartada:
+          descartado.escolaRadar.escola,
+        nomeLocalVotacaoTSE:
+          escolhido.melhor.nomeLocalVotacao,
+        secoes:
+          escolhido.melhor.secoes
+            .map(Number)
+            .sort((a, b) => a - b),
+      });
+    }
+
+    const finais =
+      Array.from(porLocalTSE.values());
+
+    let batch = db.batch();
+    let operacoes = 0;
+
+    async function salvarBatch() {
+      if (operacoes === 0) return;
+
+      await batch.commit();
+
+      batch = db.batch();
+      operacoes = 0;
+    }
+
+    for (const candidato of finais) {
+      const {
+        escolaRadar,
+        melhor,
+        melhorScore,
+      } = candidato;
+
+      const nomeCanonico =
+        canonizarNomeEscola(
+          escolaRadar.escola,
+          escolaRadar.municipio
+        );
+
+      const id =
+        `${idSeguro(escolaRadar.municipio)}_` +
+        `${idSeguro(nomeCanonico)}`;
+
+      const ref = db
+        .collection("escolas_tse_2026")
+        .doc(id);
+
+      const secoesOrdenadas =
+        [...new Set(melhor.secoes)]
+          .map(String)
+          .sort(
+            (a, b) => Number(a) - Number(b)
+          );
+
+      batch.set(
+        ref,
+        {
+          escolaRadar: nomeCanonico,
+          municipio: escolaRadar.municipio,
+
+          codigoMunicipio:
+            melhor.codigoMunicipio,
+
+          zona: melhor.zona,
+
+          numeroLocalVotacao:
+            melhor.numeroLocalVotacao,
+
+          nomeLocalVotacaoTSE:
+            melhor.nomeLocalVotacao,
+
+          enderecoLocalVotacao:
+            melhor.enderecoLocalVotacao,
+
+          secoes: secoesOrdenadas,
+
+          totalSecoes:
+            secoesOrdenadas.length,
+
+          similaridade:
+            Number(melhorScore.toFixed(3)),
+
+          confirmadoAutomaticamente:
+            melhorScore >= 0.8,
+
+          origemCadastro:
+            escolaRadar.origem || "RADAR",
+
+          atualizadoEm:
+            FieldValue.serverTimestamp(),
+        },
+        { merge: true }
+      );
+
+      operacoes++;
+
+      if (operacoes >= 400) {
+        await salvarBatch();
+      }
+    }
+
     await salvarBatch();
+
+    const encontrados = finais.length;
+    const naoEncontrados = pendentes.length;
 
     await db
       .collection("meta_tse_2026")
@@ -366,8 +540,17 @@ const score =
           totalEscolasRadar:
             escolasRadar.size,
 
-          encontradas: encontrados,
-naoEncontradas: naoEncontrados,
+          candidatosEncontradosAntesDeduplicacao:
+            candidatosEncontrados.length,
+
+          encontradas:
+            encontrados,
+
+          naoEncontradas:
+            naoEncontrados,
+
+          duplicidadesPorLocalRemovidas:
+            duplicidadesEliminadas.length,
 
           atualizadoEm:
             FieldValue.serverTimestamp(),
@@ -377,11 +560,24 @@ naoEncontradas: naoEncontrados,
 
     return res.status(200).json({
       ok: true,
-           totalEscolasRadar:
+
+      totalEscolasRadar:
         escolasRadar.size,
 
-      encontradas: encontrados,
-naoEncontradas: naoEncontrados,
+      candidatosEncontradosAntesDeduplicacao:
+        candidatosEncontrados.length,
+
+      encontradas:
+        encontrados,
+
+      naoEncontradas:
+        naoEncontrados,
+
+      duplicidadesPorLocalRemovidas:
+        duplicidadesEliminadas.length,
+
+      duplicidadesEliminadas:
+        duplicidadesEliminadas.slice(0, 30),
 
       pendentes:
         pendentes.slice(0, 30),
