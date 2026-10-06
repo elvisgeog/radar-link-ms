@@ -37,7 +37,17 @@ function normalizar(valor = "") {
 
 function candidatoEleito(candidato) {
   const texto = normalizar(candidato?.situacao || "");
-  return texto.includes("ELEIT");
+
+  // "NÃO ELEITO" contém a palavra "ELEITO", por isso precisa ser
+  // descartado antes de reconhecer as situações efetivamente eleitas.
+  if (texto.includes("NAO ELEIT")) return false;
+
+  return (
+    texto === "ELEITO" ||
+    texto.startsWith("ELEITO ") ||
+    texto.includes(" ELEITO ") ||
+    texto.includes("ELEITO POR")
+  );
 }
 
 function ordenarCandidatos(a, b) {
