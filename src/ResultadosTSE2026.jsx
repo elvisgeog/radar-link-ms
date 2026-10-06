@@ -478,6 +478,16 @@ export default function ResultadosTSE2026({ onVoltar }) {
 
   const temResultadosOficiais = filtrados.length > 0;
 
+  const statusApuracao = useMemo(() => {
+    if (!filtrados.length) return "Aguardando TSE";
+
+    const todasFinalizadas = filtrados.every(
+      (d) => d.andamento === "f"
+    );
+
+    return todasFinalizadas ? "Finalizada" : "Em andamento";
+  }, [filtrados]);
+
   const resumoMunicipal = useMemo(
     () =>
       filtrados.reduce(
@@ -909,11 +919,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
 
             <Card
               titulo="Apuração oficial"
-              valor={
-                temResultadosOficiais
-                  ? "Em andamento"
-                  : "Aguardando TSE"
-              }
+              valor={statusApuracao}
             />
           </div>
         ) : (
