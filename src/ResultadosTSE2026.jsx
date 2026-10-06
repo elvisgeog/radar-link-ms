@@ -35,6 +35,23 @@ function normalizar(valor = "") {
     .trim();
 }
 
+function candidatoEleito(candidato) {
+  const texto = normalizar(candidato?.situacao || "");
+  return texto.includes("ELEIT");
+}
+
+function ordenarCandidatos(a, b) {
+  const eleitoA = candidatoEleito(a) ? 1 : 0;
+  const eleitoB = candidatoEleito(b) ? 1 : 0;
+
+  if (eleitoA !== eleitoB) return eleitoB - eleitoA;
+
+  const diferencaVotos = Number(b?.votos || 0) - Number(a?.votos || 0);
+  if (diferencaVotos !== 0) return diferencaVotos;
+
+  return Number(a?.numero || 0) - Number(b?.numero || 0);
+}
+
 function somaVotosCandidatos(registro) {
   return (registro?.candidatos || []).reduce(
     (total, candidato) => total + Number(candidato?.votos || 0),
@@ -182,10 +199,7 @@ function consolidarResultados(registros = []) {
         null
       ),
     }))
-    .sort(
-      (a, b) =>
-        Number(a.numero || 0) - Number(b.numero || 0)
-    );
+    .sort(ordenarCandidatos);
 
   return { resumo, candidatos: listaCandidatos };
 }
@@ -598,10 +612,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
           ),
         };
       })
-      .sort(
-        (a, b) =>
-          Number(a.numero || 0) - Number(b.numero || 0)
-      );
+      .sort(ordenarCandidatos);
   }, [resultadoCargoEscola, metadadosCandidatos]);
 
   const temResultadoCargoEscola =
@@ -1112,11 +1123,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
               <tbody>
                 {(d.candidatos || [])
                   .slice()
-                  .sort(
-                    (a, b) =>
-                      Number(a.numero || 0) -
-                      Number(b.numero || 0)
-                  )
+                  .sort(ordenarCandidatos)
                   .map((c) => (
                     <tr
                       key={`${d.id}-${
@@ -1180,6 +1187,31 @@ export default function ResultadosTSE2026({ onVoltar }) {
       )}
 
       <style>{`
+        .metric-card-compacto .metric-value {
+          white-space: normal !important;
+          font-size: 20px !important;
+        }
+
+        @media screen and (max-width: 1100px) {
+          .resultados-cards {
+            grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+          }
+
+          .resultados-filtros {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+        }
+
+        @media screen and (max-width: 760px) {
+          .resultados-cards {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+
+          .resultados-filtros {
+            grid-template-columns: minmax(0, 1fr) !important;
+          }
+        }
+
         @media screen and (max-width: 640px) {
           html,
           body,
@@ -1284,14 +1316,15 @@ export default function ResultadosTSE2026({ onVoltar }) {
           }
 
           .metric-card-compacto {
-            grid-column: 1 / -1 !important;
-            min-height: 88px !important;
+            grid-column: auto !important;
+            min-height: 112px !important;
           }
 
           .metric-card-compacto .metric-value {
             font-size: 18px !important;
             line-height: 1.15 !important;
             letter-spacing: 0 !important;
+            white-space: normal !important;
           }
 
           .municipio-topo {
@@ -1656,7 +1689,7 @@ function RelatorioImpressao({
 
       <div style={s.relatorioFonte}>
         Fonte: Tribunal Superior Eleitoral (TSE), dados sincronizados pelo
-        Radar Link MS. As candidaturas são apresentadas em ordem numérica.
+        Radar Link MS. Eleitos aparecem primeiro, seguidos dos demais candidatos, sempre em ordem decrescente de votos.
       </div>
     </div>
   );
@@ -1750,29 +1783,36 @@ const s = {
     background:
       "linear-gradient(135deg,#07111f,#0f172a,#111827)",
     color: "white",
-    fontFamily: "Arial",
-    padding: 15,
+    fontFamily: "Arial, sans-serif",
+    padding: 18,
+    boxSizing: "border-box",
+    lineHeight: 1.4,
   },
-  header: { marginBottom: 15 },
-  sub: { color: "#cbd5e1", marginTop: 6 },
+  header: { marginBottom: 14 },
+  sub: { color: "#cbd5e1", marginTop: 6, marginBottom: 0, lineHeight: 1.45 },
   panel: {
     background: "rgba(15,23,42,.96)",
     padding: 18,
-    borderRadius: 18,
+    borderRadius: 16,
     marginBottom: 16,
+    boxSizing: "border-box",
   },
   filtros: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(260px,1fr))",
-    gap: 10,
+    gridTemplateColumns: "repeat(3,minmax(0,1fr))",
+    gap: 12,
+    alignItems: "stretch",
   },
   input: {
     width: "100%",
-    padding: 12,
+    minWidth: 0,
+    height: 44,
+    padding: "0 12px",
     borderRadius: 8,
-    border: "none",
+    border: "1px solid #d1d5db",
     boxSizing: "border-box",
-    fontSize: 16,
+    fontSize: 15,
+    lineHeight: 1.2,
   },
   button: {
     width: "100%",
@@ -1817,23 +1857,36 @@ const s = {
   },
   cards: {
     display: "grid",
-    gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))",
+    gridTemplateColumns: "repeat(5,minmax(0,1fr))",
     gap: 10,
-    marginTop: 12,
+    marginTop: 14,
+    alignItems: "stretch",
   },
   card: {
     background: "#1e293b",
-    padding: 14,
+    padding: "14px 14px 15px",
     borderRadius: 12,
+    minWidth: 0,
+    minHeight: 92,
+    boxSizing: "border-box",
+    display: "flex",
+    flexDirection: "column",
+    justifyContent: "space-between",
   },
   cardTitulo: {
     color: "#cbd5e1",
-    fontSize: 13,
+    fontSize: 12,
+    fontWeight: 600,
+    lineHeight: 1.3,
+    minHeight: 31,
   },
   cardValor: {
     fontSize: 24,
+    lineHeight: 1.05,
     fontWeight: 900,
-    marginTop: 5,
+    marginTop: 8,
+    letterSpacing: "-0.3px",
+    whiteSpace: "nowrap",
   },
   municipioTopo: {
     display: "flex",
@@ -1856,42 +1909,59 @@ const s = {
   resumoLinha: {
     display: "flex",
     flexWrap: "wrap",
-    gap: 18,
-    padding: "14px 0",
+    alignItems: "center",
+    gap: "8px 22px",
+    padding: "13px 0",
     color: "#e2e8f0",
+    fontSize: 14,
+    lineHeight: 1.35,
   },
   tabelaWrap: {
     overflowX: "auto",
   },
   table: {
     width: "100%",
+    minWidth: 760,
     borderCollapse: "collapse",
+    tableLayout: "auto",
     background: "#0f172a",
+    fontSize: 14,
   },
   th: {
     textAlign: "left",
-    padding: 10,
+    padding: "10px 12px",
     borderBottom: "1px solid #334155",
     color: "#cbd5e1",
     whiteSpace: "nowrap",
+    fontSize: 13,
+    lineHeight: 1.25,
+    fontWeight: 700,
   },
   thDireita: {
     textAlign: "right",
-    padding: 10,
+    padding: "10px 12px",
     borderBottom: "1px solid #334155",
     color: "#cbd5e1",
     whiteSpace: "nowrap",
+    fontSize: 13,
+    lineHeight: 1.25,
+    fontWeight: 700,
   },
   td: {
-    padding: 10,
+    padding: "10px 12px",
     borderBottom: "1px solid #1e293b",
     whiteSpace: "nowrap",
+    lineHeight: 1.3,
+    verticalAlign: "middle",
   },
   tdDireita: {
-    padding: 10,
+    padding: "10px 12px",
     borderBottom: "1px solid #1e293b",
     textAlign: "right",
     whiteSpace: "nowrap",
+    lineHeight: 1.3,
+    verticalAlign: "middle",
+    fontVariantNumeric: "tabular-nums",
   },
   rodape: {
     marginTop: 12,
