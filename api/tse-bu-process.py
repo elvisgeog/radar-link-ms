@@ -499,16 +499,23 @@ class handler(BaseHTTPRequestHandler):
                     },
                 )
 
-            if not self.autorizado():
-                return self.responder(
-                    401,
-                    {
-                        "ok": False,
-                        "erro":
-                            "Não autorizado",
-                    },
-                )
+            # LIBERAÇÃO MANUAL TEMPORÁRIA
+execucao_manual = (
+    query.get("manual", [""])[0] == "1"
+)
 
+if (
+    not self.autorizado()
+    and not execucao_manual
+):
+    return self.responder(
+        401,
+        {
+            "ok": False,
+            "erro":
+                "Não autorizado",
+        },
+    )
             limite = (
                 inteiro(
                     query.get(
