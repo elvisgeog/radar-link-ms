@@ -952,7 +952,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
             <Card
               titulo="Situação"
               valor={
-                temResultadoCargoEscola && temResultadosOficiais
+                temResultadoCargoEscola
                   ? "Com resultados"
                   : "Aguardando TSE"
               }
@@ -986,7 +986,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
         </section>
       )}
 
-      {temResultadoCargoEscola && temResultadosOficiais && (
+      {temResultadoCargoEscola && (
         <section className="resultados-panel" style={s.panel}>
           <div className="municipio-topo" style={s.municipioTopo}>
             <div>
