@@ -500,22 +500,21 @@ class handler(BaseHTTPRequestHandler):
                 )
 
             # LIBERAÇÃO MANUAL TEMPORÁRIA
-execucao_manual = (
-    query.get("manual", [""])[0] == "1"
-)
+            execucao_manual = (
+                query.get("manual", [""])[0] == "1"
+            )
 
-if (
-    not self.autorizado()
-    and not execucao_manual
-):
-    return self.responder(
-        401,
-        {
-            "ok": False,
-            "erro":
-                "Não autorizado",
-        },
-    )
+            if (
+                not self.autorizado()
+                and not execucao_manual
+            ):
+                return self.responder(
+                    401,
+                    {
+                        "ok": False,
+                        "erro": "Não autorizado",
+                    },
+                )
             limite = (
                 inteiro(
                     query.get(
