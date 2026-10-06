@@ -129,6 +129,18 @@ function autorizado(req) {
 }
 
 export default async function handler(req, res) {
+    if (req.query?.diagnostico === "1") {
+    return res.status(200).json({
+      ok: true,
+      modo: "diagnostico",
+      TSE_BASE_URL: process.env.TSE_BASE_URL || "NAO_CONFIGURADO",
+      TSE_AMBIENTE: process.env.TSE_AMBIENTE || "NAO_CONFIGURADO",
+      TSE_CICLO: process.env.TSE_CICLO || "NAO_CONFIGURADO",
+      TSE_ELEICAO_ESTADUAL: process.env.TSE_ELEICAO_ESTADUAL || "NAO_CONFIGURADO",
+      TSE_UF: process.env.TSE_UF || "NAO_CONFIGURADO",
+      urlMunicipios: urlMunicipios()
+    });
+  }
   if (!autorizado(req)) return res.status(401).json({ ok: false, erro: "Não autorizado." });
   const inicio = Date.now();
   const db = iniciarFirebaseAdmin();
