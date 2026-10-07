@@ -210,11 +210,7 @@ export default async function handler(
   req,
   res
 ) {
-  // LIBERAÇÃO MANUAL TEMPORÁRIA
-  const execucaoManual =
-    String(req.query?.manual || "") === "1";
-
-  if (!autorizado(req) && !execucaoManual) {
+  if (!autorizado(req)) {
     return res.status(401).json({
       ok: false,
       erro: "Não autorizado",
