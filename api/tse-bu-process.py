@@ -499,15 +499,7 @@ class handler(BaseHTTPRequestHandler):
                     },
                 )
 
-            # LIBERAÇÃO MANUAL TEMPORÁRIA
-            execucao_manual = (
-                query.get("manual", [""])[0] == "1"
-            )
-
-            if (
-                not self.autorizado()
-                and not execucao_manual
-            ):
+                       if not self.autorizado():
                 return self.responder(
                     401,
                     {
