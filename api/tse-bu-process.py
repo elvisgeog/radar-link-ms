@@ -511,17 +511,17 @@ class handler(BaseHTTPRequestHandler):
                 inteiro(
                     query.get(
                         "limit",
-                        ["100"],
+                        ["1000"],
                     )[0]
                 )
-                or 100
+                or 1000
             )
 
             limite = max(
                 1,
                 min(
                     limite,
-                    100,
+                    1000,
                 ),
             )
 
@@ -609,7 +609,7 @@ class handler(BaseHTTPRequestHandler):
                 if (
                     time.time()
                     - inicio
-                    > 48
+                    > 270
                 ):
                     break
 
