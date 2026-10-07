@@ -231,6 +231,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
   const [escolasTSE, setEscolasTSE] = useState([]);
   const [escolaId, setEscolaId] = useState("GERAL");
   const [resultadosEscolas, setResultadosEscolas] = useState([]);
+  const [resultadosEscolasCarregados, setResultadosEscolasCarregados] = useState(false);
   const [eleitoradoMunicipios, setEleitoradoMunicipios] = useState([]);
   const [relatorioTipo, setRelatorioTipo] = useState(null);
 
@@ -293,6 +294,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
             ...d.data(),
           }))
         );
+        setResultadosEscolasCarregados(true);
         setErro("");
       },
       (e) =>
@@ -485,6 +487,73 @@ export default function ResultadosTSE2026({ onVoltar }) {
       municipios: municipiosCadastro.size,
     };
   }, [escolasTSE, municipio]);
+
+  const busPendentes = useMemo(() => {
+    if (!resultadosEscolasCarregados) return [];
+
+    const resultadoPorEscola = new Map();
+
+    resultadosEscolas.forEach((resultado) => {
+      const id = String(resultado?.escolaId || resultado?.id || "");
+      if (id) resultadoPorEscola.set(id, resultado);
+    });
+
+    const pendentes = [];
+
+    escolasTSE
+      .filter(
+        (escola) =>
+          municipio === "GERAL" ||
+          normalizar(escola.municipio) === normalizar(municipio)
+      )
+      .forEach((escola) => {
+        const resultado = resultadoPorEscola.get(String(escola.id));
+
+        const secoesProcessadas = new Set(
+          (resultado?.secoesComBU || []).map((valor) => {
+            const partes = String(valor ?? "").split("_");
+            const ultimaParte = partes[partes.length - 1];
+            const n = Number(ultimaParte);
+            return Number.isFinite(n) ? String(n) : String(ultimaParte);
+          })
+        );
+
+        (escola.secoes || []).forEach((secao) => {
+          const n = Number(secao);
+          const chaveSecao = Number.isFinite(n) ? String(n) : String(secao);
+
+          if (!secoesProcessadas.has(chaveSecao)) {
+            pendentes.push({
+              municipio: escola.municipio || "-",
+              escola: escola.escolaRadar || escola.escola || "-",
+              zona: escola.zona ?? "-",
+              secao: secao ?? "-",
+            });
+          }
+        });
+      });
+
+    return pendentes.sort((a, b) => {
+      const porMunicipio = String(a.municipio).localeCompare(
+        String(b.municipio),
+        "pt-BR"
+      );
+      if (porMunicipio !== 0) return porMunicipio;
+
+      const porEscola = String(a.escola).localeCompare(
+        String(b.escola),
+        "pt-BR"
+      );
+      if (porEscola !== 0) return porEscola;
+
+      return Number(a.secao || 0) - Number(b.secao || 0);
+    });
+  }, [
+    escolasTSE,
+    resultadosEscolas,
+    resultadosEscolasCarregados,
+    municipio,
+  ]);
 
   const temResultadosOficiais = filtrados.length > 0;
 
@@ -953,13 +1022,65 @@ export default function ResultadosTSE2026({ onVoltar }) {
               titulo="Situação"
               valor={
                 temResultadoCargoEscola
-                  ? "Com resultados"
+                  ? resumoEscola.secoesTotalizadas < resumoEscola.secoesTotal
+                    ? `Parcial ${numero(resumoEscola.secoesTotalizadas)}/${numero(resumoEscola.secoesTotal)}`
+                    : "Com resultados"
                   : "Aguardando TSE"
               }
             />
           </div>
         )}
       </section>
+
+      {escolaId === "GERAL" && resultadosEscolasCarregados && (
+        <section className="resultados-panel" style={s.panel}>
+          <div className="municipio-topo" style={s.municipioTopo}>
+            <div>
+              <h2 style={{ margin: 0 }}>BUs pendentes</h2>
+              <div style={s.meta}>
+                Seções vinculadas às escolas estaduais que ainda não possuem BU processado no Radar Link MS.
+              </div>
+            </div>
+
+            <div style={s.selo}>
+              {numero(busPendentes.length)} PENDENTE{busPendentes.length === 1 ? "" : "S"}
+            </div>
+          </div>
+
+          {busPendentes.length > 0 ? (
+            <div className="tabela-wrap" style={{ ...s.tabelaWrap, marginTop: 14 }}>
+              <table className="resultados-table" style={s.table}>
+                <thead>
+                  <tr>
+                    <th style={s.th}>Município</th>
+                    <th style={s.th}>Escola</th>
+                    <th style={s.thDireita}>Zona</th>
+                    <th style={s.thDireita}>Seção</th>
+                    <th style={s.th}>Situação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {busPendentes.map((item, indice) => (
+                    <tr
+                      key={`${item.municipio}-${item.escola}-${item.zona}-${item.secao}-${indice}`}
+                    >
+                      <td style={s.td}>{item.municipio}</td>
+                      <td style={s.td}>{item.escola}</td>
+                      <td style={s.tdDireita}>{item.zona}</td>
+                      <td style={s.tdDireita}>{item.secao}</td>
+                      <td style={s.td}>Sem BU processado</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p style={{ margin: "14px 0 0" }}>
+              Nenhuma pendência. Todas as seções vinculadas possuem BU processado.
+            </p>
+          )}
+        </section>
+      )}
 
       {escolaId !== "GERAL" && !temResultadoCargoEscola && (
         <section className="resultados-panel" style={s.panel}>
