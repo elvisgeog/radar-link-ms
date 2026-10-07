@@ -1192,41 +1192,11 @@ export default function ResultadosTSE2026({ onVoltar }) {
             </span>
           </div>
 
-          <div className="tabela-wrap" style={s.tabelaWrap}>
-            <table className="resultados-table" style={s.table}>
-              <thead>
-                <tr>
-                  <th style={s.th}>Número</th>
-                  <th style={s.th}>Candidatura</th>
-                  <th style={s.th}>Partido</th>
-                  <th style={s.thDireita}>Votos</th>
-                  <th style={s.thDireita}>% válidos</th>
-                  <th style={s.th}>Situação</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {candidatosEscola.map((c) => (
-                  <tr
-                    key={`escola-${escolaId}-${cargo}-${c.numero}-${c.partido}`}
-                  >
-                    <td style={s.td}>{c.numero}</td>
-                    <td style={s.td}>{c.nomeUrna}</td>
-                    <td style={s.td}>{c.partido}</td>
-                    <td style={s.tdDireita}>
-                      {numero(c.votos)}
-                    </td>
-                    <td style={s.tdDireita}>
-                      {percentual(c.percentual)}
-                    </td>
-                    <td style={s.td}>
-                      {c.situacao || "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <CandidatosCards
+            candidatos={candidatosEscola}
+            totalValidos={Number(resultadoCargoEscola?.votosValidos || 0)}
+            chavePrefixo={`escola-${escolaId}-${cargo}`}
+          />
 
           <div className="rodape-resultados" style={s.rodape}>
             Resultado calculado a partir dos BUs publicados pelo TSE para
@@ -1285,56 +1255,11 @@ export default function ResultadosTSE2026({ onVoltar }) {
             </span>
           </div>
 
-          <div className="tabela-wrap" style={s.tabelaWrap}>
-            <table className="resultados-table" style={s.table}>
-              <thead>
-                <tr>
-                  <th style={s.th}>Número</th>
-                  <th style={s.th}>Candidatura</th>
-                  <th style={s.th}>Partido</th>
-                  <th style={s.thDireita}>Votos</th>
-                  <th style={s.thDireita}>% válidos</th>
-                  <th style={s.th}>Situação</th>
-                </tr>
-              </thead>
-
-              <tbody>
-                {(d.candidatos || [])
-                  .slice()
-                  .sort(ordenarCandidatos)
-                  .map((c) => (
-                    <tr
-                      key={`${d.id}-${
-                        c.sequencial || c.numero
-                      }-${c.partido}`}
-                    >
-                      <td style={s.td}>{c.numero}</td>
-                      <td style={s.td}>
-                        {c.nomeUrna || c.nome || "-"}
-                      </td>
-                      <td style={s.td}>
-                        {c.partido || "-"}
-                      </td>
-                      <td style={s.tdDireita}>
-                        {numero(c.votos)}
-                      </td>
-                      <td style={s.tdDireita}>
-                        {percentual(
-                          percentualCandidato(
-                            c.votos,
-                            votosValidosDocumento(d),
-                            c.percentual
-                          )
-                        )}
-                      </td>
-                      <td style={s.td}>
-                        {c.situacao || "-"}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
+          <CandidatosCards
+            candidatos={(d.candidatos || []).slice().sort(ordenarCandidatos)}
+            totalValidos={votosValidosDocumento(d)}
+            chavePrefixo={d.id}
+          />
 
           <div className="rodape-resultados" style={s.rodape}>
             Gerado pelo TSE: {d.dataGeracao || "-"}{" "}
@@ -1370,7 +1295,22 @@ export default function ResultadosTSE2026({ onVoltar }) {
           font-size: 20px !important;
         }
 
+        .candidatos-grid {
+          display: grid;
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+          gap: 14px;
+          margin-top: 4px;
+        }
+
+        .candidato-card {
+          min-width: 0;
+        }
+
         @media screen and (max-width: 1100px) {
+          .candidatos-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          }
+
           .resultados-cards {
             grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
           }
@@ -1529,6 +1469,45 @@ export default function ResultadosTSE2026({ onVoltar }) {
 
           .resultados-table {
             min-width: 680px !important;
+            font-size: 12px !important;
+          }
+
+          .candidatos-grid {
+            grid-template-columns: minmax(0, 1fr) !important;
+            gap: 10px !important;
+            margin-top: 4px !important;
+          }
+
+          .candidato-card {
+            padding: 14px !important;
+            border-radius: 14px !important;
+          }
+
+          .candidato-card-topo {
+            gap: 10px !important;
+          }
+
+          .candidato-nome {
+            font-size: 17px !important;
+            line-height: 1.15 !important;
+          }
+
+          .candidato-partido {
+            font-size: 14px !important;
+          }
+
+          .candidato-votos {
+            font-size: 15px !important;
+            white-space: nowrap !important;
+          }
+
+          .candidato-card-rodape {
+            margin-top: 14px !important;
+            gap: 8px !important;
+          }
+
+          .candidato-percentual,
+          .candidato-situacao {
             font-size: 12px !important;
           }
 
@@ -1936,6 +1915,59 @@ function TabelaRelatorio({ colunas, linhas }) {
   );
 }
 
+function CandidatosCards({ candidatos = [], totalValidos = 0, chavePrefixo = "" }) {
+  return (
+    <div className="candidatos-grid" style={s.candidatosGrid}>
+      {candidatos.map((c) => {
+        const eleito = candidatoEleito(c);
+        const pct = percentualCandidato(c.votos, totalValidos, c.percentual);
+
+        return (
+          <article
+            key={`${chavePrefixo}-${c.sequencial || c.numero}-${c.partido}`}
+            className="candidato-card"
+            style={s.candidatoCard}
+          >
+            <div className="candidato-card-topo" style={s.candidatoCardTopo}>
+              <div className="candidato-identidade" style={s.candidatoIdentidade}>
+                <div className="candidato-nome" style={s.candidatoNome}>
+                  {c.nomeUrna || c.nome || `Candidato nº ${c.numero ?? "-"}`}
+                </div>
+                <div className="candidato-partido" style={s.candidatoPartido}>
+                  {c.partido || "-"} · {c.numero ?? "-"}
+                </div>
+              </div>
+
+              <div className="candidato-votos" style={s.candidatoVotos}>
+                <strong>{numero(c.votos)}</strong>
+                <span> votos</span>
+              </div>
+            </div>
+
+            <div className="candidato-card-rodape" style={s.candidatoCardRodape}>
+              <span className="candidato-percentual" style={s.candidatoPercentual}>
+                {percentual(pct)} dos válidos
+              </span>
+
+              {c.situacao && c.situacao !== "-" && (
+                <span
+                  className={`candidato-situacao${eleito ? " candidato-situacao-eleito" : ""}`}
+                  style={{
+                    ...s.candidatoSituacao,
+                    ...(eleito ? s.candidatoSituacaoEleito : {}),
+                  }}
+                >
+                  {c.situacao}
+                </span>
+              )}
+            </div>
+          </article>
+        );
+      })}
+    </div>
+  );
+}
+
 function Card({ titulo, valor }) {
   const textoValor = String(valor ?? "");
   const compacto = textoValor.length > 10;
@@ -2140,6 +2172,78 @@ const s = {
     lineHeight: 1.3,
     verticalAlign: "middle",
     fontVariantNumeric: "tabular-nums",
+  },
+  candidatosGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3,minmax(0,1fr))",
+    gap: 14,
+    marginTop: 4,
+  },
+  candidatoCard: {
+    background: "#ffffff",
+    color: "#172033",
+    border: "2px solid #eab308",
+    borderRadius: 16,
+    padding: "18px 18px 16px",
+    minWidth: 0,
+    boxShadow: "0 4px 12px rgba(0,0,0,0.16)",
+  },
+  candidatoCardTopo: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
+    gap: 14,
+  },
+  candidatoIdentidade: {
+    minWidth: 0,
+    flex: 1,
+  },
+  candidatoNome: {
+    fontSize: 19,
+    lineHeight: 1.15,
+    fontWeight: 900,
+    overflowWrap: "anywhere",
+  },
+  candidatoPartido: {
+    marginTop: 7,
+    color: "#5b6474",
+    fontSize: 15,
+    fontWeight: 600,
+  },
+  candidatoVotos: {
+    color: "#4b5563",
+    fontSize: 16,
+    lineHeight: 1.2,
+    textAlign: "right",
+    whiteSpace: "nowrap",
+    fontVariantNumeric: "tabular-nums",
+  },
+  candidatoCardRodape: {
+    display: "flex",
+    justifyContent: "space-between",
+    alignItems: "center",
+    flexWrap: "wrap",
+    gap: 10,
+    marginTop: 18,
+  },
+  candidatoPercentual: {
+    color: "#64748b",
+    fontSize: 13,
+    fontWeight: 700,
+  },
+  candidatoSituacao: {
+    background: "#e2e8f0",
+    color: "#334155",
+    borderRadius: 999,
+    padding: "5px 11px",
+    fontSize: 12,
+    lineHeight: 1,
+    fontWeight: 900,
+    whiteSpace: "nowrap",
+  },
+  candidatoSituacaoEleito: {
+    background: "#84a928",
+    color: "#ffffff",
   },
   rodape: {
     marginTop: 12,
