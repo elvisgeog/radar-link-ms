@@ -9,6 +9,21 @@ const CARGOS = {
   7: "Deputado Estadual",
 };
 
+// Seções agregadas oficialmente pelo TSE no 1º turno de 2026 em MS.
+// A chave identifica município|zona|seção agregada e o valor é a seção principal.
+const SECOES_AGREGADAS_TSE = {
+  "DEODAPOLIS|39|27": 26,
+  "DOURADOS|18|140": 139,
+  "DOURADOS|18|142": 141,
+  "GLORIA DE DOURADOS|39|45": 46,
+  "GLORIA DE DOURADOS|39|47": 42,
+  "GLORIA DE DOURADOS|39|49": 48,
+  "GLORIA DE DOURADOS|39|50": 43,
+  "GLORIA DE DOURADOS|39|67": 66,
+  "LAGUNA CARAPA|43|384": 383,
+  "LAGUNA CARAPA|43|418": 394,
+};
+
 function numero(v) {
   return Number(v || 0).toLocaleString("pt-BR");
 }
@@ -33,6 +48,14 @@ function normalizar(valor = "") {
     .replace(/[\u0300-\u036f]/g, "")
     .toUpperCase()
     .trim();
+}
+
+function chaveSecaoTSE(municipio, zona, secao) {
+  return `${normalizar(municipio)}|${Number(zona)}|${Number(secao)}`;
+}
+
+function secaoPrincipalAgregada(municipio, zona, secao) {
+  return SECOES_AGREGADAS_TSE[chaveSecaoTSE(municipio, zona, secao)] ?? null;
 }
 
 function candidatoEleito(candidato) {
@@ -488,8 +511,10 @@ export default function ResultadosTSE2026({ onVoltar }) {
     };
   }, [escolasTSE, municipio]);
 
-  const busPendentes = useMemo(() => {
-    if (!resultadosEscolasCarregados) return [];
+  const diagnosticoBUs = useMemo(() => {
+    if (!resultadosEscolasCarregados) {
+      return { pendentes: [], agregadas: [] };
+    }
 
     const resultadoPorEscola = new Map();
 
@@ -499,6 +524,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
     });
 
     const pendentes = [];
+    const agregadas = [];
 
     escolasTSE
       .filter(
@@ -522,18 +548,31 @@ export default function ResultadosTSE2026({ onVoltar }) {
           const n = Number(secao);
           const chaveSecao = Number.isFinite(n) ? String(n) : String(secao);
 
-          if (!secoesProcessadas.has(chaveSecao)) {
-            pendentes.push({
-              municipio: escola.municipio || "-",
-              escola: escola.escolaRadar || escola.escola || "-",
-              zona: escola.zona ?? "-",
-              secao: secao ?? "-",
-            });
+          if (secoesProcessadas.has(chaveSecao)) return;
+
+          const principal = secaoPrincipalAgregada(
+            escola.municipio,
+            escola.zona,
+            secao
+          );
+
+          const item = {
+            municipio: escola.municipio || "-",
+            escola: escola.escolaRadar || escola.escola || "-",
+            zona: escola.zona ?? "-",
+            secao: secao ?? "-",
+            principal,
+          };
+
+          if (principal !== null && secoesProcessadas.has(String(principal))) {
+            agregadas.push(item);
+          } else {
+            pendentes.push(item);
           }
         });
       });
 
-    return pendentes.sort((a, b) => {
+    const ordenar = (a, b) => {
       const porMunicipio = String(a.municipio).localeCompare(
         String(b.municipio),
         "pt-BR"
@@ -547,13 +586,22 @@ export default function ResultadosTSE2026({ onVoltar }) {
       if (porEscola !== 0) return porEscola;
 
       return Number(a.secao || 0) - Number(b.secao || 0);
-    });
+    };
+
+    return {
+      pendentes: pendentes.sort(ordenar),
+      agregadas: agregadas.sort(ordenar),
+    };
   }, [
     escolasTSE,
     resultadosEscolas,
     resultadosEscolasCarregados,
     municipio,
   ]);
+
+  const busPendentes = diagnosticoBUs.pendentes;
+  const secoesAgregadas = diagnosticoBUs.agregadas;
+
 
   const temResultadosOficiais = filtrados.length > 0;
 
@@ -633,6 +681,39 @@ export default function ResultadosTSE2026({ onVoltar }) {
     resultadoCargoEscola,
     escolaSelecionada,
   ]);
+
+  const secoesAgregadasEscola = useMemo(() => {
+    if (!escolaSelecionada || !resultadoEscolaSelecionada) return [];
+
+    const processadas = new Set(
+      (resultadoEscolaSelecionada?.secoesComBU || []).map((valor) => {
+        const partes = String(valor ?? "").split("_");
+        const ultimaParte = partes[partes.length - 1];
+        const n = Number(ultimaParte);
+        return Number.isFinite(n) ? String(n) : String(ultimaParte);
+      })
+    );
+
+    return (escolaSelecionada.secoes || [])
+      .map((secao) => ({
+        secao,
+        principal: secaoPrincipalAgregada(
+          escolaSelecionada.municipio,
+          escolaSelecionada.zona,
+          secao
+        ),
+      }))
+      .filter(
+        (item) =>
+          item.principal !== null &&
+          processadas.has(String(item.principal))
+      );
+  }, [escolaSelecionada, resultadoEscolaSelecionada]);
+
+  const secoesCobertasEscola = Math.min(
+    resumoEscola.secoesTotal,
+    resumoEscola.secoesTotalizadas + secoesAgregadasEscola.length
+  );
 
   const pctSecoesMunicipal =
     resumoMunicipal.secoesTotal > 0
@@ -1019,12 +1100,17 @@ export default function ResultadosTSE2026({ onVoltar }) {
             />
 
             <Card
+              titulo="Seções agregadas pelo TSE"
+              valor={numero(secoesAgregadasEscola.length)}
+            />
+
+            <Card
               titulo="Situação"
               valor={
                 temResultadoCargoEscola
-                  ? resumoEscola.secoesTotalizadas < resumoEscola.secoesTotal
-                    ? `Parcial ${numero(resumoEscola.secoesTotalizadas)}/${numero(resumoEscola.secoesTotal)}`
-                    : "Com resultados"
+                  ? secoesCobertasEscola >= resumoEscola.secoesTotal
+                    ? "Cobertura completa"
+                    : `Parcial ${numero(secoesCobertasEscola)}/${numero(resumoEscola.secoesTotal)}`
                   : "Aguardando TSE"
               }
             />
@@ -1036,9 +1122,9 @@ export default function ResultadosTSE2026({ onVoltar }) {
         <section className="resultados-panel" style={s.panel}>
           <div className="municipio-topo" style={s.municipioTopo}>
             <div>
-              <h2 style={{ margin: 0 }}>BUs pendentes</h2>
+              <h2 style={{ margin: 0 }}>Cobertura dos boletins de urna</h2>
               <div style={s.meta}>
-                Seções vinculadas às escolas estaduais que ainda não possuem BU processado no Radar Link MS.
+                Seções sem BU próprio são reconhecidas como agregadas somente quando o BU da seção principal correspondente foi processado.
               </div>
             </div>
 
@@ -1046,6 +1132,55 @@ export default function ResultadosTSE2026({ onVoltar }) {
               {numero(busPendentes.length)} PENDENTE{busPendentes.length === 1 ? "" : "S"}
             </div>
           </div>
+
+          <div className="resumo-linha" style={s.resumoLinha}>
+            <span>
+              <strong>BUs processados:</strong>{" "}
+              {numero(
+                resultadosEscolas.reduce(
+                  (total, item) => total + Number(item?.totalSecoesComBU || 0),
+                  0
+                )
+              )}
+            </span>
+            <span>
+              <strong>Seções agregadas:</strong> {numero(secoesAgregadas.length)}
+            </span>
+            <span>
+              <strong>BUs pendentes:</strong> {numero(busPendentes.length)}
+            </span>
+          </div>
+
+          {secoesAgregadas.length > 0 && (
+            <div className="tabela-wrap" style={{ ...s.tabelaWrap, marginTop: 14 }}>
+              <table className="resultados-table" style={s.table}>
+                <thead>
+                  <tr>
+                    <th style={s.th}>Município</th>
+                    <th style={s.th}>Escola</th>
+                    <th style={s.thDireita}>Zona</th>
+                    <th style={s.thDireita}>Seção agregada</th>
+                    <th style={s.thDireita}>Seção principal</th>
+                    <th style={s.th}>Situação</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {secoesAgregadas.map((item, indice) => (
+                    <tr
+                      key={`${item.municipio}-${item.escola}-${item.zona}-${item.secao}-${indice}`}
+                    >
+                      <td style={s.td}>{item.municipio}</td>
+                      <td style={s.td}>{item.escola}</td>
+                      <td style={s.tdDireita}>{item.zona}</td>
+                      <td style={s.tdDireita}>{item.secao}</td>
+                      <td style={s.tdDireita}>{item.principal}</td>
+                      <td style={s.td}>Agregada pelo TSE · BU coberto pela seção principal</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {busPendentes.length > 0 ? (
             <div className="tabela-wrap" style={{ ...s.tabelaWrap, marginTop: 14 }}>
@@ -1062,13 +1197,13 @@ export default function ResultadosTSE2026({ onVoltar }) {
                 <tbody>
                   {busPendentes.map((item, indice) => (
                     <tr
-                      key={`${item.municipio}-${item.escola}-${item.zona}-${item.secao}-${indice}`}
+                      key={`pendente-${item.municipio}-${item.escola}-${item.zona}-${item.secao}-${indice}`}
                     >
                       <td style={s.td}>{item.municipio}</td>
                       <td style={s.td}>{item.escola}</td>
                       <td style={s.tdDireita}>{item.zona}</td>
                       <td style={s.tdDireita}>{item.secao}</td>
-                      <td style={s.td}>Sem BU processado</td>
+                      <td style={s.td}>Sem BU processado e sem agregação coberta</td>
                     </tr>
                   ))}
                 </tbody>
@@ -1076,11 +1211,12 @@ export default function ResultadosTSE2026({ onVoltar }) {
             </div>
           ) : (
             <p style={{ margin: "14px 0 0" }}>
-              Nenhuma pendência. Todas as seções vinculadas possuem BU processado.
+              Cobertura completa: não há boletins de urna pendentes.
             </p>
           )}
         </section>
       )}
+
 
       {escolaId !== "GERAL" && !temResultadoCargoEscola && (
         <section className="resultados-panel" style={s.panel}>
@@ -1130,9 +1266,12 @@ export default function ResultadosTSE2026({ onVoltar }) {
 
           <div className="resumo-linha" style={s.resumoLinha}>
             <span>
-              <strong>Seções com BU:</strong>{" "}
-              {numero(resumoEscola.secoesTotalizadas)} /{" "}
+              <strong>Cobertura das seções:</strong>{" "}
+              {numero(secoesCobertasEscola)} /{" "}
               {numero(resumoEscola.secoesTotal)}
+              {secoesAgregadasEscola.length > 0
+                ? ` (${numero(resumoEscola.secoesTotalizadas)} BUs + ${numero(secoesAgregadasEscola.length)} agregada${secoesAgregadasEscola.length === 1 ? "" : "s"})`
+                : ""}
             </span>
 
             <span>
