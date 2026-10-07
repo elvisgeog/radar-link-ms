@@ -7,7 +7,7 @@
       "maxDuration": 60
     },
     "api/tse-bu-process.py": {
-      "maxDuration": 60
+      "maxDuration": 300
     },
     "api/tse-escolas-resultados.js": {
       "maxDuration": 60
