@@ -511,10 +511,10 @@ class handler(BaseHTTPRequestHandler):
                 inteiro(
                     query.get(
                         "limit",
-                        ["40"],
+                        ["100"],
                     )[0]
                 )
-                or 40
+                or 100
             )
 
             limite = max(
