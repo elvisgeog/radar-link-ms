@@ -499,7 +499,7 @@ class handler(BaseHTTPRequestHandler):
                     },
                 )
 
-                       if not self.autorizado():
+            if not self.autorizado():
                 return self.responder(
                     401,
                     {
