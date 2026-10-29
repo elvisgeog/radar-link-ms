@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { collection, addDoc, getDocs, deleteDoc, updateDoc, doc } from "firebase/firestore";
 import { db } from "./firebase";
 import ResultadosTSE2026 from "./ResultadosTSE2026";
+import PerfilGestoresCRE5 from "./PerfilGestoresCRE5";
 
 // ============================================================
 // RADAR LINK MS — BASE POLÍTICA
@@ -2479,6 +2480,7 @@ export default function App() {
 
     if (tipo === "inicio") return <svg {...common}><path d="M3 10.5 12 3l9 7.5"/><path d="M5.5 9.5V21h13V9.5"/><path d="M9.5 21v-6h5v6"/></svg>;
     if (tipo === "formularios") return <svg {...common}><path d="M7 3h10a2 2 0 0 1 2 2v16H5V5a2 2 0 0 1 2-2Z"/><path d="M8 7h8M8 11h8M8 15h5"/><path d="m15.5 17.5 1.5 1.5 3-3"/></svg>;
+    if (tipo === "perfilGestores") return <svg {...common}><circle cx="9" cy="8" r="3"/><path d="M3.5 20v-1.5A5.5 5.5 0 0 1 9 13h0a5.5 5.5 0 0 1 5.5 5.5V20"/><circle cx="17" cy="9" r="2.5"/><path d="M15.5 14.5c.5-.2 1-.3 1.5-.3a4 4 0 0 1 4 4V20"/></svg>;
     if (tipo === "graficos") return <svg {...common}><path d="M4 20V10h4v10M10 20V4h4v16M16 20v-7h4v7"/><path d="M3 20h18"/></svg>;
     if (tipo === "politico") return <svg {...common}><path d="M4 9h16M6 9V7l6-4 6 4v2M6 9v9M10 9v9M14 9v9M18 9v9M4 18h16M3 21h18"/></svg>;
     if (tipo === "dobradinha") return <svg {...common}><path d="M8.5 12.5 11 15a2 2 0 0 0 3 0l4-4a2.8 2.8 0 0 0-4-4l-1 1"/><path d="m15.5 11.5-2.5-2.5a2 2 0 0 0-3 0l-4 4a2.8 2.8 0 0 0 4 4l1-1"/><path d="m9.5 14.5 5-5"/></svg>;
@@ -2490,6 +2492,7 @@ export default function App() {
     const itens = [
       { id: "inicio", label: "Painel", sub: "Visão geral" },
       { id: "formularios", label: "Formulários", sub: "Cadastro técnico" },
+      { id: "perfilGestores", label: "Perfil Gestores", sub: "Planilha CRE-5" },
       { id: "graficos", label: "Indicadores", sub: "Resultados" },
       { id: "resultadosTSE", label: "Resultados TSE", sub: "Eleições 2026" },
       { id: "politico", label: "Cenário Político", sub: "Base regional" },
@@ -3199,6 +3202,7 @@ export default function App() {
   if (formAberto) return TelaFormularioAberto();
   if (filtroAtivo) return TelaListaFiltro();
   if (tela === "formularios") return TelaFormularios();
+  if (tela === "perfilGestores") return <PerfilGestoresCRE5 onVoltar={() => setTela("inicio")} />;
   if (tela === "graficos") return TelaGraficos();
   if (tela === "resultadosTSE") return <ResultadosTSE2026 onVoltar={() => setTela("inicio")} />;
   if (tela === "politico") return TelaPolitica();
