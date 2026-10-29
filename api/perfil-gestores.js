@@ -24,8 +24,23 @@ function dbAdmin() {
 }
 
 function autorizado(req) {
-  const esperado = process.env.RADAR_PERFIL_SECRET;
-  const recebido = String(req.headers["x-radar-secret"] || "");
+  const esperado = String(
+    process.env.RADAR_PERFIL_SECRET || ""
+  ).trim();
+
+  const authorization = String(
+    req.headers.authorization || ""
+  ).trim();
+
+  const bearer = authorization
+    .replace(/^Bearer\s+/i, "")
+    .trim();
+
+  const headerAlternativo = String(
+    req.headers["x-radar-secret"] || ""
+  ).trim();
+
+  const recebido = bearer || headerAlternativo;
 
   if (!esperado) {
     return {
@@ -40,6 +55,11 @@ function autorizado(req) {
       ok: false,
       status: 401,
       erro: "Não autorizado.",
+      diagnostico: {
+        recebeuChave: Boolean(recebido),
+        tamanhoRecebido: recebido.length,
+        tamanhoEsperado: esperado.length,
+      },
     };
   }
 
@@ -113,7 +133,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS");
   res.setHeader(
     "Access-Control-Allow-Headers",
-    "Content-Type, X-Radar-Secret"
+    "Content-Type, X-Radar-Secret, Authorization"
   );
 
   if (req.method === "OPTIONS") {
@@ -125,6 +145,9 @@ export default async function handler(req, res) {
     return res.status(auth.status).json({
       ok: false,
       erro: auth.erro,
+      ...(auth.diagnostico
+        ? { diagnostico: auth.diagnostico }
+        : {}),
     });
   }
 
