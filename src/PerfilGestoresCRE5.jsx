@@ -1,96 +1,120 @@
-import React, { useEffect, useMemo, useState } from "react";
+          value={perfil.social}
+          onChange={(v) => onChange("social", v)}
+        />
+      </div>
 
-const API = "/api/perfil-gestores";
-const CHAVE_SESSAO = "radar_perfil_secret";
+      <Campo label="Posicionamento político Dep. Estadual/Federal 2026">
+        <textarea
+          className="pg-textarea"
+          value={perfil.posicionamento}
+          onChange={(e) =>
+            onChange("posicionamento", e.target.value)
+          }
+        />
+      </Campo>
 
-function normalizar(v = "") {
-  return String(v)
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toUpperCase()
-    .trim();
+      <Campo label="Observação">
+        <textarea
+          className="pg-textarea"
+          value={perfil.observacao}
+          onChange={(e) => onChange("observacao", e.target.value)}
+        />
+      </Campo>
+    </div>
+  );
 }
 
-function campo(v) {
-  return v === null || v === undefined ? "" : String(v);
+function Nota({ label, value, onChange }) {
+  return (
+    <Campo label={label}>
+      <input
+        className="pg-input"
+        type="number"
+        min="0"
+        max="10"
+        step="1"
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+      />
+    </Campo>
+  );
 }
 
-function perfilEdicao(p = {}) {
-  return {
-    nome: campo(p.nome),
-    tecnico: campo(p.tecnico),
-    politico: campo(p.politico),
-    social: campo(p.social),
-    posicionamento: campo(p.posicionamento),
-    observacao: campo(p.observacao),
-  };
+function Campo({ label, children }) {
+  return (
+    <div className="pg-field">
+      <label>{label}</label>
+      {children}
+    </div>
+  );
 }
 
-function headers(segredo) {
-  return {
-    "Content-Type": "application/json",
-    "x-radar-secret": segredo,
-  };
+function Kpi({ titulo, valor }) {
+  return (
+    <div className="pg-kpi">
+      <span>{titulo}</span>
+      <strong>{valor}</strong>
+    </div>
+  );
 }
 
-function escaparHTML(valor) {
-  return campo(valor).replace(/[&<>"']/g, (caractere) => ({
-    "&": "&amp;",
-    "<": "&lt;",
-    ">": "&gt;",
-    '"': "&quot;",
-    "'": "&#39;",
-  }[caractere]));
+function Pagina({ children }) {
+  return (
+    <div className="pg-page">
+      <style>{`
+        .pg-page{
+          min-height:100vh;padding:16px;
+          background:linear-gradient(135deg,#07111f,#0f172a,#111827);
+          color:#fff;font-family:Arial,sans-serif;box-sizing:border-box
+        }
+        .pg-page>*{width:min(1180px,100%);margin-left:auto;margin-right:auto}
+        .pg-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+        .pg-top h1,.pg-lock-card h1{margin:4px 0 6px;font-size:clamp(26px,4vw,38px)}
+        .pg-top p,.pg-lock-card p{margin:0;color:#cbd5e1;line-height:1.5}
+        .pg-eyebrow{font-size:12px;font-weight:900;letter-spacing:.08em;color:#60a5fa;text-transform:uppercase}
+        .pg-lock-card{max-width:520px!important;margin-top:8vh!important;background:#0f172a;border:1px solid #334155;border-radius:18px;padding:22px}
+        .pg-panel,.pg-card{background:rgba(15,23,42,.97);border:1px solid #334155;border-radius:14px;margin-bottom:12px}
+        .pg-panel{padding:14px}
+        .pg-list{display:grid;gap:10px}
+        .pg-card{overflow:hidden}
+        .pg-card-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:14px}
+        .pg-city{font-size:12px;color:#60a5fa;font-weight:900;letter-spacing:.06em}
+        .pg-school{font-size:18px;font-weight:900;margin-top:3px}
+        .pg-summary{font-size:13px;color:#cbd5e1;line-height:1.55;margin-top:6px}
+        .pg-kpis{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin:14px auto}
+        .pg-kpi{background:#1e293b;border:1px solid #334155;border-radius:13px;padding:13px}
+        .pg-kpi span{display:block;color:#94a3b8;font-size:12px}
+        .pg-kpi strong{display:block;font-size:24px;margin-top:4px}
+        .pg-filtros{display:grid;grid-template-columns:260px 1fr;gap:10px}
+        .pg-input,.pg-textarea{width:100%;box-sizing:border-box;border:1px solid #475569;border-radius:9px;padding:11px 12px;background:#f8fafc;color:#0f172a;font-size:15px}
+        .pg-textarea{min-height:88px;resize:vertical}
+        .pg-export-select{border:1px solid #475569;border-radius:9px;padding:9px;background:#f8fafc;color:#0f172a;max-width:240px}
+        .pg-btn{border:0;border-radius:9px;padding:11px 14px;background:#2563eb;color:#fff;font-weight:800;cursor:pointer}
+        .pg-btn.sec{background:#334155}.pg-btn.ok{background:#15803d}
+        .pg-btn:disabled{opacity:.55;cursor:not-allowed}
+        .pg-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+        .pg-editor{border-top:1px solid #334155;background:#111c30;padding:14px}
+        .pg-grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+        .pg-person{background:#172238;border:1px solid #334155;border-radius:12px;padding:13px}
+        .pg-person h3{margin:0 0 10px}
+        .pg-field{margin-bottom:10px}.pg-field label{display:block;margin-bottom:5px;color:#cbd5e1;font-size:12px;font-weight:800}
+        .pg-notas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+        .pg-fixed{font-size:12px;color:#94a3b8;margin:10px 0}
+        .pg-erro,.pg-ok{padding:12px;border-radius:10px;margin:10px auto}
+        .pg-erro{background:#7f1d1d;border:1px solid #ef4444}
+        .pg-ok{background:#14532d;border:1px solid #22c55e}
+        @media(max-width:760px){
+          .pg-page{padding:10px}
+          .pg-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+          .pg-filtros,.pg-grid2,.pg-card-head{grid-template-columns:1fr}
+          .pg-card-head .pg-btn{width:100%}
+          .pg-school{font-size:16px}
+        }
+        @media(max-width:420px){
+          .pg-notas{grid-template-columns:1fr}
+        }
+      `}</style>
+      {children}
+    </div>
+  );
 }
-
-function celulaTexto(valor) {
-  const texto = campo(valor).trim();
-  return texto ? escaparHTML(texto).replace(/\r?\n/g, "<br>") : "—";
-}
-
-function htmlRelatorio(registros, abrangencia) {
-  const data = new Date().toLocaleString("pt-BR");
-  const municipios = new Set(registros.map((r) => r.cidade).filter(Boolean)).size;
-  const linhas = registros.map((item, indice) => {
-    const pessoas = [
-      ["Diretor", item.diretor || {}],
-      ["Adjunto", item.adjunto || {}],
-    ];
-    return `<tbody class="bloco">
-      <tr class="escola"><td colspan="7"><strong>${indice + 1}. ${celulaTexto(item.escola)}</strong> — ${celulaTexto(item.cidade)}</td></tr>
-      <tr class="cabecalho"><th>Cargo</th><th>Nome</th><th>Técnico</th><th>Político</th><th>Social</th><th>Posicionamento político Dep. Estadual/Federal 2026</th><th>Observação</th></tr>
-      ${pessoas.map(([cargo, pessoa]) => `<tr><td>${cargo}</td><td>${celulaTexto(pessoa.nome)}</td><td class="nota">${celulaTexto(pessoa.tecnico)}</td><td class="nota">${celulaTexto(pessoa.politico)}</td><td class="nota">${celulaTexto(pessoa.social)}</td><td>${celulaTexto(pessoa.posicionamento)}</td><td>${celulaTexto(pessoa.observacao)}</td></tr>`).join("")}
-    </tbody>`;
-  }).join("");
-
-  return `<!doctype html><html lang="pt-BR"><head><meta charset="utf-8">
-    <title>Relatório de Avaliação de Perfil - CRE-5 Dourados</title>
-    <style>
-      @page { size: A4 landscape; margin: 12mm; }
-      * { box-sizing: border-box; }
-      body { font-family: Arial, sans-serif; color: #111; background: #fff; font-size: 10px; margin: 0; }
-      h1 { font-size: 18px; margin: 0 0 6px; }
-      .meta { margin: 0 0 12px; line-height: 1.6; }
-      .aviso { font-weight: bold; margin-bottom: 10px; }
-      table { width: 100%; border-collapse: collapse; table-layout: fixed; }
-      th, td { border: 1px solid #888; padding: 5px; vertical-align: top; overflow-wrap: anywhere; white-space: normal; }
-      th { background: #e9e9e9; text-align: left; }
-      .escola td { background: #dcdcdc; padding: 7px; font-size: 11px; }
-      .nota { text-align: center; }
-      th:nth-child(1) { width: 8%; } th:nth-child(2) { width: 16%; }
-      th:nth-child(3), th:nth-child(4), th:nth-child(5) { width: 6%; }
-      th:nth-child(6) { width: 26%; } th:nth-child(7) { width: 32%; }
-      tbody.bloco { break-inside: avoid; page-break-inside: avoid; }
-      tbody.bloco + tbody.bloco { border-top: 7px solid white; }
-      @media screen { body { padding: 18px; } }
-    </style></head><body>
-    <h1>CRE-5 Dourados — Avaliação de Perfil</h1>
-    <div class="meta"><strong>Abrangência:</strong> ${escaparHTML(abrangencia)} &nbsp; | &nbsp; <strong>Municípios:</strong> ${municipios} &nbsp; | &nbsp; <strong>Escolas:</strong> ${registros.length} &nbsp; | &nbsp; <strong>Emitido em:</strong> ${escaparHTML(data)}</div>
-    <div class="aviso">DOCUMENTO DE ACESSO RESTRITO — Contém dados pessoais e avaliações de gestores.</div>
-    <table>${linhas}</table>
-    </body></html>`;
-}
-
-export default function PerfilGestoresCRE5({ onVoltar }) {
-  const [segredo, setSegredo] = useState(() => {
-    try {
