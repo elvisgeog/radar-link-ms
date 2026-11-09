@@ -2134,17 +2134,18 @@ const chaveNorm = (v) => lugar(v).normalize("NFD").replace(/[\u0300-\u036f]/g, "
 const inteiro = (v) => Number.isFinite(Number(v)) && v !== "" && v != null ? Number(v).toLocaleString("pt-BR") : "—";
 function contar(v) { return Array.isArray(v) ? v.length : (typeof v === "number" ? v : null); }
 function numeroOuNulo(v) { return Number.isFinite(v) ? v : null; }
-function Kpi({ rotulo, valor, nota, destaque }) {
+function Kpi({ rotulo, valor, nota, destaque, icone = "▦" }) {
   return <div className={`rd-kpi ${destaque ? "rd-kpi-accent" : ""}`}>
-    <span>{rotulo}</span><strong>{inteiro(valor)}</strong><small>{nota || "Dados indisponíveis"}</small>
+    <div className="rd-kpi-title"><span>{rotulo}</span><span className="rd-kpi-icon" aria-hidden="true">{icone}</span></div>
+    <strong>{inteiro(valor)}</strong><small>{nota || "Dados indisponíveis"}</small>
   </div>;
 }
 
-function Barras({ dados, tituloVazio }) {
+function Barras({ dados, tituloVazio, limite = 0 }) {
   const maior = Math.max(1, ...dados.map((r) => r.valor));
   if (!dados.length) return <div className="rd-empty">{tituloVazio}</div>;
-  return <div className="rd-bars" role="img" aria-label="Gráfico de barras: registros por município">
-    {dados.map((r) => <div className="rd-barrow" key={r.nome}>
+  return <div className="rd-bars" role="list" aria-label="Gráfico de barras com valores">
+    {(limite ? dados.slice(0, limite) : dados).map((r) => <div className="rd-barrow" role="listitem" key={r.nome}>
       <div className="rd-bar-label" title={r.nome}>{r.nome}</div>
       <div className="rd-track"><div className="rd-fill" style={{ width: `${Math.max(3, (r.valor / maior) * 100)}%` }} /></div>
       <strong>{inteiro(r.valor)}</strong>
@@ -2183,6 +2184,7 @@ function apurarVotosTSE(registros, cargoEsperado) {
 function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () => {}, statusBase = "Base sincronizada", titulo = "Radar Link MS" }) {
   const [municipio, setMunicipio] = useState("TODOS");
   const [grafico, setGrafico] = useState("escolas");
+  const [verTodosMunicipios, setVerTodosMunicipios] = useState(false);
   const [perfisProtegidos, setPerfisProtegidos] = useState([]);
   const [perfilStatus, setPerfilStatus] = useState("Protegido — desbloqueie o módulo Perfil Gestores");
 
@@ -2227,14 +2229,28 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
   const ps = filtrar(perfis);
   const gs = filtrar(gestores);
   const chaveUnica = (r) => `${chaveNorm(chaveCidade(r))}|${chaveNorm(chaveEscola(r))}`;
-  const escolasUnificadas = [...new Map([...es, ...ps].filter((r) => chaveCidade(r) && chaveEscola(r)).map((r) => [chaveUnica(r), r])).values()];
+  // A base principal contém 63 escolas únicas em 12 municípios.
+  // Perfis protegidos NÃO podem adicionar escolas ao denominador oficial.
+  const escolasUnificadas = [...new Map((es.length ? es : ps)
+    .filter((r) => chaveCidade(r) && chaveEscola(r))
+    .map((r) => [chaveUnica(r), r])).values()];
   const encontros = new Set(fs.map((r) => `${chaveNorm(chaveCidade(r))}|${chaveNorm(chaveEscola(r))}`).filter((x) => !x.endsWith("|")));
+  // Escolas e perfis escolares usam sempre o MESMO cadastro territorial.
+  // A quantidade de avaliações efetivamente carregadas é uma métrica separada.
+  const cadastroEscolar = [...new Map((escolas.length ? escolas : perfis)
+    .filter((r) => chaveCidade(r) && chaveEscola(r))
+    .map((r) => [chaveUnica(r), { cidade: chaveCidade(r), escola: chaveEscola(r) }])).values()];
   const escolaKeys = new Set(escolasUnificadas.map(chaveUnica));
   const reunidas = escolaKeys.size ? [...escolaKeys].filter((s) => encontros.has(s)).length : null;
-  const totalEscolas = municipio === "TODOS" ? 63 : (escolasUnificadas.length || null);
+  // A referência regional validada para o painel é de 63 unidades.
+  // O cadastro territorial é compartilhado pelos indicadores de escolas e perfis.
+  const ESCOLAS_REFERENCIA_CRE5 = 63;
+  const escolasCadastroMunicipio = cadastroEscolar.filter((r) => municipio === "TODOS" || chaveNorm(r.cidade) === chaveNorm(municipio)).length;
+  const escolasCadastroTotal = municipio === "TODOS" ? ESCOLAS_REFERENCIA_CRE5 : escolasCadastroMunicipio;
+  const totalEscolas = escolasCadastroTotal || null;
 
   // Gráficos por cidade: contam registros por município, nunca inferem vínculos inexistentes.
-  const datasetGrafico = grafico === "reunioes" ? formularios : grafico === "perfis" ? perfis : [...new Map([...escolas, ...perfis].filter((r) => chaveCidade(r) && chaveEscola(r)).map((r) => [chaveUnica(r), r])).values()];
+  const datasetGrafico = grafico === "reunioes" ? formularios : cadastroEscolar;
   const resumoCidades = useMemo(() => {
     const mapa = new Map();
     datasetGrafico.forEach((r) => {
@@ -2243,7 +2259,7 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
         mapa.set(cidade, (mapa.get(cidade) || 0) + 1);
       }
     });
-    return [...mapa].map(([nome, valor]) => ({ nome, valor })).sort((a, b) => b.valor - a.valor).slice(0, 12);
+    return [...mapa].map(([nome, valor]) => ({ nome, valor })).sort((a, b) => b.valor - a.valor);
   }, [datasetGrafico, municipio]);
 
   // Séries calculadas estritamente dos registros salvos, filtradas por município.
@@ -2270,10 +2286,12 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
   const totalGestoresPerfil = perfilGestoresSelecionados.length;
   // O quantitativo oficial da CRE-5 informado pela administração é de 63 escolas.
   // Em filtros municipais, não se presume a quantidade quando a base local é incompleta.
-  const escolasCRE5 = municipio === "TODOS" ? 63 : escolasUnificadas.length;
-  const escolasPerfilCRE5 = municipio === "TODOS" ? 63 : (
-    perfis.length ? new Set(ps.map(chaveUnica).filter((x) => !x.endsWith("|"))).size : null
-  );
+  // Mesmo denominador para escolas e cadastro de perfis, inclusive com filtro municipal.
+  const escolasCRE5 = escolasCadastroTotal;
+  const escolasPerfilCRE5 = escolasCadastroTotal;
+  // Esta métrica NÃO é substituída por 63: representa apenas dados efetivamente recebidos.
+  const perfisDisponiveis = new Set(ps.filter((r) => chaveCidade(r) && chaveEscola(r)).map(chaveUnica)).size;
+  const divergenciaPerfil = perfisProtegidos.length > 0 && municipio === "TODOS" && perfisDisponiveis !== ESCOLAS_REFERENCIA_CRE5;
   const serieGovernador = apurarVotosTSE(filtrar(tse), "GOVERNADOR");
   const serieSenador = apurarVotosTSE(filtrar(tse), "SENADOR");
   const tiposApoio = [
@@ -2302,25 +2320,25 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
     </nav>
 
     <main className="rd-main">
+      <section className="rd-toolbar" aria-label="Filtros do painel">
+        <div><strong>Filtros do painel</strong><small>Selecione um município para atualizar os gráficos</small></div>
+        <label>Município <select value={municipio} onChange={(e) => setMunicipio(e.target.value)}><option value="TODOS">Toda a CRE-5</option>{municipios.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
+      </section>
       <section className="rd-hero">
         <div><span className="rd-overline">PAINEL EXECUTIVO REGIONAL</span><h2>Central de Inteligência CRE-5</h2>
           <p>Informação consolidada para acompanhamento das escolas, reuniões, gestores e articulação regional.</p></div>
         <div className="rd-hero-actions">
-          <button onClick={() => onNavigate("formulario")} className="rd-primary">+ Nova reunião com gestores</button>
-          <button onClick={imprimir} className="rd-secondary">Imprimir painel</button>
+          <button onClick={() => onNavigate("formulario")} className="rd-primary">+ Nova reunião</button>
+          <button onClick={imprimir} className="rd-secondary">Imprimir relatório</button>
         </div>
       </section>
-      <section className="rd-toolbar" aria-label="Filtros do painel">
-        <div><strong>Visão geral</strong><small>Indicadores calculados com os registros disponíveis</small></div>
-        <label>Município <select value={municipio} onChange={(e) => setMunicipio(e.target.value)}><option value="TODOS">Toda a CRE-5</option>{municipios.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
-      </section>
       <section className="rd-kpis" aria-label="Indicadores gerais">
-        <Kpi rotulo="Municípios monitorados" valor={municipio === "TODOS" ? (municipios.length || dados.totais?.municipios) : 1} nota="Cobertura regional" destaque />
-        <Kpi rotulo="Escolas cadastradas" valor={escolasCRE5} nota="63 unidades na regional" />
-        <Kpi rotulo="Reuniões registradas" valor={fs.length} nota="Formulários salvos" />
-        <Kpi rotulo="Escolas com perfil" valor={escolasPerfilCRE5} nota="63 unidades na regional" />
-        <Kpi rotulo="Gestores na base" valor={gs.length || (municipio === "TODOS" ? dados.totais?.gestores : null)} nota="Diretores e adjuntos" />
-        <Kpi rotulo="Registros de apoio" valor={totalApoios || (municipio === "TODOS" ? dados.totais?.apoios : null)} nota="Estaduais + federais" />
+        <Kpi icone="⌖" rotulo="Municípios monitorados" valor={municipio === "TODOS" ? (municipios.length || dados.totais?.municipios) : 1} nota="Cobertura regional" destaque />
+        <Kpi icone="▣" rotulo="Escolas cadastradas" valor={escolasCRE5} nota={municipio === "TODOS" ? "63 unidades na regional" : "Cadastro territorial por município"} />
+        <Kpi icone="▤" rotulo="Reuniões registradas" valor={fs.length} nota="Formulários salvos" />
+        <Kpi icone="◉" rotulo="Escolas no cadastro de perfis" valor={escolasPerfilCRE5} nota="Mesma referência das escolas" />
+        <Kpi icone="♙" rotulo="Gestores na base" valor={gs.length || (municipio === "TODOS" ? dados.totais?.gestores : null)} nota="Diretores e adjuntos" />
+        <Kpi icone="▥" rotulo="Registros de apoio" valor={totalApoios || (municipio === "TODOS" ? dados.totais?.apoios : null)} nota="Estaduais + federais" />
       </section>
 
       <div className="rd-charts">
@@ -2328,7 +2346,8 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
           <div className="rd-card-head"><div><h3>Distribuição territorial</h3><p>Comparativo por município, segundo o conjunto selecionado</p></div>
             <select value={grafico} onChange={(e) => setGrafico(e.target.value)} aria-label="Tipo de distribuição"><option value="escolas">Escolas</option><option value="perfis">Perfis escolares</option><option value="reunioes">Reuniões</option></select>
           </div>
-          <Barras dados={resumoCidades} tituloVazio="Nenhum registro municipal disponível neste conjunto. Conecte os dados do módulo correspondente." />
+          <Barras dados={resumoCidades} limite={verTodosMunicipios ? 0 : 10} tituloVazio="Nenhum registro municipal disponível neste conjunto. Conecte os dados do módulo correspondente." />
+          {resumoCidades.length > 10 && <button className="rd-more" type="button" aria-expanded={verTodosMunicipios} onClick={() => setVerTodosMunicipios(v => !v)}>{verTodosMunicipios ? "Mostrar apenas 10" : `Ver todos (${resumoCidades.length})`}</button>}
         </section>
         <section className="rd-card"><div className="rd-card-head"><div><h3>Cobertura das reuniões</h3><p>Escolas com ao menos uma reunião registrada</p></div></div>
           <Anel valor={reunidas} total={totalEscolas} />
@@ -2346,12 +2365,12 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
         </section>
         <section className="rd-card rd-eleicao-card">
           <div className="rd-card-head"><div><h3>Eleição 2026 · Governador</h3><p>Votação consolidada nos locais eleitorais vinculados às escolas CRE-5</p></div><span className="rd-eleicao-tag">Governador</span></div>
-          <Barras dados={serieGovernador} tituloVazio="Resultados por candidato ainda não disponíveis na integração TSE. Consulte o módulo Resultados TSE." />
+          {serieGovernador.length ? <Barras dados={serieGovernador} /> : <div className="rd-election-empty" role="status"><span className="rd-election-empty-icon" aria-hidden="true">◷</span><strong>Resultados aguardando integração</strong><p>Os votos por candidato e escola ainda não estão disponíveis nesta visão.</p><button type="button" onClick={() => onNavigate("tse")}>Consultar módulo TSE</button></div>}
           <div className="rd-eleicao-footer"><span>{serieGovernador.length ? `${inteiro(serieGovernador.reduce((a,r)=>a+r.valor,0))} votos válidos por candidato na base` : "Aguardando dados eleitorais por escola"}</span><button type="button" onClick={() => onNavigate("tse")}>Abrir Resultados TSE ↗</button></div>
         </section>
         <section className="rd-card rd-eleicao-card">
           <div className="rd-card-head"><div><h3>Eleição 2026 · Senador</h3><p>Votação consolidada nos locais eleitorais vinculados às escolas CRE-5</p></div><span className="rd-eleicao-tag">Senador</span></div>
-          <Barras dados={serieSenador} tituloVazio="Resultados por candidato ainda não disponíveis na integração TSE. Consulte o módulo Resultados TSE." />
+          {serieSenador.length ? <Barras dados={serieSenador} /> : <div className="rd-election-empty" role="status"><span className="rd-election-empty-icon" aria-hidden="true">◷</span><strong>Resultados aguardando integração</strong><p>Os votos por candidato e escola ainda não estão disponíveis nesta visão.</p><button type="button" onClick={() => onNavigate("tse")}>Consultar módulo TSE</button></div>}
           <div className="rd-eleicao-footer"><span>{serieSenador.length ? `${inteiro(serieSenador.reduce((a,r)=>a+r.valor,0))} votos nominais na base` : "Aguardando dados eleitorais por escola"}</span><button type="button" onClick={() => onNavigate("tse")}>Abrir Resultados TSE ↗</button></div>
         </section>
         <section className="rd-card"><div className="rd-card-head"><div><h3>Composição da base de gestores</h3><p>Diretores e adjuntos cadastrados na base principal</p></div></div>
@@ -2361,9 +2380,9 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
           <Barras dados={tiposApoio} tituloVazio="Não existem registros de articulação para o recorte selecionado." />
           <div className="rd-note">Contagem de registros por âmbito, sem identificação individual de posicionamentos.</div>
         </section>
-        <section className="rd-card rd-perfil-card"><div className="rd-card-head"><div><h3>Perfis escolares integrados</h3><p>Indicadores agregados da avaliação de perfil</p></div></div>
-          <div className="rd-perfil-kpis"><div><span>Escolas com perfil</span><strong>{inteiro(escolasPerfilCRE5)}</strong></div><div><span>Gestores identificados</span><strong>{inteiro(totalGestoresPerfil || null)}</strong></div><div><span>Gestores com notas</span><strong>{inteiro(avaliados.length || null)}</strong></div></div>
-          <div className="rd-note">{perfilStatus}. Os nomes, observações e avaliações individuais não são exibidos neste painel. Para consultar os registros completos, acesse Perfil Gestores.</div>
+        <section className="rd-card rd-perfil-card"><div className="rd-card-head"><div><h3>Cadastro de perfis escolares</h3><p>Referência territorial comum e avaliações disponíveis</p></div></div>
+          <div className="rd-perfil-kpis"><div><span>Escolas no cadastro</span><strong>{inteiro(escolasPerfilCRE5)}</strong></div><div><span>Gestores identificados</span><strong>{inteiro(totalGestoresPerfil || null)}</strong></div><div><span>Gestores com notas</span><strong>{inteiro(avaliados.length || null)}</strong></div></div>
+          <div className="rd-note">{perfilStatus}. {perfisProtegidos.length ? `Perfis recebidos da API neste recorte: ${inteiro(perfisDisponiveis)}.` : "A contagem de 63 representa o cadastro oficial da regional; a quantidade de avaliações disponíveis depende do desbloqueio do módulo."} {divergenciaPerfil ? "Atenção: a API retornou uma quantidade de perfis diferente das 63 escolas de referência; confira duplicidades e ausências." : ""} Os nomes e avaliações individuais não são exibidos neste painel.</div>
         </section>
       </div>
       <footer className="rd-footer">RADAR LINK MS · Central de inteligência regional · CRE-5 Dourados</footer>
@@ -2462,6 +2481,96 @@ const RADAR_DASHBOARD_EXTRA_CSS = `/* Radar Link MS: identidade visual profissio
  .rd-hero h2,.rd-hero p,.rd-overline{color:#111}
  .rd-bars .rd-fill{background:#004F9F}
 }
+
+/* CRE-5 · Versão executiva refinada | grid de 12 colunas */
+.rd-root{--rd-navy:#0F172A;--rd-brand:#1E3A8A;--rd-primary:#2563EB;--rd-primary-hover:#1D4ED8;--rd-secondary:#15803D;--rd-bg:#F8FAFC;--rd-surface:#FFFFFF;--rd-ink:#0F172A;--rd-muted:#64748B;--rd-border:#E2E8F0;background:#F8FAFC;color:#0F172A;padding:18px 24px 34px;font-family:Inter,"Segoe UI",Arial,sans-serif}
+.rd-header,.rd-nav,.rd-main{max-width:1500px}
+.rd-header{background:#0F172A;border:1px solid #1E293B;border-radius:9px;padding:12px 20px;margin-bottom:0;box-shadow:none;min-height:72px}
+.rd-logo{width:42px;height:42px;font-size:28px;border-radius:9px;background:#1E3A8A;color:#fff;border:1px solid #3156a7}
+.rd-brand h1{font-family:Poppins,Inter,sans-serif;font-size:21px;color:#fff;font-weight:700;letter-spacing:-.45px}
+.rd-brand p{color:#CBD5E1;font-size:11px}
+.rd-status{background:#143422;border-color:#22633C;color:#B4F5CD}
+.rd-exit{background:transparent;border:1px solid #475569;color:#fff;font-size:11px}
+.rd-exit:hover{background:#273449;color:#fff}
+.rd-nav{display:flex;flex-wrap:wrap;gap:2px;background:#fff;border:1px solid #E2E8F0;border-top:0;border-radius:0 0 9px 9px;padding:4px 12px;margin-bottom:16px;box-shadow:0 1px 3px rgba(15,23,42,.07)}
+.rd-navbtn{position:relative;flex:1 1 135px;display:flex;align-items:center;justify-content:center;min-height:51px;padding:8px 7px;border:0;border-radius:0;background:transparent;color:#475569;gap:7px;box-shadow:none}
+.rd-navbtn:hover{background:#F1F5F9;border:0;color:#1E3A8A;transform:none}
+.rd-navbtn.active{color:#1E3A8A;background:#EFF6FF;border:0;border-radius:6px 6px 0 0;box-shadow:none}
+.rd-navbtn.active:after{content:"";position:absolute;left:10px;right:10px;bottom:0;height:3px;border-radius:4px;background:#2563EB}
+.rd-navicon,.rd-navbtn.active .rd-navicon{background:transparent;color:inherit;font-size:18px;width:22px;height:25px;border-radius:0}
+.rd-navbtn b{font-size:11px;font-weight:700;line-height:1.25}
+.rd-navbtn small{display:none}
+.rd-toolbar{background:#fff;margin:0 0 12px;padding:10px 16px;border:1px solid #E2E8F0;border-radius:8px;box-shadow:0 1px 3px rgba(15,23,42,.035)}
+.rd-toolbar strong{font-family:Inter,sans-serif;color:#334155;font-size:13px;font-weight:700}
+.rd-toolbar small{font-size:11px;color:#64748B;margin-top:2px}
+.rd-toolbar label{color:#334155;font-weight:600}
+.rd-toolbar select,.rd-card select{background:#fff;color:#0F172A;min-height:36px;padding:7px 11px;border:1px solid #CBD5E1;border-radius:7px}
+.rd-hero{border:1px solid #CBD5E1;border-left:4px solid #1E3A8A;border-radius:8px;background:#fff;padding:17px 20px;box-shadow:0 1px 3px rgba(15,23,42,.05);color:#0F172A}
+.rd-hero:after{display:none}
+.rd-overline{color:#1D4ED8;font-size:10px;letter-spacing:.8px}
+.rd-hero h2{font-family:Poppins,Inter,sans-serif;color:#0F172A;font-size:clamp(21px,2.1vw,29px);line-height:1.25;margin:4px 0 4px;letter-spacing:-.6px;font-weight:700}
+.rd-hero p{font-size:12px;color:#64748B;max-width:700px}
+.rd-hero-actions{gap:8px}
+.rd-hero-actions button{font-family:Inter,sans-serif;font-size:11px;font-weight:700;padding:9px 12px;border-radius:7px;min-height:37px}
+.rd-primary{background:#2563EB;color:#fff;box-shadow:none}
+.rd-secondary{background:#F1F5F9;border:1px solid #CBD5E1!important;color:#334155;box-shadow:none}
+.rd-primary:hover{background:#1D4ED8}
+.rd-secondary:hover{background:#E2E8F0}
+.rd-kpis{grid-template-columns:repeat(6,minmax(0,1fr));gap:12px;margin:14px 0 0}
+.rd-kpi{padding:14px;border:1px solid #E2E8F0;border-radius:8px;background:#fff;box-shadow:0 1px 3px rgba(15,23,42,.08);min-height:112px}
+.rd-kpi-accent{border:1px solid #E2E8F0;border-left:3px solid #2563EB}
+.rd-kpi-title{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.rd-kpi span{font-size:11px;color:#64748B;font-weight:600;line-height:1.25}
+.rd-kpi .rd-kpi-icon{display:grid;place-items:center;background:#EFF6FF;color:#1E3A8A;width:27px;height:27px;border-radius:6px;font-size:17px;flex:none}
+.rd-kpi strong{font-family:Inter,sans-serif;font-size:26px;font-weight:700;color:#0F172A;margin:7px 0 4px;letter-spacing:-.5px}
+.rd-kpi small{font-size:10px;color:#64748B}
+.rd-charts{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:14px;margin-top:14px}
+.rd-charts>.rd-card:first-child{grid-column:span 8}
+.rd-charts>.rd-card:nth-child(2){grid-column:span 4}
+.rd-card{background:#fff;border:1px solid #E2E8F0;box-shadow:0 1px 3px rgba(15,23,42,.08);border-radius:8px;padding:17px 18px;min-width:0}
+.rd-card-head{margin-bottom:15px;gap:12px}
+.rd-card h3{font-family:Poppins,Inter,sans-serif;font-size:14px;color:#0F172A;letter-spacing:-.2px;font-weight:700}
+.rd-card p{font-family:Inter,sans-serif;font-size:11px;line-height:1.5;color:#64748B}
+.rd-bars{gap:14px;padding:3px 0 9px}
+.rd-barrow,.rd-insight-grid .rd-barrow{grid-template-columns:minmax(125px,175px) minmax(0,1fr) 44px;gap:12px;font-size:12px;min-height:17px}
+.rd-bar-label{color:#334155;font-size:11px;font-weight:500}
+.rd-track{height:10px;background:#E2E8F0;border-radius:5px}
+.rd-fill{height:100%;border-radius:5px;background:#2563EB}
+.rd-barrow strong{color:#0F172A;font-size:12px;font-weight:700;font-variant-numeric:tabular-nums}
+.rd-more{display:block;margin:8px auto 0;border:1px solid #CBD5E1;background:#F8FAFC;border-radius:7px;padding:7px 13px;color:#1E3A8A;font-size:11px;font-weight:700;cursor:pointer}
+.rd-more:hover{background:#EFF6FF}
+.rd-ring{width:152px;height:152px;background:conic-gradient(#15803D calc(var(--percent) * 1%),#E2E8F0 0)}
+.rd-ring-inside{width:114px;height:114px;background:#fff}
+.rd-ring-inside strong{font-family:Inter,sans-serif;color:#0F172A;font-size:26px}
+.rd-ring-inside span,.rd-ring-caption span{color:#64748B}
+.rd-ring-caption b{font-family:Inter,sans-serif;color:#0F172A}
+.rd-note{color:#64748B;border-top:1px solid #E2E8F0}
+.rd-insight-heading{margin:21px 0 12px}
+.rd-insight-heading h2{font-family:Poppins,Inter,sans-serif;font-size:17px;font-weight:700;color:#0F172A}
+.rd-insight-heading p,.rd-insight-heading span{color:#64748B;font-size:11px}
+.rd-insight-grid{grid-template-columns:repeat(12,minmax(0,1fr));gap:14px}
+.rd-insight-grid>.rd-card{grid-column:span 6;min-height:208px}
+.rd-insight-grid>.rd-card:last-child{grid-column:span 12;min-height:145px}
+.rd-perfil-kpis{margin:10px 0}
+.rd-perfil-kpis>div{background:#F8FAFC;border:1px solid #E2E8F0;padding:12px;border-radius:7px}
+.rd-perfil-kpis span{color:#64748B}
+.rd-perfil-kpis strong{font-family:Inter,sans-serif;color:#1E3A8A;font-size:24px}
+.rd-eleicao-tag{color:#1E3A8A;background:#EFF6FF;border:1px solid #DBEAFE;border-radius:5px;font-size:10px}
+.rd-eleicao-footer{border-color:#E2E8F0}
+.rd-eleicao-footer span{color:#64748B}
+.rd-eleicao-footer button{background:#F1F5F9;border:1px solid #CBD5E1;color:#1E3A8A;border-radius:7px}
+.rd-eleicao-footer button:hover{background:#E2E8F0}
+.rd-election-empty{min-height:142px;background:#F1F5F9;border:1px solid #E2E8F0;border-radius:8px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:16px;text-align:center}
+.rd-election-empty-icon{display:grid;place-items:center;color:#64748B;background:#E2E8F0;width:32px;height:32px;border-radius:50%;font-size:21px}
+.rd-election-empty strong{font-size:12px;color:#334155}
+.rd-election-empty p{font-size:11px;max-width:290px;margin:0}
+.rd-election-empty button{border:1px solid #CBD5E1;border-radius:6px;background:white;color:#1E3A8A;font-weight:700;font-size:11px;padding:7px 12px;cursor:pointer;margin-top:3px}
+.rd-footer{padding:24px 0 14px;color:#64748B}
+.rd-root :is(button,select,input):focus-visible{outline:3px solid #93C5FD;outline-offset:2px}
+@media(max-width:1150px){.rd-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.rd-navbtn{flex-basis:28%}.rd-charts>.rd-card:first-child{grid-column:span 7}.rd-charts>.rd-card:nth-child(2){grid-column:span 5}}
+@media(max-width:780px){.rd-root{padding:10px}.rd-header{border-radius:8px 8px 0 0;padding:12px}.rd-nav{margin-bottom:12px;grid-template-columns:none}.rd-navbtn{flex-basis:30%;min-height:48px}.rd-navbtn b{font-size:10px}.rd-toolbar{flex-wrap:wrap}.rd-hero{padding:15px;flex-direction:column;align-items:flex-start}.rd-hero-actions{justify-content:flex-start}.rd-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.rd-charts>.rd-card:first-child,.rd-charts>.rd-card:nth-child(2){grid-column:span 12}.rd-insight-grid>.rd-card{grid-column:span 12}.rd-card{padding:15px}.rd-barrow,.rd-insight-grid .rd-barrow{grid-template-columns:110px minmax(0,1fr) 38px;gap:7px}}
+@media(max-width:420px){.rd-navbtn{flex-basis:43%;padding:6px}.rd-brand h1{font-size:18px}.rd-brand p{font-size:10px}.rd-status{font-size:10px}.rd-kpi strong{font-size:23px}.rd-barrow,.rd-insight-grid .rd-barrow{grid-template-columns:92px minmax(0,1fr) 32px}.rd-perfil-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media print{.rd-root{background:#fff;padding:0}.rd-header,.rd-hero,.rd-kpi,.rd-card{box-shadow:none}.rd-header{background:#fff;color:#000}.rd-header h1,.rd-brand p{color:#000}.rd-nav,.rd-toolbar,.rd-hero-actions,.rd-election-empty button,.rd-eleicao-footer button{display:none!important}.rd-hero h2,.rd-hero p,.rd-overline{color:#000}.rd-charts,.rd-insight-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.rd-charts>.rd-card:first-child,.rd-charts>.rd-card:nth-child(2),.rd-insight-grid>.rd-card{grid-column:span 1}.rd-kpis{grid-template-columns:repeat(3,1fr)}.rd-fill{background:#2563EB!important}.rd-card{break-inside:avoid}}
 `;
 export default function App() {
   const [votosTSEEscolas, setVotosTSEEscolas] = useState([]);
@@ -3460,7 +3569,7 @@ export default function App() {
       <section className="hero">
         <div className="eyebrow">Cenário político — simulação</div><h2>Mapa de apoios da CRE-5</h2><p>Dados separados por deputado estadual e federal, calculados diretamente da base consolidada dos dois anexos Word. Registros classificados como oposição ficam separados da contagem de apoio.</p>
         <div className="kpi-grid"><Kpi label="Deputados estaduais" value={deputadosEstaduais.length}/><Kpi label="Apoios estaduais" value={totalEstaduais}/><Kpi label="Deputados federais" value={deputadosFederais.length}/><Kpi label="Apoios federais" value={totalFederais}/><Kpi label="Gestores na base" value={gestoresPoliticosBase.length}/></div>
-        <div className="filter-row no-print"><input className="input" placeholder="Buscar deputado..." value={buscaPolitica} onChange={(e)=>setBuscaPolitica(e.target.value)}/><button className="btn secondary" onClick={gerarPDF}>Imprimir painel</button></div>
+        <div className="filter-row no-print"><input className="input" placeholder="Buscar deputado..." value={buscaPolitica} onChange={(e)=>setBuscaPolitica(e.target.value)}/><button className="btn secondary" onClick={gerarPDF}>Imprimir relatório</button></div>
       </section>
 
       <section className="panel">
@@ -3520,7 +3629,7 @@ export default function App() {
       </section>
 
       <section className="panel">
-        <div className="section-heading"><div><h3>Combinações consolidadas</h3><p>Ordenadas alfabeticamente pelo deputado estadual e, em seguida, pelo federal.</p></div><button className="btn secondary no-print" onClick={gerarPDF}>Imprimir painel</button></div>
+        <div className="section-heading"><div><h3>Combinações consolidadas</h3><p>Ordenadas alfabeticamente pelo deputado estadual e, em seguida, pelo federal.</p></div><button className="btn secondary no-print" onClick={gerarPDF}>Imprimir relatório</button></div>
         <div className="cards-grid">
           {dobradinhasFiltradas.map((item)=><button className="double-card" key={item.chave} onClick={()=>{ setDetalheDobradinha(item); rolarParaTopo(); }}>
             <div className="card-top"><PairStatus item={item}/><div className="count-badge">{item.total}</div></div>
