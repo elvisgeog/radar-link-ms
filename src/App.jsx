@@ -2571,6 +2571,129 @@ const RADAR_DASHBOARD_EXTRA_CSS = `/* Radar Link MS: identidade visual profissio
 @media(max-width:780px){.rd-root{padding:10px}.rd-header{border-radius:8px 8px 0 0;padding:12px}.rd-nav{margin-bottom:12px;grid-template-columns:none}.rd-navbtn{flex-basis:30%;min-height:48px}.rd-navbtn b{font-size:10px}.rd-toolbar{flex-wrap:wrap}.rd-hero{padding:15px;flex-direction:column;align-items:flex-start}.rd-hero-actions{justify-content:flex-start}.rd-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.rd-charts>.rd-card:first-child,.rd-charts>.rd-card:nth-child(2){grid-column:span 12}.rd-insight-grid>.rd-card{grid-column:span 12}.rd-card{padding:15px}.rd-barrow,.rd-insight-grid .rd-barrow{grid-template-columns:110px minmax(0,1fr) 38px;gap:7px}}
 @media(max-width:420px){.rd-navbtn{flex-basis:43%;padding:6px}.rd-brand h1{font-size:18px}.rd-brand p{font-size:10px}.rd-status{font-size:10px}.rd-kpi strong{font-size:23px}.rd-barrow,.rd-insight-grid .rd-barrow{grid-template-columns:92px minmax(0,1fr) 32px}.rd-perfil-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media print{.rd-root{background:#fff;padding:0}.rd-header,.rd-hero,.rd-kpi,.rd-card{box-shadow:none}.rd-header{background:#fff;color:#000}.rd-header h1,.rd-brand p{color:#000}.rd-nav,.rd-toolbar,.rd-hero-actions,.rd-election-empty button,.rd-eleicao-footer button{display:none!important}.rd-hero h2,.rd-hero p,.rd-overline{color:#000}.rd-charts,.rd-insight-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.rd-charts>.rd-card:first-child,.rd-charts>.rd-card:nth-child(2),.rd-insight-grid>.rd-card{grid-column:span 1}.rd-kpis{grid-template-columns:repeat(3,1fr)}.rd-fill{background:#2563EB!important}.rd-card{break-inside:avoid}}
+
+
+/* =========================================================
+   PADRÃO VISUAL UNIFICADO — referência: Resultados Eleitorais 2026.
+   Somente o dashboard inicial. Sem mudanças de dados ou navegação.
+   ========================================================= */
+.rd-root {
+  --rd-bg:#081323; --rd-panel:#0e182a; --rd-panel-soft:#111d32;
+  --rd-blue:#2563eb; --rd-green:#0f766e; --rd-gold:#f4c430;
+  --rd-ink:#f8fafc; --rd-muted:#b8c7dd; --rd-border:#253751;
+  background:#081323; color:#f8fafc;
+  font-family:Inter,"Segoe UI",Arial,sans-serif;
+  padding:16px 20px 34px;
+}
+.rd-root .rd-header {
+  background:#081323; border:1px solid #24334c; border-top:3px solid #2563eb;
+  color:#fff; border-radius:12px; box-shadow:none; padding:17px 20px;
+}
+.rd-root .rd-logo {background:#173c6d;color:#facc15;border:1px solid #235082}
+.rd-root .rd-brand h1 {color:#fff;font-size:clamp(24px,2.5vw,31px);font-weight:800}
+.rd-root .rd-brand p {color:#c4d2e5}
+.rd-root .rd-status {background:#0a302a;color:#8ff0ca;border:1px solid #13634e}
+.rd-root .rd-exit {background:#18263d;border:1px solid #34455e;color:#edf5ff}
+.rd-root .rd-exit:hover {background:#233853}
+.rd-root .rd-nav {
+  background:#0b1527;border:1px solid #243650;box-shadow:none;
+  border-radius:11px;padding:8px;margin-bottom:15px;gap:7px;
+}
+.rd-root .rd-navbtn {
+  background:#15233a;color:#f8fafc;border:1px solid #2c415d;
+  border-radius:9px;min-height:59px;padding:10px;box-shadow:none;
+}
+.rd-root .rd-navbtn:hover {background:#1b3150;border-color:#42618b;color:#fff}
+.rd-root .rd-navbtn.active {background:#2563eb;border-color:#4580ff;color:#fff;box-shadow:none}
+.rd-root .rd-navicon {background:#1d3555;color:#bddaff}
+.rd-root .rd-navbtn.active .rd-navicon {background:#ffffff25;color:#fff}
+.rd-root .rd-navbtn small {color:#abc0dc}
+.rd-root .rd-navbtn.active small {color:#eef4ff}
+.rd-root .rd-hero {
+  background:#0b1729;color:#fff;border:1px solid #243650;border-left:5px solid #2563eb;
+  border-radius:12px;box-shadow:none;padding:19px 22px;
+}
+.rd-root .rd-hero:after {display:none}
+.rd-root .rd-overline {color:#80b9ff}
+.rd-root .rd-hero h2 {color:#fff;font-size:clamp(23px,2.5vw,31px);margin:5px 0;font-weight:800}
+.rd-root .rd-hero p {color:#c6d5e7;font-size:12px}
+.rd-root .rd-primary {background:#2563eb;color:#fff;border:1px solid #4178f4!important}
+.rd-root .rd-primary:hover {background:#1d4ed8}
+.rd-root .rd-secondary {background:#0f766e;color:#fff;border:1px solid #15958b!important}
+.rd-root .rd-secondary:hover {background:#0d625b}
+.rd-root .rd-toolbar {background:transparent;color:#fff;border:0;box-shadow:none;padding:7px 0;margin:12px 0 9px}
+.rd-root .rd-toolbar strong {color:#fff;font-size:15px}
+.rd-root .rd-toolbar small,.rd-root .rd-toolbar label {color:#b3c6de}
+.rd-root .rd-toolbar select,.rd-root .rd-card select,.rd-root .rd-search {
+  background:#fff;color:#0f172a;border:1px solid #cbd5e1;border-radius:8px;
+}
+.rd-root .rd-kpis {gap:10px;margin:10px 0 0}
+.rd-root .rd-kpi {
+  background:#1d293e;color:#fff;border:1px solid #2e3e58;border-radius:11px;
+  box-shadow:none;padding:14px;min-height:103px;
+}
+.rd-root .rd-kpi-accent {border-left:3px solid #2563eb}
+.rd-root .rd-kpi-title span {color:#c6d5e8;font-weight:600;font-size:11px}
+.rd-root .rd-kpi .rd-kpi-icon {background:#253c5b;color:#cce2ff}
+.rd-root .rd-kpi strong {color:#fff;font-size:27px;font-weight:800}
+.rd-root .rd-kpi small {color:#9eafc7}
+.rd-root .rd-card {
+  background:#0d1729;color:#f8fafc;border:1px solid #253650;
+  border-radius:12px;box-shadow:none;padding:18px;
+}
+.rd-root .rd-card h3 {color:#fff;font-size:16px;font-weight:800}
+.rd-root .rd-card p {color:#b8c8dd;font-size:12px}
+.rd-root .rd-insight-heading h2 {color:#fff;font-size:19px}
+.rd-root .rd-insight-heading p,.rd-root .rd-insight-heading span {color:#a8bbd5}
+.rd-root .rd-barrow {min-height:19px}
+.rd-root .rd-bar-label {color:#e1eafa;font-size:11px}
+.rd-root .rd-barrow strong {color:#fff;font-size:12px}
+.rd-root .rd-track {background:#263a58;height:11px}
+.rd-root .rd-fill {background:linear-gradient(90deg,#2563eb,#24b6df)}
+.rd-root .rd-ring {background:conic-gradient(#0f9485 calc(var(--percent) * 1%),#263a58 0)}
+.rd-root .rd-ring-inside {background:#0d1729}
+.rd-root .rd-ring-inside strong,.rd-root .rd-ring-caption b {color:#fff}
+.rd-root .rd-ring-inside span,.rd-root .rd-ring-caption span {color:#a8bed7}
+.rd-root .rd-note {color:#9fb2cc;border-top-color:#243650}
+.rd-root .rd-perfil-kpis>div {background:#1c2940;border:1px solid #31445f}
+.rd-root .rd-perfil-kpis span {color:#bfd1e7}
+.rd-root .rd-perfil-kpis strong {color:#fff}
+.rd-root .rd-more {
+  background:#182f51;border:1px solid #426a9c;color:#e5f2ff;
+}
+.rd-root .rd-more:hover {background:#22416b}
+.rd-root .rd-eleicao-card {border-color:#3a4a63}
+.rd-root .rd-eleicao-tag {background:#1d55cc;color:#fff;border:1px solid #4274e0}
+.rd-root .rd-eleicao-footer {border-top-color:#2c3b51}
+.rd-root .rd-eleicao-footer span {color:#afc3db}
+.rd-root .rd-eleicao-footer button {
+  background:#0f766e;color:#fff;border:1px solid #14958a;border-radius:8px;
+}
+.rd-root .rd-eleicao-footer button:hover {background:#0d625b}
+.rd-root .rd-election-empty {
+  background:#142138;border:1px solid #314259;border-radius:10px;
+}
+.rd-root .rd-election-empty-icon {background:#203652;color:#c4d9f4}
+.rd-root .rd-election-empty strong {color:#fff}
+.rd-root .rd-election-empty p {color:#b5c8e0}
+.rd-root .rd-election-empty button {background:#2563eb;color:#fff;border:1px solid #427cf5}
+.rd-root .rd-footer {color:#8198b7}
+.rd-root :is(button,select,input):focus-visible {outline:3px solid #60a5fa;outline-offset:2px}
+@media (max-width:780px){
+ .rd-root {padding:10px}
+ .rd-root .rd-header {padding:13px}
+ .rd-root .rd-card {padding:15px}
+ .rd-root .rd-hero {padding:16px}
+}
+@media print {
+ .rd-root {background:#fff!important;color:#111!important}
+ .rd-root .rd-header,.rd-root .rd-hero,.rd-root .rd-kpi,.rd-root .rd-card,
+ .rd-root .rd-perfil-kpis>div,.rd-root .rd-ring-inside {background:#fff!important;color:#111!important;border-color:#999!important}
+ .rd-root .rd-brand h1,.rd-root .rd-brand p,.rd-root .rd-hero h2,.rd-root .rd-hero p,
+ .rd-root .rd-card h3,.rd-root .rd-card p,.rd-root .rd-kpi strong,.rd-root .rd-kpi span,
+ .rd-root .rd-bar-label,.rd-root .rd-barrow strong,.rd-root .rd-perfil-kpis strong {color:#111!important}
+}
+
 `;
 export default function App() {
   const [votosTSEEscolas, setVotosTSEEscolas] = useState([]);
