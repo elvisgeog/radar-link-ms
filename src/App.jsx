@@ -2287,6 +2287,9 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
   function imprimir() { window.print(); }
 
   return <div className="rd-root">
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet" />
     <style>{CSS + RADAR_DASHBOARD_EXTRA_CSS}</style>
     <header className="rd-header">
       <div className="rd-brand"><div className="rd-logo">◎</div><div><h1>{titulo}</h1><p>CRE-5 · Gestão educacional e inteligência regional · Mato Grosso do Sul</p></div></div>
@@ -2387,8 +2390,79 @@ const CSS = `
 .rd-eleicao-card .rd-card-head{align-items:flex-start}.rd-eleicao-tag{padding:6px 9px;border:1px solid #315d8b;color:#9bd3ff;background:#173251;border-radius:8px;font-size:11px;font-weight:700;white-space:nowrap}.rd-eleicao-footer{display:flex;justify-content:space-between;gap:10px;align-items:center;border-top:1px solid #273c58;padding-top:13px;margin-top:16px}.rd-eleicao-footer span{font-size:11px;color:#9fb6d1}.rd-eleicao-footer button{border:1px solid #3b6592;background:#1b3e6b;color:#fff;font-size:11px;font-weight:700;border-radius:8px;padding:8px;cursor:pointer}@media(max-width:520px){.rd-eleicao-footer{align-items:flex-start;flex-direction:column}}
 `;
 
-const RADAR_DASHBOARD_EXTRA_CSS = `.rd-top-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.rd-exit{border:1px solid #405775;background:#162843;color:#e2edff;border-radius:10px;padding:10px 13px;cursor:pointer;font-weight:700;font-size:12px}.rd-exit:hover{background:#28456b}`;
-
+const RADAR_DASHBOARD_EXTRA_CSS = `/* Radar Link MS: identidade visual profissional — Azul + Verde + neutros */
+.rd-root {
+  --rd-primary:#004F9F; --rd-primary-hover:#003B7A; --rd-secondary:#009E3D;
+  --rd-bg:#F1F4F8; --rd-surface:#FFFFFF; --rd-ink:#183047;
+  --rd-muted:#607388; --rd-border:#DAE3EC;
+  background:var(--rd-bg);color:var(--rd-ink);font-family:Inter,"Segoe UI",Arial,sans-serif;
+  padding:24px 26px 36px;line-height:1.5;
+}
+.rd-root button,.rd-root select,.rd-root input{font-family:inherit}
+.rd-header,.rd-nav,.rd-main{max-width:1500px}
+.rd-header{
+  background:#fff;border:1px solid var(--rd-border);border-top:4px solid var(--rd-primary);
+  border-radius:14px;margin-bottom:14px;padding:18px 24px;box-shadow:0 4px 16px rgba(23,54,82,.04);
+}
+.rd-logo{background:#E8F1FA;color:var(--rd-primary);border:1px solid #C8DCED;font-size:39px}
+.rd-brand h1{color:#12335C;font-family:Poppins,Inter,sans-serif;font-size:26px;font-weight:750;letter-spacing:-.7px}
+.rd-brand p{color:var(--rd-muted);font-size:12px}
+.rd-status{background:#EAF7EE;color:#087D36;border:1px solid #B8E4C8}
+.rd-status i{background:var(--rd-secondary)}
+.rd-top-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.rd-exit{border:1px solid var(--rd-border);background:#F6F9FC;color:#27425E;border-radius:9px;padding:10px 13px;cursor:pointer;font-weight:650;font-size:12px}
+.rd-exit:hover{background:#E8F1FA;border-color:#B7CFE4}
+.rd-nav{background:#fff;border:1px solid var(--rd-border);border-radius:13px;padding:8px;gap:7px;margin-bottom:18px;box-shadow:0 3px 14px rgba(23,54,82,.035)}
+.rd-navbtn{background:#fff;color:#284560;border:1px solid transparent;border-radius:10px;min-height:66px;padding:12px 10px;gap:9px}
+.rd-navbtn:hover{background:#EEF5FB;color:var(--rd-primary);border-color:#D1E1EF}
+.rd-navbtn.active{background:var(--rd-primary);border-color:var(--rd-primary);color:white;box-shadow:0 4px 12px rgba(0,79,159,.14)}
+.rd-navicon{background:#E9F2FA;color:var(--rd-primary);border-radius:9px;font-size:20px;width:35px;height:35px}
+.rd-navbtn.active .rd-navicon{background:rgba(255,255,255,.18);color:#fff}
+.rd-navbtn b{font-weight:750;font-size:12px;line-height:1.3}
+.rd-navbtn small{color:#668096;font-size:10px}
+.rd-navbtn.active small{color:#E8F2FD}
+.rd-hero{border:0;border-left:5px solid var(--rd-secondary);background:linear-gradient(110deg,#004F9F,#0A65AD);color:white;box-shadow:0 9px 24px rgba(0,79,159,.10);border-radius:14px;padding:28px 30px}
+.rd-hero:after{border:38px solid rgba(255,255,255,.065)}
+.rd-overline{color:#D9EDFF;font-size:11px;letter-spacing:1.1px}
+.rd-hero h2{font-family:Poppins,Inter,sans-serif;font-size:clamp(27px,2.8vw,37px);font-weight:750;line-height:1.2;letter-spacing:-.8px;margin:10px 0 8px;color:#fff}
+.rd-hero p{color:#E5F1FC;font-size:13px}
+.rd-primary{background:#fff;color:var(--rd-primary);box-shadow:0 2px 7px rgba(0,0,0,.09)}
+.rd-secondary{background:#E4F1FB;color:var(--rd-primary)}
+.rd-hero-actions button{font-weight:700;padding:11px 15px;border-radius:8px}
+.rd-toolbar{margin:22px 0 12px}.rd-toolbar strong{color:#12335C;font-family:Poppins,Inter,sans-serif;font-size:17px;font-weight:750}.rd-toolbar small,.rd-toolbar label{color:var(--rd-muted)}
+.rd-toolbar select,.rd-card select,.rd-search{background:#fff;border:1px solid #C9D7E3;color:#23425F;border-radius:8px;min-height:40px}
+.rd-toolbar select:focus,.rd-card select:focus,.rd-search:focus{outline:3px solid rgba(0,79,159,.13);border-color:var(--rd-primary)}
+.rd-kpis{gap:12px}.rd-kpi{background:#fff;border:1px solid var(--rd-border);border-top:3px solid var(--rd-primary);border-radius:12px;padding:18px 16px;box-shadow:0 4px 16px rgba(31,59,88,.045)}
+.rd-kpi-accent{border-top-color:var(--rd-secondary)}
+.rd-kpi span{color:#567087;font-size:11px;font-weight:600}.rd-kpi strong{color:#0B3D70;font-family:Poppins,Inter,sans-serif;font-size:31px;font-weight:750;letter-spacing:-.7px;margin:9px 0 4px}
+.rd-kpi small{color:#72869A;font-size:10px}
+.rd-charts{gap:15px;margin-top:16px}.rd-card{background:#fff;border:1px solid var(--rd-border);border-radius:13px;padding:22px;box-shadow:0 4px 17px rgba(31,59,88,.045)}
+.rd-card-head{margin-bottom:18px;align-items:flex-start}.rd-card h3{font-family:Poppins,Inter,sans-serif;font-size:16px;font-weight:750;letter-spacing:-.25px;color:#153A61;margin:0 0 5px}
+.rd-card p{color:var(--rd-muted);font-size:12px;line-height:1.55}
+.rd-bars{gap:11px}.rd-barrow{font-size:11.5px}.rd-bar-label{color:#385571;font-weight:550}.rd-barrow strong{color:#194D7D;font-weight:750}
+.rd-track{background:#E7EEF5;height:11px;border-radius:99px}.rd-fill{background:linear-gradient(90deg,#004F9F,#1875C6);border-radius:99px}
+.rd-empty{color:#6B7F92;border:1px dashed #C4D5E3;background:#F8FBFD;border-radius:10px}
+.rd-ring{background:conic-gradient(var(--rd-secondary) calc(var(--percent) * 1%),#E5EEF4 0)}
+.rd-ring-inside{background:#fff}.rd-ring-inside strong{color:#0B3D70;font-family:Poppins,Inter,sans-serif;font-weight:750}.rd-ring-inside span,.rd-ring-caption span{color:#657B90}.rd-ring-caption b{color:#154B77}
+.rd-note{color:#6D8194;border-top:1px solid #E5EDF3;font-size:11px}
+.rd-insight-heading{margin:28px 0 13px}.rd-insight-heading h2{font-family:Poppins,Inter,sans-serif;color:#113F6A;font-size:21px;font-weight:750;letter-spacing:-.4px}.rd-insight-heading p,.rd-insight-heading span{color:#60788E}
+.rd-insight-grid{gap:15px}.rd-insight-grid .rd-card{min-height:235px}
+.rd-perfil-kpis>div{background:#F3F8FC;border:1px solid #DAE7F0;border-radius:10px}.rd-perfil-kpis span{color:#59738D}.rd-perfil-kpis strong{font-family:Poppins,Inter,sans-serif;color:#004F9F;font-weight:750}
+.rd-eleicao-tag{background:#E7F2FA;color:#004F9F;border:1px solid #CADFEB;font-weight:750}
+.rd-eleicao-footer{border-top:1px solid #E5EDF3}.rd-eleicao-footer span{color:#637F95}
+.rd-eleicao-footer button{background:#E8F2FB;color:#004F9F;border:1px solid #CADDEB;border-radius:8px}.rd-eleicao-footer button:hover{background:#DCEBF7}
+.rd-footer{color:#7A8C9F;font-size:11px;padding:28px 0 12px}
+.rd-root :is(button,select,input):focus-visible{outline:3px solid rgba(0,158,61,.35);outline-offset:2px}
+@media(max-width:780px){.rd-root{padding:10px}.rd-hero,.rd-header{padding:17px}.rd-card{padding:16px}.rd-kpi{padding:14px}.rd-brand h1{font-size:21px}}
+@media(max-width:460px){.rd-navbtn b{font-size:11px}.rd-navbtn small{font-size:9px}}
+@media print{
+ .rd-root{background:#fff;color:#171717;padding:0}
+ .rd-header,.rd-hero,.rd-kpi,.rd-card{box-shadow:none}
+ .rd-hero{background:#fff;color:#111;border:1px solid #aaa}
+ .rd-hero h2,.rd-hero p,.rd-overline{color:#111}
+ .rd-bars .rd-fill{background:#004F9F}
+}
+`;
 export default function App() {
   const [votosTSEEscolas, setVotosTSEEscolas] = useState([]);
   // A mesma API escolar usada no módulo TSE pode expor registros de votos por cargo.
