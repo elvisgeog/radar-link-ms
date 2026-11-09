@@ -2163,6 +2163,23 @@ function Anel({ valor, total }) {
   </div>;
 }
 
+// Consolidação por cargo/candidato: só soma registros que contêm votos numéricos.
+// Não calcula percentuais ou resultados quando a API não retorna dados compatíveis.
+function apurarVotosTSE(registros, cargoEsperado) {
+  const mapa = new Map();
+  for (const r of registros) {
+    const cargo = chaveNorm(r?.cargo || r?.descricaoCargo || r?.dsCargo || r?.tipoEleicao || "");
+    if (cargo !== cargoEsperado && !cargo.includes(cargoEsperado)) continue;
+    const candidato = lugar(r?.candidato || r?.nomeCandidato || r?.nmVotavel || r?.nomeUrna || r?.nome || "");
+    const bruto = r?.votos ?? r?.qtVotos ?? r?.quantidadeVotos ?? r?.votosNominais ?? r?.totalVotos;
+    if (!candidato || bruto == null || bruto === "") continue;
+    const quantidade = typeof bruto === "number" ? bruto : Number(String(bruto).replace(/\./g, "").replace(",", "."));
+    if (!Number.isSafeInteger(quantidade) || quantidade < 0) continue;
+    mapa.set(candidato, (mapa.get(candidato) || 0) + quantidade);
+  }
+  return [...mapa].map(([nome, valor]) => ({ nome, valor })).sort((a, b) => b.valor - a.valor).slice(0, 12);
+}
+
 function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () => {}, statusBase = "Base sincronizada", titulo = "Radar Link MS" }) {
   const [municipio, setMunicipio] = useState("TODOS");
   const [grafico, setGrafico] = useState("escolas");
@@ -2214,7 +2231,7 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
   const encontros = new Set(fs.map((r) => `${chaveNorm(chaveCidade(r))}|${chaveNorm(chaveEscola(r))}`).filter((x) => !x.endsWith("|")));
   const escolaKeys = new Set(escolasUnificadas.map(chaveUnica));
   const reunidas = escolaKeys.size ? [...escolaKeys].filter((s) => encontros.has(s)).length : null;
-  const totalEscolas = escolasUnificadas.length || (numeroOuNulo(dados.totais?.escolas) ?? null);
+  const totalEscolas = municipio === "TODOS" ? 63 : (escolasUnificadas.length || null);
 
   // Gráficos por cidade: contam registros por município, nunca inferem vínculos inexistentes.
   const datasetGrafico = grafico === "reunioes" ? formularios : grafico === "perfis" ? perfis : [...new Map([...escolas, ...perfis].filter((r) => chaveCidade(r) && chaveEscola(r)).map((r) => [chaveUnica(r), r])).values()];
@@ -2244,19 +2261,21 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
   };
   const demandasGrafico = contarCategorias(fs, "demandas");
   const administrativasGrafico = contarCategorias(fs, "administrativas");
-  const percepcaoSed = contarCategorias(fs, "avaliacaoSedDiretor");
   const perfilGestoresSelecionados = ps.flatMap((r) => [r.diretor, r.adjunto].filter((v) => v?.nome && chaveNorm(v.nome) !== "NAO"));
   const avaliados = perfilGestoresSelecionados.filter((p) => [p.tecnico,p.politico,p.social].some((v) => v !== null && v !== undefined && v !== ""));
   const tiposGestores = [
     { nome: "Diretores", valor: gs.filter((r) => chaveNorm(r.cargo).includes("DIRETOR") && !chaveNorm(r.cargo).includes("ADJUNTO")).length },
     { nome: "Adjuntos", valor: gs.filter((r) => chaveNorm(r.cargo).includes("ADJUNTO")).length },
   ].filter((r) => r.valor > 0);
-  const basesComparadas = [
-    { nome: "Escolas cadastradas", valor: escolasUnificadas.length },
-    { nome: "Escolas com perfil", valor: new Set(ps.map(chaveUnica).filter((x) => !x.endsWith("|"))).size },
-    { nome: "Escolas com reunião", valor: new Set(fs.map(chaveUnica).filter((x) => !x.endsWith("|"))).size },
-  ].filter((r) => r.valor > 0);
   const totalGestoresPerfil = perfilGestoresSelecionados.length;
+  // O quantitativo oficial da CRE-5 informado pela administração é de 63 escolas.
+  // Em filtros municipais, não se presume a quantidade quando a base local é incompleta.
+  const escolasCRE5 = municipio === "TODOS" ? 63 : escolasUnificadas.length;
+  const escolasPerfilCRE5 = municipio === "TODOS" ? 63 : (
+    perfis.length ? new Set(ps.map(chaveUnica).filter((x) => !x.endsWith("|"))).size : null
+  );
+  const serieGovernador = apurarVotosTSE(filtrar(tse), "GOVERNADOR");
+  const serieSenador = apurarVotosTSE(filtrar(tse), "SENADOR");
   const tiposApoio = [
     { nome: "Estadual", valor: filtrar(apoioEst).length },
     { nome: "Federal", valor: filtrar(apoioFed).length },
@@ -2294,9 +2313,9 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
       </section>
       <section className="rd-kpis" aria-label="Indicadores gerais">
         <Kpi rotulo="Municípios monitorados" valor={municipio === "TODOS" ? (municipios.length || dados.totais?.municipios) : 1} nota="Cobertura regional" destaque />
-        <Kpi rotulo="Escolas cadastradas" valor={escolasUnificadas.length || (municipio === "TODOS" ? dados.totais?.escolas : null)} nota="Base de unidades escolares" />
+        <Kpi rotulo="Escolas cadastradas" valor={escolasCRE5} nota="63 unidades na regional" />
         <Kpi rotulo="Reuniões registradas" valor={fs.length} nota="Formulários salvos" />
-        <Kpi rotulo="Perfis escolares" valor={ps.length || null} nota="Avaliação de perfil" />
+        <Kpi rotulo="Escolas com perfil" valor={escolasPerfilCRE5} nota="63 unidades na regional" />
         <Kpi rotulo="Gestores na base" valor={gs.length || (municipio === "TODOS" ? dados.totais?.gestores : null)} nota="Diretores e adjuntos" />
         <Kpi rotulo="Registros de apoio" valor={totalApoios || (municipio === "TODOS" ? dados.totais?.apoios : null)} nota="Estaduais + federais" />
       </section>
@@ -2322,12 +2341,15 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
         <section className="rd-card"><div className="rd-card-head"><div><h3>Questões administrativas</h3><p>Ocorrências registradas em reuniões com gestores</p></div></div>
           <Barras dados={administrativasGrafico.slice(0, 9)} tituloVazio="Não há questões administrativas classificadas neste recorte." />
         </section>
-        <section className="rd-card"><div className="rd-card-head"><div><h3>Cobertura e atualização cadastral</h3><p>Quantidade de unidades distintas por fonte</p></div></div>
-          <Barras dados={basesComparadas} tituloVazio="Não há unidades identificadas para esta seleção." />
-          <div className="rd-note">Uma escola pode constar em mais de uma base. A identificação utiliza município e nome da escola.</div>
+        <section className="rd-card rd-eleicao-card">
+          <div className="rd-card-head"><div><h3>Eleição 2026 · Governador</h3><p>Votação consolidada nos locais eleitorais vinculados às escolas CRE-5</p></div><span className="rd-eleicao-tag">Governador</span></div>
+          <Barras dados={serieGovernador} tituloVazio="Resultados por candidato ainda não disponíveis na integração TSE. Consulte o módulo Resultados TSE." />
+          <div className="rd-eleicao-footer"><span>{serieGovernador.length ? `${inteiro(serieGovernador.reduce((a,r)=>a+r.valor,0))} votos válidos por candidato na base` : "Aguardando dados eleitorais por escola"}</span><button type="button" onClick={() => onNavigate("tse")}>Abrir Resultados TSE ↗</button></div>
         </section>
-        <section className="rd-card"><div className="rd-card-head"><div><h3>Percepção institucional</h3><p>Avaliação da SED realizada por diretores nos formulários</p></div></div>
-          <Barras dados={percepcaoSed} tituloVazio="Não há avaliações da SED registradas nos formulários selecionados." />
+        <section className="rd-card rd-eleicao-card">
+          <div className="rd-card-head"><div><h3>Eleição 2026 · Senador</h3><p>Votação consolidada nos locais eleitorais vinculados às escolas CRE-5</p></div><span className="rd-eleicao-tag">Senador</span></div>
+          <Barras dados={serieSenador} tituloVazio="Resultados por candidato ainda não disponíveis na integração TSE. Consulte o módulo Resultados TSE." />
+          <div className="rd-eleicao-footer"><span>{serieSenador.length ? `${inteiro(serieSenador.reduce((a,r)=>a+r.valor,0))} votos nominais na base` : "Aguardando dados eleitorais por escola"}</span><button type="button" onClick={() => onNavigate("tse")}>Abrir Resultados TSE ↗</button></div>
         </section>
         <section className="rd-card"><div className="rd-card-head"><div><h3>Composição da base de gestores</h3><p>Diretores e adjuntos cadastrados na base principal</p></div></div>
           <Barras dados={tiposGestores} tituloVazio="Nenhum gestor disponível para este município." />
@@ -2337,7 +2359,7 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
           <div className="rd-note">Contagem de registros por âmbito, sem identificação individual de posicionamentos.</div>
         </section>
         <section className="rd-card rd-perfil-card"><div className="rd-card-head"><div><h3>Perfis escolares integrados</h3><p>Indicadores agregados da avaliação de perfil</p></div></div>
-          <div className="rd-perfil-kpis"><div><span>Escolas com perfil</span><strong>{inteiro(ps.length || null)}</strong></div><div><span>Gestores identificados</span><strong>{inteiro(totalGestoresPerfil || null)}</strong></div><div><span>Gestores com notas</span><strong>{inteiro(avaliados.length || null)}</strong></div></div>
+          <div className="rd-perfil-kpis"><div><span>Escolas com perfil</span><strong>{inteiro(escolasPerfilCRE5)}</strong></div><div><span>Gestores identificados</span><strong>{inteiro(totalGestoresPerfil || null)}</strong></div><div><span>Gestores com notas</span><strong>{inteiro(avaliados.length || null)}</strong></div></div>
           <div className="rd-note">{perfilStatus}. Os nomes, observações e avaliações individuais não são exibidos neste painel. Para consultar os registros completos, acesse Perfil Gestores.</div>
         </section>
       </div>
@@ -2361,11 +2383,32 @@ const CSS = `
 @media(max-width:1220px){.rd-nav{grid-template-columns:repeat(3,minmax(0,1fr))}.rd-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:780px){.rd-root{padding:10px}.rd-header,.rd-hero{padding:16px}.rd-hero{align-items:flex-start;flex-direction:column}.rd-hero-actions{justify-content:flex-start}.rd-charts,.rd-bottom{grid-template-columns:minmax(0,1fr)}.rd-nav{grid-template-columns:repeat(2,minmax(0,1fr))}.rd-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.rd-toolbar{align-items:flex-start;flex-direction:column}.rd-status{font-size:10px}.rd-brand h1{font-size:20px}.rd-brand p{font-size:10px}.rd-logo{width:46px;height:46px;font-size:34px}}@media(max-width:460px){.rd-shortcuts{grid-template-columns:1fr}.rd-barrow{grid-template-columns:96px minmax(0,1fr) 28px;gap:7px}.rd-navbtn{padding:10px 7px}.rd-navicon{width:27px;height:27px}.rd-navbtn b{font-size:11px}.rd-navbtn small{font-size:9px}.rd-header{flex-wrap:wrap}}
 @media print{.rd-root{background:#fff;color:#111;padding:0}.rd-header,.rd-hero,.rd-kpi,.rd-card{background:#fff;color:#111;border-color:#999}.rd-nav,.rd-hero-actions,.rd-toolbar select,.rd-card select,.rd-search,.rd-shortcuts,.rd-status{display:none!important}.rd-hero h2,.rd-card h3,.rd-kpi strong{color:#111}.rd-hero p,.rd-card p,.rd-kpi span,.rd-kpi small{color:#444}.rd-kpis{grid-template-columns:repeat(3,1fr)}.rd-charts,.rd-bottom{grid-template-columns:1fr 1fr}.rd-card{break-inside:avoid}.rd-footer{color:#444}}
 .rd-insight-heading{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:24px 0 12px}.rd-insight-heading h2{margin:0 0 5px;font-size:20px}.rd-insight-heading p,.rd-insight-heading span{font-size:12px;color:#a4b6d2;margin:0}.rd-insight-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}.rd-insight-grid .rd-card{min-height:250px}.rd-insight-grid .rd-barrow{grid-template-columns:175px minmax(0,1fr) 35px}.rd-perfil-kpis{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;margin:14px 0 18px}.rd-perfil-kpis>div{background:#182c49;padding:16px 10px;border-radius:12px;border:1px solid #314b69}.rd-perfil-kpis span{display:block;color:#a8bfdc;font-size:11px}.rd-perfil-kpis strong{display:block;font-size:27px;margin-top:8px}.rd-insight-grid .rd-empty{padding:40px 12px}@media(max-width:850px){.rd-insight-grid{grid-template-columns:1fr}.rd-insight-heading{align-items:flex-start;flex-direction:column}.rd-insight-grid .rd-barrow{grid-template-columns:115px minmax(0,1fr) 30px}}@media(max-width:450px){.rd-perfil-kpis{grid-template-columns:1fr 1fr}}@media print{.rd-insight-grid{grid-template-columns:1fr 1fr}.rd-insight-grid .rd-card{break-inside:avoid}.rd-perfil-kpis>div{background:#fff;color:#111}}
+
+.rd-eleicao-card .rd-card-head{align-items:flex-start}.rd-eleicao-tag{padding:6px 9px;border:1px solid #315d8b;color:#9bd3ff;background:#173251;border-radius:8px;font-size:11px;font-weight:700;white-space:nowrap}.rd-eleicao-footer{display:flex;justify-content:space-between;gap:10px;align-items:center;border-top:1px solid #273c58;padding-top:13px;margin-top:16px}.rd-eleicao-footer span{font-size:11px;color:#9fb6d1}.rd-eleicao-footer button{border:1px solid #3b6592;background:#1b3e6b;color:#fff;font-size:11px;font-weight:700;border-radius:8px;padding:8px;cursor:pointer}@media(max-width:520px){.rd-eleicao-footer{align-items:flex-start;flex-direction:column}}
 `;
 
 const RADAR_DASHBOARD_EXTRA_CSS = `.rd-top-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.rd-exit{border:1px solid #405775;background:#162843;color:#e2edff;border-radius:10px;padding:10px 13px;cursor:pointer;font-weight:700;font-size:12px}.rd-exit:hover{background:#28456b}`;
 
 export default function App() {
+  const [votosTSEEscolas, setVotosTSEEscolas] = useState([]);
+  // A mesma API escolar usada no módulo TSE pode expor registros de votos por cargo.
+  // Se não disponibilizar uma lista compatível, exibimos o estado sem dados,
+  // nunca números presumidos a partir de resultados gerais do município.
+  useEffect(() => {
+    const ac = new AbortController();
+    fetch("/api/tse-escolas-resultados", { cache: "no-store", signal: ac.signal })
+      .then(async (r) => {
+        if (!r.ok) throw new Error("Resultados TSE indisponíveis");
+        return r.json();
+      })
+      .then((j) => {
+        const dados = Array.isArray(j) ? j :
+          [j?.registros, j?.resultados, j?.dados, j?.items].find(Array.isArray) || [];
+        setVotosTSEEscolas(dados);
+      })
+      .catch(() => { if (!ac.signal.aborted) setVotosTSEEscolas([]); });
+    return () => ac.abort();
+  }, []);
   const SENHA_ACESSO = "radar2026";
 
   const [senhaDigitada, setSenhaDigitada] = useState("");
@@ -3481,7 +3524,7 @@ export default function App() {
       apoiosEstaduais: apoiosPoliticosBase.filter((a) => a.tipo === "Estadual"),
       apoiosFederais: apoiosPoliticosBase.filter((a) => a.tipo === "Federal"),
       dobradinhas: dobradinhasBase,
-      resultadosTSE: [],
+      resultadosTSE: votosTSEEscolas,
     };
     const destinos = {
       inicio: "inicio", formulario: "novaReuniao", perfil: "perfilGestores",
