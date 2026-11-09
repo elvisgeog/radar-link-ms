@@ -3,11 +3,29 @@ import { collection, onSnapshot } from "firebase/firestore";
 import { db } from "./firebase";
 
 const CARGOS = {
+  1: "Presidente",
   3: "Governador",
   5: "Senador",
   6: "Deputado Federal",
   7: "Deputado Estadual",
 };
+
+// O segundo turno presidencial exige identificação inequívoca no documento.
+// Registros sem turno não são atribuídos automaticamente a nenhum turno.
+function turnoDoRegistro(registro) {
+  const bruto = registro?.turno ?? registro?.numeroTurno ??
+    registro?.nrTurno ?? registro?.turnoEleicao ?? registro?.round;
+  if (bruto == null || bruto === "") return null;
+  const valor = String(bruto).trim();
+  if (/^(1|01|1º|primeiro|primeiro turno)$/i.test(valor)) return 1;
+  if (/^(2|02|2º|segundo|segundo turno)$/i.test(valor)) return 2;
+  return null;
+}
+
+function correspondeSelecao(registro, cargo, turno) {
+  if (String(registro?.cargoCodigo) !== String(cargo)) return false;
+  return String(cargo) !== "1" || turnoDoRegistro(registro) === Number(turno);
+}
 
 // Seções agregadas oficialmente pelo TSE no 1º turno de 2026 em MS.
 // A chave identifica município|zona|seção agregada e o valor é a seção principal.
@@ -251,6 +269,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
   const [erro, setErro] = useState("");
   const [municipio, setMunicipio] = useState("GERAL");
   const [cargo, setCargo] = useState("3");
+  const [turnoPresidente, setTurnoPresidente] = useState("1");
   const [escolasTSE, setEscolasTSE] = useState([]);
   const [escolaId, setEscolaId] = useState("GERAL");
   const [resultadosEscolas, setResultadosEscolas] = useState([]);
@@ -406,17 +425,21 @@ export default function ResultadosTSE2026({ onVoltar }) {
     if (!resultadoEscolaSelecionada) return null;
 
     return (
-      (resultadoEscolaSelecionada.resultados || []).find(
-        (r) => String(r.cargoCodigo) === String(cargo)
+      (resultadoEscolaSelecionada.resultados || []).find((r) =>
+        correspondeSelecao(
+          { ...r, turno: r.turno ?? resultadoEscolaSelecionada.turno },
+          cargo,
+          turnoPresidente
+        )
       ) || null
     );
-  }, [resultadoEscolaSelecionada, cargo]);
+  }, [resultadoEscolaSelecionada, cargo, turnoPresidente]);
 
   const filtrados = useMemo(() => {
     if (escolaId !== "GERAL") return [];
 
     return dadosOficiais
-      .filter((d) => String(d.cargoCodigo) === String(cargo))
+      .filter((d) => correspondeSelecao(d, cargo, turnoPresidente))
       .filter(
         (d) =>
           municipio === "GERAL" ||
@@ -428,7 +451,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
           "pt-BR"
         )
       );
-  }, [dadosOficiais, cargo, municipio, escolaId]);
+  }, [dadosOficiais, cargo, turnoPresidente, municipio, escolaId]);
 
   const eleitoradoSelecionado = useMemo(() => {
     if (municipio === "GERAL") {
@@ -512,6 +535,9 @@ export default function ResultadosTSE2026({ onVoltar }) {
   }, [escolasTSE, municipio]);
 
   const diagnosticoBUs = useMemo(() => {
+    if (String(cargo) === "1" && turnoPresidente === "2") {
+      return { pendentes: [], agregadas: [] };
+    }
     if (!resultadosEscolasCarregados) {
       return { pendentes: [], agregadas: [] };
     }
@@ -597,6 +623,8 @@ export default function ResultadosTSE2026({ onVoltar }) {
     resultadosEscolas,
     resultadosEscolasCarregados,
     municipio,
+    cargo,
+    turnoPresidente,
   ]);
 
   const busPendentes = diagnosticoBUs.pendentes;
@@ -651,7 +679,11 @@ export default function ResultadosTSE2026({ onVoltar }) {
     );
 
     const comBU = Number(
-      resultadoEscolaSelecionada?.totalSecoesComBU || 0
+      resultadoCargoEscola?.totalSecoesComBU ??
+        resultadoCargoEscola?.secoesTotalizadas ??
+        (String(cargo) === "1" && turnoPresidente === "2"
+          ? 0
+          : resultadoEscolaSelecionada?.totalSecoesComBU ?? 0)
     );
 
     return {
@@ -680,9 +712,12 @@ export default function ResultadosTSE2026({ onVoltar }) {
     resultadoEscolaSelecionada,
     resultadoCargoEscola,
     escolaSelecionada,
+    cargo,
+    turnoPresidente,
   ]);
 
   const secoesAgregadasEscola = useMemo(() => {
+    if (String(cargo) === "1" && turnoPresidente === "2") return [];
     if (!escolaSelecionada || !resultadoEscolaSelecionada) return [];
 
     const processadas = new Set(
@@ -708,7 +743,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
           item.principal !== null &&
           processadas.has(String(item.principal))
       );
-  }, [escolaSelecionada, resultadoEscolaSelecionada]);
+  }, [escolaSelecionada, resultadoEscolaSelecionada, cargo, turnoPresidente]);
 
   const secoesCobertasEscola = Math.min(
     resumoEscola.secoesTotal,
@@ -733,7 +768,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
     const mapa = new Map();
 
     dadosOficiais
-      .filter((d) => String(d.cargoCodigo) === String(cargo))
+      .filter((d) => correspondeSelecao(d, cargo, turnoPresidente))
       .filter(
         (d) =>
           municipio === "GERAL" ||
@@ -755,7 +790,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
       });
 
     return mapa;
-  }, [dadosOficiais, cargo, municipio]);
+  }, [dadosOficiais, cargo, turnoPresidente, municipio]);
 
   const candidatosEscola = useMemo(() => {
     const totalValidos = Number(
@@ -787,8 +822,8 @@ export default function ResultadosTSE2026({ onVoltar }) {
 
   const temResultadoCargoEscola =
     escolaId !== "GERAL" &&
-    resultadoCargoEscola &&
-    resumoEscola.secoesTotalizadas > 0;
+    Boolean(resultadoCargoEscola) &&
+    (resumoEscola.secoesTotalizadas > 0 || candidatosEscola.length > 0);
 
   const eleitoradoCRE5 = useMemo(
     () =>
@@ -821,9 +856,9 @@ export default function ResultadosTSE2026({ onVoltar }) {
   const resultadosCargoCRE5 = useMemo(
     () =>
       dadosOficiais.filter(
-        (d) => String(d.cargoCodigo) === String(cargo)
+        (d) => correspondeSelecao(d, cargo, turnoPresidente)
       ),
-    [dadosOficiais, cargo]
+    [dadosOficiais, cargo, turnoPresidente]
   );
 
   const consolidadoCRE5 = useMemo(
@@ -836,10 +871,10 @@ export default function ResultadosTSE2026({ onVoltar }) {
 
     return dadosOficiais.filter(
       (d) =>
-        String(d.cargoCodigo) === String(cargo) &&
+        correspondeSelecao(d, cargo, turnoPresidente) &&
         normalizar(d.municipio) === normalizar(municipio)
     );
-  }, [dadosOficiais, cargo, municipio]);
+  }, [dadosOficiais, cargo, turnoPresidente, municipio]);
 
   const consolidadoMunicipio = useMemo(
     () => consolidarResultados(resultadosCargoMunicipio),
@@ -888,6 +923,10 @@ export default function ResultadosTSE2026({ onVoltar }) {
       titulo = `Radar Link MS - ${
         escolaSelecionada?.escolaRadar || "Escola"
       }`;
+    }
+
+    if (String(cargo) === "1") {
+      titulo += ` - Presidente ${turnoPresidente}o turno`;
     }
 
     setRelatorioTipo(tipo);
@@ -966,6 +1005,19 @@ export default function ResultadosTSE2026({ onVoltar }) {
             ))}
           </select>
 
+          {cargo === "1" && (
+            <select
+              className="resultados-select"
+              style={s.input}
+              aria-label="Turno da eleição presidencial"
+              value={turnoPresidente}
+              onChange={(e) => setTurnoPresidente(e.target.value)}
+            >
+              <option value="1">1º turno · 04/10/2026</option>
+              <option value="2">2º turno · 25/10/2026</option>
+            </select>
+          )}
+
           <select
             className="resultados-select"
             style={s.input}
@@ -1008,6 +1060,13 @@ export default function ResultadosTSE2026({ onVoltar }) {
         </div>
 
         {erro && <div style={s.erro}>{erro}</div>}
+        {cargo === "1" && (
+          <div style={{ fontSize: 12, color: "#cbd5e1", marginTop: 9 }}>
+            Presidente — {turnoPresidente}º turno. Somente registros oficiais
+            identificados com este turno serão considerados. Para as escolas,
+            a cobertura de BUs deve ser registrada separadamente por turno.
+          </div>
+        )}
 
         {escolaSelecionada && (
           <div className="escola-box" style={s.escolaBox}>
@@ -1108,9 +1167,11 @@ export default function ResultadosTSE2026({ onVoltar }) {
               titulo="Situação"
               valor={
                 temResultadoCargoEscola
-                  ? secoesCobertasEscola >= resumoEscola.secoesTotal
-                    ? "Cobertura completa"
-                    : `Parcial ${numero(secoesCobertasEscola)}/${numero(resumoEscola.secoesTotal)}`
+                  ? cargo === "1" && turnoPresidente === "2" && !resumoEscola.secoesTotalizadas
+                    ? "Cobertura do 2º turno não informada"
+                    : secoesCobertasEscola >= resumoEscola.secoesTotal
+                      ? "Cobertura completa"
+                      : `Parcial ${numero(secoesCobertasEscola)}/${numero(resumoEscola.secoesTotal)}`
                   : "Aguardando TSE"
               }
             />
@@ -1156,9 +1217,9 @@ export default function ResultadosTSE2026({ onVoltar }) {
               </h2>
 
               <div style={s.meta}>
-                {CARGOS[cargo] ||
-                  resultadoCargoEscola?.cargoNome ||
-                  `Cargo ${cargo}`}{" "}
+                {cargo === "1"
+                  ? `Presidente · ${turnoPresidente}º turno`
+                  : CARGOS[cargo] || resultadoCargoEscola?.cargoNome || `Cargo ${cargo}`}{" "}
                 · resultado agregado dos BUs das seções
               </div>
             </div>
@@ -1211,9 +1272,9 @@ export default function ResultadosTSE2026({ onVoltar }) {
       {escolaId === "GERAL" && !temResultadosOficiais && (
         <section className="resultados-panel" style={s.panel}>
           <p style={{ margin: 0 }}>
-            Aguardando o início da divulgação oficial dos resultados pelo TSE.
-            Dados simulados, candidaturas simuladas e votos de teste não são
-            exibidos nesta tela.
+            {cargo === "1"
+              ? `Nenhum resultado oficial de Presidente do ${turnoPresidente}º turno com identificação de turno foi encontrado nesta seleção. Verifique a sincronização dos dados do TSE para cargoCodigo 1 e turno ${turnoPresidente}.`
+              : "Aguardando resultados oficiais do TSE. Dados simulados e votos de teste não são exibidos nesta tela."}
           </p>
         </section>
       )}
@@ -1224,9 +1285,9 @@ export default function ResultadosTSE2026({ onVoltar }) {
             <div>
               <h2 style={{ margin: 0 }}>{d.municipio}</h2>
               <div style={s.meta}>
-                {CARGOS[d.cargoCodigo] ||
-                  d.cargoNome ||
-                  `Cargo ${d.cargoCodigo}`}{" "}
+                {cargo === "1"
+                  ? `Presidente · ${turnoPresidente}º turno`
+                  : CARGOS[d.cargoCodigo] || d.cargoNome || `Cargo ${d.cargoCodigo}`}{" "}
                 · TSE: {situacao(d.andamento)}
               </div>
             </div>
@@ -1274,6 +1335,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
         <RelatorioImpressao
           tipo={relatorioTipo}
           cargo={cargo}
+          turnoPresidente={turnoPresidente}
           municipio={municipio}
           escolaSelecionada={escolaSelecionada}
           eleitoradoCRE5={eleitoradoCRE5}
@@ -1593,6 +1655,7 @@ export default function ResultadosTSE2026({ onVoltar }) {
 function RelatorioImpressao({
   tipo,
   cargo,
+  turnoPresidente,
   municipio,
   escolaSelecionada,
   eleitoradoCRE5,
@@ -1606,7 +1669,9 @@ function RelatorioImpressao({
   resumoEscola,
   eleitoresEscola,
 }) {
-  const cargoNome = CARGOS[cargo] || `Cargo ${cargo}`;
+  const cargoNome = String(cargo) === "1"
+    ? `Presidente — ${turnoPresidente}º turno`
+    : CARGOS[cargo] || `Cargo ${cargo}`;
   const agora = new Date().toLocaleString("pt-BR");
 
   const titulo =
@@ -1639,7 +1704,8 @@ function RelatorioImpressao({
     tipo === "ESCOLA"
       ? Boolean(
           resultadoCargoEscola &&
-            Number(resumoEscola?.secoesTotalizadas || 0) > 0
+            (Number(resumoEscola?.secoesTotalizadas || 0) > 0 ||
+              candidatosEscola.length > 0)
         )
       : candidatos.length > 0 ||
         Number(resumoResultado?.secoesTotalizadas || 0) > 0;
