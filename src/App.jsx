@@ -2098,6 +2098,219 @@ function StableShell({ brand, nav, children }) {
   );
 }
 
+
+
+/**
+ * RADAR LINK MS — Painel inicial (React + Vite)
+ * Componente independente, sem bibliotecas de gráficos e sem chamadas ao Firestore.
+ * O componente recebe dados de módulos existentes por props; nunca contém senhas.
+ *
+ * Uso:
+ * <RadarDashboardCRE5
+ *   dados={{ municipios: [], escolas: [], formularios: [], gestores: [],
+ *     perfis: [], apoiosEstaduais: [], apoiosFederais: [], dobradinhas: [],
+ *     resultadosTSE: [] }}
+ *   onNavigate={(destino) => { ... }}
+ * />
+ *
+ * Destinos:
+ * formulario | perfil | indicadores-relatorios | tse | inteligencia-eleitoral
+ */
+
+const MODULOS = [
+  { id: "inicio", nome: "Painel Geral", detalhe: "Visão executiva", icone: "◫" },
+  { id: "formulario", nome: "Formulários", detalhe: "Reuniões com gestores", icone: "▤" },
+  { id: "perfil", nome: "Perfil Gestores", detalhe: "Avaliação CRE-5", icone: "♙" },
+  { id: "indicadores-relatorios", nome: "Indicadores e Relatórios", detalhe: "Análises e documentos", icone: "▥" },
+  { id: "tse", nome: "Resultados TSE", detalhe: "Dados e territórios", icone: "▦" },
+  { id: "inteligencia-eleitoral", nome: "Inteligência Eleitoral", detalhe: "Cenário e dobradinhas", icone: "◇" },
+];
+
+const array = (v) => Array.isArray(v) ? v : [];
+const lugar = (v) => String(v ?? "").trim();
+const chaveCidade = (r) => lugar(r?.cidade || r?.municipio || r?.município || r?.localidade);
+const chaveEscola = (r) => lugar(r?.escola || r?.unidade || r?.nomeEscola || r?.nome_escola);
+const chaveNorm = (v) => lugar(v).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
+const inteiro = (v) => Number.isFinite(Number(v)) && v !== "" && v != null ? Number(v).toLocaleString("pt-BR") : "—";
+function contar(v) { return Array.isArray(v) ? v.length : (typeof v === "number" ? v : null); }
+function numeroOuNulo(v) { return Number.isFinite(v) ? v : null; }
+function Kpi({ rotulo, valor, nota, destaque }) {
+  return <div className={`rd-kpi ${destaque ? "rd-kpi-accent" : ""}`}>
+    <span>{rotulo}</span><strong>{inteiro(valor)}</strong><small>{nota || "Dados indisponíveis"}</small>
+  </div>;
+}
+
+function Barras({ dados, tituloVazio }) {
+  const maior = Math.max(1, ...dados.map((r) => r.valor));
+  if (!dados.length) return <div className="rd-empty">{tituloVazio}</div>;
+  return <div className="rd-bars" role="img" aria-label="Gráfico de barras: registros por município">
+    {dados.map((r) => <div className="rd-barrow" key={r.nome}>
+      <div className="rd-bar-label" title={r.nome}>{r.nome}</div>
+      <div className="rd-track"><div className="rd-fill" style={{ width: `${Math.max(3, (r.valor / maior) * 100)}%` }} /></div>
+      <strong>{inteiro(r.valor)}</strong>
+    </div>)}
+  </div>;
+}
+
+function Anel({ valor, total }) {
+  const valido = Number.isFinite(valor) && Number.isFinite(total) && total > 0;
+  const porcentagem = valido ? Math.round(Math.min(100, Math.max(0, (valor / total) * 100))) : null;
+  return <div className="rd-ring-wrap">
+    <div className="rd-ring" style={{ "--percent": porcentagem ?? 0 }}>
+      <div className="rd-ring-inside"><strong>{porcentagem === null ? "—" : `${porcentagem}%`}</strong><span>Cobertura</span></div>
+    </div>
+    <div className="rd-ring-caption"><b>{inteiro(valor)} / {inteiro(total)}</b><span>Escolas com reunião registrada</span></div>
+  </div>;
+}
+
+function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () => {}, statusBase = "Base sincronizada", titulo = "Radar Link MS" }) {
+  const [municipio, setMunicipio] = useState("TODOS");
+  const [grafico, setGrafico] = useState("reunioes");
+  const [busca, setBusca] = useState("");
+
+  const escolas = array(dados.escolas);
+  const formularios = array(dados.formularios);
+  const perfis = array(dados.perfis);
+  const gestores = array(dados.gestores);
+  const apoioEst = array(dados.apoiosEstaduais);
+  const apoioFed = array(dados.apoiosFederais);
+  const dobradinhas = array(dados.dobradinhas);
+  const tse = array(dados.resultadosTSE);
+
+  const municipios = useMemo(() => {
+    const nomes = [
+      ...array(dados.municipios).map((m) => typeof m === "string" ? m : chaveCidade(m) || lugar(m?.nome)),
+      ...escolas.map(chaveCidade), ...formularios.map(chaveCidade), ...perfis.map(chaveCidade), ...gestores.map(chaveCidade),
+    ].filter(Boolean);
+    return [...new Set(nomes)].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [dados.municipios, escolas, formularios, perfis, gestores]);
+
+  const filtrar = (lista) => municipio === "TODOS" ? lista : lista.filter((r) => chaveNorm(chaveCidade(r)) === chaveNorm(municipio));
+  const fs = filtrar(formularios);
+  const es = filtrar(escolas);
+  const ps = filtrar(perfis);
+  const gs = filtrar(gestores);
+  const allSchools = es.length ? es : ps;
+  const encontros = new Set(fs.map((r) => `${chaveNorm(chaveCidade(r))}|${chaveNorm(chaveEscola(r))}`).filter((x) => !x.endsWith("|")));
+  const escolaKeys = new Set(allSchools.map((r) => `${chaveNorm(chaveCidade(r))}|${chaveNorm(chaveEscola(r))}`).filter((x) => !x.endsWith("|")));
+  const reunidas = escolaKeys.size ? [...escolaKeys].filter((s) => encontros.has(s)).length : null;
+  const totalEscolas = escolaKeys.size || (numeroOuNulo(dados.totais?.escolas) ?? null);
+
+  // Gráficos por cidade: contam registros por município, nunca inferem vínculos inexistentes.
+  const datasetGrafico = grafico === "reunioes" ? formularios : grafico === "perfis" ? perfis : escolas;
+  const resumoCidades = useMemo(() => {
+    const mapa = new Map();
+    datasetGrafico.forEach((r) => {
+      const cidade = chaveCidade(r);
+      if (cidade && (municipio === "TODOS" || chaveNorm(municipio) === chaveNorm(cidade))) {
+        mapa.set(cidade, (mapa.get(cidade) || 0) + 1);
+      }
+    });
+    return [...mapa].map(([nome, valor]) => ({ nome, valor })).sort((a, b) => b.valor - a.valor).slice(0, 12);
+  }, [datasetGrafico, municipio]);
+
+  const ranking = useMemo(() => {
+    const mapa = new Map();
+    formularios.forEach((r) => {
+      const cidade = chaveCidade(r);
+      if (cidade && (municipio === "TODOS" || chaveNorm(cidade) === chaveNorm(municipio))) mapa.set(cidade, (mapa.get(cidade) || 0) + 1);
+    });
+    return [...mapa].map(([cidade, reunioes]) => ({ cidade, reunioes }))
+      .filter((r) => chaveNorm(r.cidade).includes(chaveNorm(busca)))
+      .sort((a, b) => b.reunioes - a.reunioes);
+  }, [formularios, municipio, busca]);
+
+  const temMetricas = [escolas, formularios, perfis, gestores, apoioEst, apoioFed, dobradinhas, tse].some((r) => r.length);
+  const totalApoios = apoioEst.length + apoioFed.length;
+
+  function imprimir() { window.print(); }
+
+  return <div className="rd-root">
+    <style>{CSS + RADAR_DASHBOARD_EXTRA_CSS}</style>
+    <header className="rd-header">
+      <div className="rd-brand"><div className="rd-logo">◎</div><div><h1>{titulo}</h1><p>CRE-5 · Gestão educacional e inteligência regional · Mato Grosso do Sul</p></div></div>
+      <div className="rd-top-controls"><div className="rd-status"><i />{statusBase}</div><button type="button" className="rd-exit" onClick={onLogout}>Sair da plataforma</button></div>
+    </header>
+    <nav className="rd-nav" aria-label="Navegação principal">
+      {MODULOS.map((m) => <button type="button" className={`rd-navbtn ${m.id === "inicio" ? "active" : ""}`} key={m.id} onClick={() => m.id !== "inicio" && onNavigate(m.id)}>
+        <span className="rd-navicon">{m.icone}</span><span><b>{m.nome}</b><small>{m.detalhe}</small></span>
+      </button>)}
+    </nav>
+
+    <main className="rd-main">
+      <section className="rd-hero">
+        <div><span className="rd-overline">PAINEL EXECUTIVO REGIONAL</span><h2>Central de Inteligência CRE-5</h2>
+          <p>Informação consolidada para acompanhamento das escolas, reuniões, gestores e articulação regional.</p></div>
+        <div className="rd-hero-actions">
+          <button onClick={() => onNavigate("formulario")} className="rd-primary">+ Nova reunião com gestores</button>
+          <button onClick={imprimir} className="rd-secondary">Imprimir painel</button>
+        </div>
+      </section>
+      <section className="rd-toolbar" aria-label="Filtros do painel">
+        <div><strong>Visão geral</strong><small>Indicadores calculados com os registros disponíveis</small></div>
+        <label>Município <select value={municipio} onChange={(e) => setMunicipio(e.target.value)}><option value="TODOS">Toda a CRE-5</option>{municipios.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
+      </section>
+      <section className="rd-kpis" aria-label="Indicadores gerais">
+        <Kpi rotulo="Municípios monitorados" valor={municipio === "TODOS" ? (municipios.length || dados.totais?.municipios) : 1} nota="Cobertura regional" destaque />
+        <Kpi rotulo="Escolas cadastradas" valor={allSchools.length || (municipio === "TODOS" ? dados.totais?.escolas : null)} nota="Base de unidades escolares" />
+        <Kpi rotulo="Reuniões registradas" valor={fs.length || (municipio === "TODOS" ? dados.totais?.formularios : null)} nota="Formulários salvos" />
+        <Kpi rotulo="Perfis escolares" valor={ps.length || (municipio === "TODOS" ? dados.totais?.perfis : null)} nota="Avaliação de perfil" />
+        <Kpi rotulo="Gestores na base" valor={gs.length || (municipio === "TODOS" ? dados.totais?.gestores : null)} nota="Diretores e adjuntos" />
+        <Kpi rotulo="Registros de apoio" valor={totalApoios || (municipio === "TODOS" ? dados.totais?.apoios : null)} nota="Estaduais + federais" />
+      </section>
+
+      <div className="rd-charts">
+        <section className="rd-card rd-chart-large">
+          <div className="rd-card-head"><div><h3>Distribuição territorial</h3><p>Comparativo por município, segundo o conjunto selecionado</p></div>
+            <select value={grafico} onChange={(e) => setGrafico(e.target.value)} aria-label="Tipo de distribuição"><option value="reunioes">Reuniões</option><option value="perfis">Perfis escolares</option><option value="escolas">Escolas</option></select>
+          </div>
+          <Barras dados={resumoCidades} tituloVazio="Nenhum registro municipal disponível neste conjunto. Conecte os dados do módulo correspondente." />
+        </section>
+        <section className="rd-card"><div className="rd-card-head"><div><h3>Cobertura das reuniões</h3><p>Escolas com ao menos uma reunião registrada</p></div></div>
+          <Anel valor={reunidas} total={totalEscolas} />
+          <div className="rd-note">Cobertura calculada pela correspondência entre município e escola nas duas bases. Cadastros sem identificação compatível não entram no cálculo.</div>
+        </section>
+      </div>
+
+      <div className="rd-bottom">
+        <section className="rd-card"><div className="rd-card-head"><div><h3>Atividade por município</h3><p>Quantidade de formulários de reunião registrados</p></div></div>
+          <input className="rd-search" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Filtrar município..." aria-label="Filtrar município" />
+          <div className="rd-tablewrap"><table><thead><tr><th>Município</th><th>Reuniões</th></tr></thead><tbody>
+            {ranking.length ? ranking.map((r) => <tr key={r.cidade}><td>{r.cidade}</td><td>{inteiro(r.reunioes)}</td></tr>) : <tr><td colSpan={2}>Nenhum registro para os filtros aplicados.</td></tr>}
+          </tbody></table></div>
+        </section>
+        <section className="rd-card"><div className="rd-card-head"><div><h3>Áreas de análise</h3><p>Acesso aos dados especializados do Radar</p></div></div>
+          <div className="rd-shortcuts">
+            <button onClick={() => onNavigate("perfil")}><span>01</span><b>Perfil Gestores</b><small>Avaliações e acompanhamento</small><em>↗</em></button>
+            <button onClick={() => onNavigate("indicadores-relatorios")}><span>02</span><b>Indicadores e Relatórios</b><small>Gráficos, documentos e exportações</small><em>↗</em></button>
+            <button onClick={() => onNavigate("tse")}><span>03</span><b>Resultados TSE</b><small>Dados territoriais e eleitorais</small><em>↗</em></button>
+            <button onClick={() => onNavigate("inteligencia-eleitoral")}><span>04</span><b>Inteligência Eleitoral</b><small>Cenário e dobradinhas</small><em>↗</em></button>
+          </div>
+          <div className="rd-source">{temMetricas ? "Painel alimentado pelas bases recebidas da aplicação." : "Conecte as bases dos módulos para preencher os indicadores. Nenhum dado foi simulado."}</div>
+        </section>
+      </div>
+      <footer className="rd-footer">RADAR LINK MS · Central de inteligência regional · CRE-5 Dourados</footer>
+    </main>
+  </div>;
+}
+
+const CSS = `
+.rd-root{--bg:#091322;--panel:#111f35;--panel2:#172842;--border:#2b3c55;--ink:#f4f8ff;--muted:#a4b6d2;--blue:#3b82f6;min-height:100vh;background:radial-gradient(circle at 82% 2%,#17345d 0%,transparent 27%),var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif;box-sizing:border-box;padding:20px}
+.rd-root *{box-sizing:border-box}.rd-root button,.rd-root select,.rd-root input{font:inherit}.rd-header,.rd-nav,.rd-main{max-width:1540px;margin-left:auto;margin-right:auto}
+.rd-header{display:flex;justify-content:space-between;gap:18px;align-items:center;border:1px solid var(--border);background:#0c1728;border-top:3px solid #3b82f6;border-radius:16px;padding:18px 24px;margin-bottom:10px}
+.rd-brand{display:flex;align-items:center;gap:15px}.rd-logo{font-size:46px;width:64px;height:64px;border-radius:17px;display:grid;place-items:center;background:#153e78;color:#facc15;line-height:1}.rd-brand h1{font-size:27px;letter-spacing:-.6px;margin:0 0 4px}.rd-brand p{font-size:12px;color:var(--muted);margin:0}.rd-status{font-size:12px;font-weight:700;border:1px solid #176447;color:#74f0b0;background:#0d2a24;padding:9px 13px;border-radius:99px;white-space:nowrap}.rd-status i{display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;margin-right:8px}
+.rd-nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;padding:10px;border:1px solid var(--border);background:#0c1728;border-radius:16px;margin-bottom:16px}.rd-navbtn{display:flex;align-items:center;text-align:left;gap:10px;min-width:0;padding:13px 10px;border:1px solid #354866;background:#15243d;color:#f8fbff;border-radius:12px;cursor:pointer;transition:transform .15s,background .15s}.rd-navbtn:hover{background:#21395d;transform:translateY(-1px)}.rd-navbtn.active{background:linear-gradient(125deg,#205dd1,#4338ca);border-color:#6c8ff7}.rd-navicon{display:grid;place-items:center;width:36px;height:36px;flex:none;border-radius:10px;background:#203b61;color:#c2dbff;font-size:21px}.rd-navbtn b{display:block;font-size:12px;line-height:1.25}.rd-navbtn small{display:block;font-size:10px;color:#b4c6de;line-height:1.35;margin-top:3px}
+.rd-hero{position:relative;overflow:hidden;background:linear-gradient(110deg,#101b37,#163d70);border:1px solid #31558c;border-left:5px solid #38bdf8;border-radius:18px;padding:27px 30px;display:flex;justify-content:space-between;align-items:center;gap:20px}.rd-hero:after{content:"";position:absolute;width:340px;height:340px;border:40px solid #366ebd3c;border-radius:50%;right:-125px;top:-200px;pointer-events:none}.rd-overline{font-size:11px;letter-spacing:1.6px;font-weight:800;color:#7dd3fc}.rd-hero h2{font-size:clamp(25px,3vw,39px);line-height:1.13;letter-spacing:-1px;margin:13px 0 10px}.rd-hero p{font-size:13px;color:#c9dbf4;line-height:1.55;margin:0;max-width:700px}.rd-hero-actions{z-index:1;display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}.rd-hero-actions button{border:0;cursor:pointer;border-radius:10px;padding:12px 14px;font-weight:750;font-size:12px;white-space:nowrap}.rd-primary{background:#41b7f9;color:#05192d}.rd-secondary{background:#263f62;color:#e5f2ff}
+.rd-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 0 12px}.rd-toolbar strong{display:block;font-size:17px}.rd-toolbar small{display:block;color:var(--muted);font-size:12px;margin-top:4px}.rd-toolbar label{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}.rd-toolbar select,.rd-card select,.rd-search{background:#182944;border:1px solid #39506d;color:#fff;padding:10px 12px;border-radius:9px;max-width:100%}
+.rd-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.rd-kpi{background:#17263e;border:1px solid #324763;border-radius:13px;padding:17px 16px;min-width:0}.rd-kpi-accent{border-top:3px solid #38bdf8}.rd-kpi span,.rd-kpi small{display:block;color:#b3c4de;font-size:11px}.rd-kpi strong{display:block;font-size:30px;margin:8px 0;font-variant-numeric:tabular-nums;letter-spacing:-.7px}.rd-kpi small{color:#7c9bb8;font-size:10px}
+.rd-charts,.rd-bottom{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,1fr);gap:12px;margin-top:14px}.rd-bottom{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.rd-card{background:#101d32;border:1px solid var(--border);border-radius:14px;padding:19px;min-width:0}.rd-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.rd-card h3{font-size:16px;margin:0 0 5px}.rd-card p{font-size:12px;color:var(--muted);margin:0;line-height:1.4}.rd-bars{display:grid;gap:13px;padding:2px 0 8px}.rd-barrow{display:grid;grid-template-columns:140px minmax(0,1fr) 40px;align-items:center;gap:11px;font-size:12px}.rd-bar-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#cddcf1}.rd-track{height:13px;background:#223754;border-radius:6px;overflow:hidden}.rd-fill{height:100%;background:linear-gradient(90deg,#2563eb,#22d3ee);border-radius:6px}.rd-barrow strong{text-align:right;font-variant-numeric:tabular-nums}.rd-empty{padding:45px 10px;color:#9db3cf;font-size:13px;line-height:1.5;text-align:center;border:1px dashed #375071;border-radius:12px}
+.rd-ring-wrap{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:20px;min-height:217px}.rd-ring{--percent:0;width:172px;height:172px;border-radius:50%;background:conic-gradient(#2dd4bf calc(var(--percent) * 1%),#29415e 0);display:grid;place-items:center}.rd-ring-inside{width:128px;height:128px;border-radius:50%;background:#101d32;display:flex;flex-direction:column;align-items:center;justify-content:center}.rd-ring-inside strong{font-size:30px}.rd-ring-inside span{font-size:11px;color:#9fb4d0}.rd-ring-caption{max-width:145px}.rd-ring-caption b{display:block;font-size:20px}.rd-ring-caption span{display:block;margin-top:6px;font-size:12px;color:#9fb4d0}.rd-note{font-size:11px;line-height:1.45;color:#829bb9;border-top:1px solid #243852;padding-top:12px}
+.rd-search{width:100%;margin-bottom:12px;font-size:12px}.rd-tablewrap{max-height:340px;overflow:auto}.rd-tablewrap table{width:100%;border-collapse:collapse;text-align:left;font-size:12px}.rd-tablewrap th{font-size:11px;color:#8fa9ca;text-transform:uppercase;letter-spacing:.5px}.rd-tablewrap td,.rd-tablewrap th{padding:11px 8px;border-bottom:1px solid #283d59}.rd-tablewrap td:last-child,.rd-tablewrap th:last-child{text-align:right}.rd-shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:10px}.rd-shortcuts button{display:grid;grid-template-columns:27px 1fr 15px;gap:2px 7px;text-align:left;background:#192b45;border:1px solid #2d4663;color:#fff;border-radius:12px;padding:13px;cursor:pointer}.rd-shortcuts button:hover{background:#243e60}.rd-shortcuts span{grid-row:span 2;font-size:13px;color:#60a5fa;font-weight:800}.rd-shortcuts b{font-size:12px}.rd-shortcuts small{grid-column:2;color:#a8bfdc;font-size:10px;line-height:1.35}.rd-shortcuts em{font-style:normal;grid-column:3;grid-row:1;color:#7dd3fc}.rd-source{color:#96aac5;font-size:11px;line-height:1.5;margin-top:18px}.rd-footer{font-size:11px;text-align:center;padding:24px 0 10px;color:#7287a5}
+@media(max-width:1220px){.rd-nav{grid-template-columns:repeat(3,minmax(0,1fr))}.rd-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:780px){.rd-root{padding:10px}.rd-header,.rd-hero{padding:16px}.rd-hero{align-items:flex-start;flex-direction:column}.rd-hero-actions{justify-content:flex-start}.rd-charts,.rd-bottom{grid-template-columns:minmax(0,1fr)}.rd-nav{grid-template-columns:repeat(2,minmax(0,1fr))}.rd-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.rd-toolbar{align-items:flex-start;flex-direction:column}.rd-status{font-size:10px}.rd-brand h1{font-size:20px}.rd-brand p{font-size:10px}.rd-logo{width:46px;height:46px;font-size:34px}}@media(max-width:460px){.rd-shortcuts{grid-template-columns:1fr}.rd-barrow{grid-template-columns:96px minmax(0,1fr) 28px;gap:7px}.rd-navbtn{padding:10px 7px}.rd-navicon{width:27px;height:27px}.rd-navbtn b{font-size:11px}.rd-navbtn small{font-size:9px}.rd-header{flex-wrap:wrap}}
+@media print{.rd-root{background:#fff;color:#111;padding:0}.rd-header,.rd-hero,.rd-kpi,.rd-card{background:#fff;color:#111;border-color:#999}.rd-nav,.rd-hero-actions,.rd-toolbar select,.rd-card select,.rd-search,.rd-shortcuts,.rd-status{display:none!important}.rd-hero h2,.rd-card h3,.rd-kpi strong{color:#111}.rd-hero p,.rd-card p,.rd-kpi span,.rd-kpi small{color:#444}.rd-kpis{grid-template-columns:repeat(3,1fr)}.rd-charts,.rd-bottom{grid-template-columns:1fr 1fr}.rd-card{break-inside:avoid}.rd-footer{color:#444}}`;
+
+const RADAR_DASHBOARD_EXTRA_CSS = `.rd-top-controls{display:flex;align-items:center;gap:10px;flex-wrap:wrap}.rd-exit{border:1px solid #405775;background:#162843;color:#e2edff;border-radius:10px;padding:10px 13px;cursor:pointer;font-weight:700;font-size:12px}.rd-exit:hover{background:#28456b}`;
+
 export default function App() {
   const SENHA_ACESSO = "radar2026";
 
@@ -2285,7 +2498,7 @@ export default function App() {
     setEditandoId(id);
     setFormAberto(null);
     setFiltroAtivo(null);
-    setTela("inicio");
+    setTela("novaReuniao");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
@@ -2490,34 +2703,41 @@ export default function App() {
 
   function NavPrincipal() {
     const itens = [
-      { id: "inicio", label: "Painel", sub: "Visão geral" },
-      { id: "formularios", label: "Formulários", sub: "Cadastro técnico" },
-      { id: "perfilGestores", label: "Perfil Gestores", sub: "Planilha CRE-5" },
-      { id: "graficos", label: "Indicadores", sub: "Resultados" },
+      { id: "inicio", label: "Painel Geral", sub: "Visão executiva" },
+      { id: "formularios", label: "Formulários", sub: "Reuniões e cadastros" },
+      { id: "perfilGestores", label: "Perfil Gestores", sub: "Avaliação CRE-5" },
+      { id: "graficos", label: "Indicadores e Relatórios", sub: "Análises e PDF", grupo: "relatorio" },
       { id: "resultadosTSE", label: "Resultados TSE", sub: "Eleições 2026" },
-      { id: "politico", label: "Cenário Político", sub: "Base regional" },
-      { id: "dobradinha", label: "Dobradinha", sub: "Estadual + Federal" },
-      { id: "relatorio", label: "Relatório", sub: "Impressão / PDF" }
+      { id: "politico", label: "Inteligência Eleitoral", sub: "Cenário e dobradinhas", grupo: "dobradinha" },
     ];
     return (
-      <nav className="radar-nav no-print" aria-label="Navegação principal">
-        {itens.map((item) => (
-          <button key={item.id} className={`nav-btn ${tela === item.id ? "active" : ""}`} onClick={() => navegar(item.id)}>
-            <span className="nav-icon" aria-hidden="true"><NavIcon tipo={item.id} /></span>
-            <span className="nav-label-wrap">
-              <span className="nav-label">{item.label}</span>
-              <span className="nav-sub">{item.sub}</span>
-            </span>
+      <>
+        <nav className="radar-nav no-print" aria-label="Navegação principal">
+          {itens.map((item) => (
+            <button key={item.id} className={`nav-btn ${(tela === item.id || (item.grupo && tela === item.grupo)) ? "active" : ""}`} onClick={() => navegar(item.id)}>
+              <span className="nav-icon" aria-hidden="true"><NavIcon tipo={item.id} /></span>
+              <span className="nav-label-wrap">
+                <span className="nav-label">{item.label}</span>
+                <span className="nav-sub">{item.sub}</span>
+              </span>
+            </button>
+          ))}
+          <button className="nav-btn logout" onClick={sairDaPlataforma}>
+            <span className="nav-icon" aria-hidden="true"><NavIcon tipo="sair" /></span>
+            <span className="nav-label-wrap"><span className="nav-label">Sair</span><span className="nav-sub">Encerrar acesso</span></span>
           </button>
-        ))}
-        <button className="nav-btn logout" onClick={sairDaPlataforma}>
-          <span className="nav-icon" aria-hidden="true"><NavIcon tipo="sair" /></span>
-          <span className="nav-label-wrap">
-            <span className="nav-label">Sair</span>
-            <span className="nav-sub">Encerrar acesso</span>
-          </span>
-        </button>
-      </nav>
+        </nav>
+        {(tela === "graficos" || tela === "relatorio") &&
+          <div className="actions no-print" style={{marginBottom:14}}>
+            <button className={`btn ${tela === "graficos" ? "primary" : "secondary"}`} onClick={() => navegar("graficos")}>Indicadores</button>
+            <button className={`btn ${tela === "relatorio" ? "primary" : "secondary"}`} onClick={() => navegar("relatorio")}>Relatórios / PDF</button>
+          </div>}
+        {(tela === "politico" || tela === "dobradinha") &&
+          <div className="actions no-print" style={{marginBottom:14}}>
+            <button className={`btn ${tela === "politico" ? "primary" : "secondary"}`} onClick={() => navegar("politico")}>Cenário político</button>
+            <button className={`btn ${tela === "dobradinha" ? "primary" : "secondary"}`} onClick={() => navegar("dobradinha")}>Dobradinhas</button>
+          </div>}
+      </>
     );
   }
 
@@ -2541,21 +2761,16 @@ export default function App() {
     );
   }
 
-  function TelaInicio() {
-    const totalEstaduais = totalDeputados(deputadosEstaduais);
-    const totalFederais = totalDeputados(deputadosFederais);
+  function TelaNovoFormulario() {
     return (
       <StableShell brand={BrandBar()} nav={NavPrincipal()}>
         <section className="hero">
-          <div className="eyebrow">Painel executivo</div>
-          <h2>Painel Regional CRE-5</h2>
-          <p>Gestão, inteligência regional e consolidação de dados em um dashboard executivo de alta legibilidade para acompanhamento da CRE-5.</p>
-          <div className="kpi-grid">
-            <Kpi label="Formulários salvos" value={registros.length} note="Firestore" />
-            <Kpi label="Gestores na base Word" value={gestoresPoliticosBase.length} note={`${gestoresPoliticosBase.filter((g) => g.cargo === "Diretor").length} diretores • ${gestoresPoliticosBase.filter((g) => g.cargo === "Adjunto").length} adjuntos`} />
-            <Kpi label="Apoios estaduais" value={totalEstaduais} note="Oposição separada" />
-            <Kpi label="Apoios federais" value={totalFederais} note="Oposição separada" />
-            <Kpi label="Dobradinhas" value={dobradinhasBase.length} note="Combinações únicas" />
+          <div className="eyebrow">Cadastro operacional</div>
+          <h2>{editandoId ? "Editar reunião com gestores" : "Nova reunião com gestores"}</h2>
+          <p>Registro técnico, demandas escolares, avaliação institucional e acompanhamento regional.</p>
+          <div className="actions no-print" style={{marginTop:14}}>
+            <button className="btn secondary" onClick={() => navegar("formularios")}>Ver formulários salvos</button>
+            <button className="btn secondary" onClick={() => navegar("inicio")}>Voltar ao painel</button>
           </div>
         </section>
 
@@ -3161,7 +3376,7 @@ export default function App() {
   function TelaFormularios() {
     return <StableShell brand={BrandBar()} nav={NavPrincipal()}>
       <section className="hero"><div className="eyebrow">Arquivo operacional</div><h2>Formulários salvos</h2><p>Consulta, edição, impressão e exclusão dos registros armazenados no Firestore.</p><div className="kpi-grid"><Kpi label="Total" value={registrosOrdenados.length}/><Kpi label="Municípios" value={new Set(registrosOrdenados.map((r)=>r.municipio).filter(Boolean)).size}/><Kpi label="Com diretor" value={registrosOrdenados.filter((r)=>r.diretor).length}/><Kpi label="Com adjunto" value={registrosOrdenados.filter((r)=>r.adjunto).length}/><Kpi label="Banco" value="Firestore"/></div></section>
-      <section className="panel"><div className="actions no-print"><button className="btn secondary" onClick={gerarPDF}>Imprimir lista</button></div>{registrosOrdenados.length===0 && <div className="notice">Nenhum formulário salvo ainda.</div>}{registrosOrdenados.map((r)=><div className="list-card" key={r.id}><h4>{r.escola}</h4><p><strong>Município:</strong> {r.municipio}</p><p><strong>Classificação:</strong> {r.classificacaoEscola || "Não informada"}</p><p><strong>Diretor:</strong> {r.diretor || "Não informado"}</p><p><strong>Adjunto:</strong> {r.adjunto || "Não informado"}</p><div className="actions no-print"><button className="btn primary" onClick={()=>setFormAberto(r)}>Abrir</button><button className="btn secondary" onClick={()=>editarFormulario(r)}>Editar</button><button className="btn secondary" onClick={()=>imprimirFormulario(r)}>Imprimir</button><button className="btn danger" onClick={()=>excluirRegistro(r.id)}>Excluir</button></div></div>)}</section>
+      <section className="panel"><div className="actions no-print"><button className="btn primary" onClick={() => { setForm(formLimpo); setEditandoId(null); navegar("novaReuniao"); }}>+ Nova reunião</button><button className="btn secondary" onClick={gerarPDF}>Imprimir lista</button></div>{registrosOrdenados.length===0 && <div className="notice">Nenhum formulário salvo ainda.</div>}{registrosOrdenados.map((r)=><div className="list-card" key={r.id}><h4>{r.escola}</h4><p><strong>Município:</strong> {r.municipio}</p><p><strong>Classificação:</strong> {r.classificacaoEscola || "Não informada"}</p><p><strong>Diretor:</strong> {r.diretor || "Não informado"}</p><p><strong>Adjunto:</strong> {r.adjunto || "Não informado"}</p><div className="actions no-print"><button className="btn primary" onClick={()=>setFormAberto(r)}>Abrir</button><button className="btn secondary" onClick={()=>editarFormulario(r)}>Editar</button><button className="btn secondary" onClick={()=>imprimirFormulario(r)}>Imprimir</button><button className="btn danger" onClick={()=>excluirRegistro(r.id)}>Excluir</button></div></div>)}</section>
     </StableShell>;
   }
 
@@ -3186,7 +3401,7 @@ export default function App() {
   }
 
   function TelaRelatorio() {
-    return <div className="report-page"><style>{GLOBAL_CSS}</style><h1>Radar Link MS</h1><h2>Relatório Estratégico de Gestores</h2><p><strong>Filtro:</strong> {municipioIndicador === "GERAL" ? "Geral" : municipioIndicador}</p><p><strong>Data de geração:</strong> {new Date().toLocaleString("pt-BR")}</p><div className="actions no-print"><button className="btn secondary" onClick={()=>navegar("inicio")}>Voltar ao painel</button><button className="btn primary" onClick={gerarPDF}>Gerar PDF / Imprimir</button></div>
+    return <div className="report-page"><style>{GLOBAL_CSS}</style><h1>Radar Link MS</h1><h2>Relatório Estratégico de Gestores</h2><p><strong>Filtro:</strong> {municipioIndicador === "GERAL" ? "Geral" : municipioIndicador}</p><p><strong>Data de geração:</strong> {new Date().toLocaleString("pt-BR")}</p><div className="actions no-print"><button className="btn secondary" onClick={()=>navegar("graficos")}>← Indicadores</button><button className="btn secondary" onClick={()=>navegar("inicio")}>Voltar ao painel</button><button className="btn primary" onClick={gerarPDF}>Gerar PDF / Imprimir</button></div>
       <section className="report-box"><h3>1. Totais por Classificação</h3><p><strong>Verde:</strong> {verde}</p><p><strong>Amarelo:</strong> {amarelo}</p><p><strong>Vermelho:</strong> {vermelho}</p></section>
       <section className="report-box"><h3>2. Totais por Engajamento</h3><p><strong>Alto:</strong> {alto}</p><p><strong>Médio:</strong> {medio}</p><p><strong>Baixo:</strong> {baixo}</p></section>
       <section className="report-box"><h3>3. Lista de Diretores</h3>{baseOrdenada.map((r)=><div className="report-item" key={`${r.id}-diretor`}><p><strong>Escola:</strong> {r.escola}</p><p><strong>Nome:</strong> {r.diretor || "Não informado"}</p><p><strong>Município:</strong> {r.municipio}</p><p><strong>Classificação:</strong> {r.classificacaoDiretor || "Não informado"}</p><p><strong>Engajamento:</strong> {r.interesseAgendaDiretor || "Não informado"}</p><p><strong>Observações:</strong> {r.observacoesDiretor || "Sem observações"}</p></div>)}</section>
@@ -3196,11 +3411,46 @@ export default function App() {
     </div>;
   }
 
+  function TelaInicio() {
+    const escolasUnicas = [...new Map(gestoresPoliticosBase.map((g) => [
+      `${normalizarBusca(g.cidade)}|${normalizarBusca(g.escola)}`,
+      { cidade: g.cidade, escola: g.escola },
+    ])).values()];
+    const municipios = [...new Set(escolasUnicas.map((e) => e.cidade))];
+    const dados = {
+      municipios,
+      escolas: escolasUnicas,
+      formularios: registros,
+      gestores: gestoresPoliticosBase,
+      // Base de perfis possui autenticação própria: não exportar dados pessoais para o painel.
+      perfis: [],
+      apoiosEstaduais: apoiosPoliticosBase.filter((a) => a.tipo === "Estadual"),
+      apoiosFederais: apoiosPoliticosBase.filter((a) => a.tipo === "Federal"),
+      dobradinhas: dobradinhasBase,
+      resultadosTSE: [],
+    };
+    const destinos = {
+      inicio: "inicio", formulario: "novaReuniao", perfil: "perfilGestores",
+      "indicadores-relatorios": "graficos", tse: "resultadosTSE",
+      "inteligencia-eleitoral": "politico",
+    };
+    return <RadarDashboardCRE5
+      dados={dados}
+      onNavigate={(destino) => {
+        if (destino === "formulario") { setForm(formLimpo); setEditandoId(null); }
+        navegar(destinos[destino] || "inicio");
+      }}
+      onLogout={sairDaPlataforma}
+      statusBase={erroSistema ? "Erro ao consultar a base" : "Dados carregados"}
+    />;
+  }
+
   // As telas são funções de renderização locais. Chamá-las diretamente evita
   // remount completo da tela a cada alteração de estado (ex.: digitação em textarea).
   if (!autenticado) return TelaLogin();
   if (formAberto) return TelaFormularioAberto();
   if (filtroAtivo) return TelaListaFiltro();
+  if (tela === "novaReuniao") return TelaNovoFormulario();
   if (tela === "formularios") return TelaFormularios();
   if (tela === "perfilGestores") return <PerfilGestoresCRE5 onVoltar={() => setTela("inicio")} />;
   if (tela === "graficos") return TelaGraficos();
