@@ -455,15 +455,28 @@ class handler(BaseHTTPRequestHandler):
             return self.responder(400, {"ok": False, "erro": "Para gravar, use POST ?confirmar=SIM. Faça GET de previsualizacao primeiro."})
         try:
             limite = max(1, min(25, inteiro(query.get("limit", ["5"])[0]) or 5))
+            turno_solicitado = inteiro(query.get("turno", ["2"])[0])
+            if turno_solicitado not in (1, 2):
+                return self.responder(400, {"ok": False, "erro": "turno deve ser 1 ou 2"})
+            eleicao_esperada = 6257 if turno_solicitado == 1 else 6258
             db = banco()
             documentos = list(db.collection("bus_tse_2026").where("buDisponivel", "==", True).stream())
             candidatos = []
+            documentos_turno = 0
             for doc in documentos:
                 dados = doc.to_dict() or {}
+                # No projeto, os novos documentos do 2º turno terminam em _t2.
+                # Os documentos do 1º turno não possuem esse sufixo.
+                e_segundo_turno = doc.id.endswith("_t2")
+                turno_registro = inteiro(dados.get("turno"))
+                if turno_registro in (1, 2) and turno_registro != (2 if e_segundo_turno else 1):
+                    # Inconsistência entre sufixo e campo: não arriscar misturar os turnos.
+                    continue
+                if (2 if e_segundo_turno else 1) != turno_solicitado:
+                    continue
+                documentos_turno += 1
                 for arquivo in arquivos_unicos(dados.get("arquivosBU")):
                     candidatos.append((doc.id, dados, arquivo))
-            # Priorização determinística. A prévia pode percorrer o conjunto
-            # em blocos com cursor/offset quando necessário.
             candidatos.sort(key=lambda x: (x[0], str(x[2].get("hash"))))
             offset = max(0, inteiro(query.get("offset", ["0"])[0]) or 0)
             selecionados = candidatos[offset:offset + limite]
@@ -492,7 +505,7 @@ class handler(BaseHTTPRequestHandler):
                         sem_presidente += 1
                     for resultado in resultados_presidente:
                         eleicao = inteiro(resultado.get("idEleicao"))
-                        if eleicao not in ELEICOES_PRESIDENTE:
+                        if eleicao != eleicao_esperada:
                             chave = str(eleicao)
                             ignorados_eleicao[chave] = ignorados_eleicao.get(chave, 0) + 1
                             continue
@@ -520,17 +533,19 @@ class handler(BaseHTTPRequestHandler):
                 por_turno[str(registro["turno"])] += 1
             resposta = {
                 "ok": not erros, "modo": "gravacao" if gravar else "previsualizacao",
-                "documentosFonte": len(documentos), "arquivosFonte": len(candidatos),
+                "turno": turno_solicitado, "eleicaoEsperada": eleicao_esperada,
+                "documentosFonte": len(documentos), "documentosDoTurno": documentos_turno,
+                "arquivosFonte": len(candidatos),
                 "offset": offset, "consultados": len(selecionados),
                 "preparados": len(prontos), "porTurno": por_turno,
                 "semPresidente": sem_presidente,
                 "eleicoesNaoMapeadas": ignorados_eleicao,
                 "erros": erros[:10], "gravacao": False,
                 "proximoOffset": offset + len(selecionados) if offset + len(selecionados) < len(candidatos) else None,
-                "observacao": "Esta rotina não descobre BUs do segundo turno: apenas processa arquivos existentes em bus_tse_2026.",
+                "observacao": "Lê apenas BUs descobertos do turno selecionado. GET não grava dados. POST exige confirmar=SIM.",
             }
             if gravar:
-                if erros or ignorados_eleicao or not prontos:
+                if erros or ignorados_eleicao or not prontos or any(r["turno"] != turno_solicitado for r in prontos.values()):
                     resposta["ok"] = False
                     resposta["erro"] = "Gravacao bloqueada: inconsistencias, eleicoes nao mapeadas ou nenhum voto presidencial."
                     return self.responder(409, resposta)
