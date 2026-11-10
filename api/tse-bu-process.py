@@ -16,14 +16,9 @@ ASN1_PATH = os.path.join(BASE_DIR, "bu.asn1")
 _CONVERSOR = None
 _DB = None
 
-CARGOS_INTERESSE = {3, 5, 6, 7}
+CARGOS_INTERESSE = {1}
 
-CARGOS = {
-    3: "Governador",
-    5: "Senador",
-    6: "Deputado Federal",
-    7: "Deputado Estadual",
-}
+CARGOS = {1: "Presidente"}
 
 
 def conversor():
@@ -392,24 +387,6 @@ def decodificar_bu(conteudo):
     }
 
 
-def escolher_bu(arquivos):
-    validos = [
-        item
-        for item in (
-            arquivos or []
-        )
-        if (
-            item.get("url")
-            and item.get("hash")
-        )
-    ]
-
-    if not validos:
-        return None
-
-    return validos[-1]
-
-
 def mesmo_numero(a, b):
     try:
         return int(a) == int(b)
@@ -420,487 +397,151 @@ def mesmo_numero(a, b):
         )
 
 
+
+# Identificadores de eleição presidencial de 2026 utilizados nas consultas.
+# Validar se o campo idEleicao do BU corresponde a estes códigos
+# antes de autorizar a gravação.
+ELEICOES_PRESIDENTE = {6257: 1, 6258: 2}
+
+
+def arquivos_unicos(arquivos):
+    vistos = set()
+    saida = []
+    for item in arquivos or []:
+        if not isinstance(item, dict):
+            continue
+        url, hash_bu = str(item.get("url") or ""), str(item.get("hash") or "")
+        if not url or not hash_bu or (url, hash_bu) in vistos:
+            continue
+        vistos.add((url, hash_bu))
+        saida.append(item)
+    return saida
+
+
+def secao_id(dados, fallback):
+    municipio = inteiro(dados.get("codigoMunicipio"))
+    zona = inteiro(dados.get("zona"))
+    secao = inteiro(dados.get("secao"))
+    if None in (municipio, zona, secao):
+        raise ValueError("Municipio, zona ou secao ausente")
+    return f"pres_ms_{municipio:05d}_{zona:04d}_{secao:04d}", municipio, zona, secao
+
+
 class handler(BaseHTTPRequestHandler):
-
-    def responder(
-        self,
-        status,
-        payload,
-    ):
-        corpo = json.dumps(
-            payload,
-            ensure_ascii=False,
-            separators=(",", ":"),
-        ).encode("utf-8")
-
+    def responder(self, status, payload):
+        corpo = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
         self.send_response(status)
-
-        self.send_header(
-            "Content-Type",
-            "application/json; charset=utf-8",
-        )
-
-        self.send_header(
-            "Cache-Control",
-            "no-store",
-        )
-
+        self.send_header("Content-Type", "application/json; charset=utf-8")
+        self.send_header("Cache-Control", "no-store")
         self.end_headers()
-
         self.wfile.write(corpo)
 
     def autorizado(self):
-        segredo = os.environ.get(
-            "CRON_SECRET",
-            "",
-        )
-
-        if not segredo:
-            return False
-
-        return (
-            self.headers.get(
-                "Authorization",
-                "",
-            )
-            == f"Bearer {segredo}"
-        )
+        segredo = os.environ.get("CRON_SECRET", "")
+        return bool(segredo) and self.headers.get("Authorization", "") == f"Bearer {segredo}"
 
     def do_GET(self):
+        self.executar(gravar=False)
+
+    def do_POST(self):
+        self.executar(gravar=True)
+
+    def executar(self, gravar):
         inicio = time.time()
-
+        if not self.autorizado():
+            return self.responder(401, {"ok": False, "erro": "Nao autorizado"})
+        query = parse_qs(urlparse(self.path).query)
+        if gravar and query.get("confirmar", [""])[0] != "SIM":
+            return self.responder(400, {"ok": False, "erro": "Para gravar, use POST ?confirmar=SIM. Faça GET de previsualizacao primeiro."})
         try:
-            query = parse_qs(
-                urlparse(
-                    self.path
-                ).query
-            )
-
-            if (
-                query.get(
-                    "health",
-                    [""],
-                )[0]
-                == "1"
-            ):
-                conversor()
-                banco()
-
-                return self.responder(
-                    200,
-                    {
-                        "ok": True,
-                        "processador":
-                            "BU 2026",
-                        "asn1":
-                            "compilado",
-                        "firebase":
-                            "conectado",
-                    },
-                )
-
-            if not self.autorizado():
-                return self.responder(
-                    401,
-                    {
-                        "ok": False,
-                        "erro": "Não autorizado",
-                    },
-                )
-            limite = (
-                inteiro(
-                    query.get(
-                        "limit",
-                        ["1000"],
-                    )[0]
-                )
-                or 1000
-            )
-
-            limite = max(
-                1,
-                min(
-                    limite,
-                    1000,
-                ),
-            )
-
+            limite = max(1, min(25, inteiro(query.get("limit", ["5"])[0]) or 5))
             db = banco()
-
-            documentos = list(
-                db.collection(
-                    "bus_tse_2026"
-                )
-                .where(
-                    "buDisponivel",
-                    "==",
-                    True,
-                )
-                .stream()
-            )
-
-            candidatos_processamento = []
-
+            documentos = list(db.collection("bus_tse_2026").where("buDisponivel", "==", True).stream())
+            candidatos = []
             for doc in documentos:
-                dados = (
-                    doc.to_dict()
-                    or {}
-                )
-
-                arquivo = escolher_bu(
-                    dados.get(
-                        "arquivosBU"
-                    )
-                )
-
-                if not arquivo:
-                    continue
-
-                hash_atual = str(
-                    arquivo.get(
-                        "hash"
-                    )
-                    or ""
-                )
-
-                if (
-                    dados.get(
-                        "buProcessadoOk"
-                    )
-                    is True
-                    and str(
-                        dados.get(
-                            "buProcessadoHash"
-                        )
-                        or ""
-                    )
-                    == hash_atual
-                ):
-                    continue
-
-                candidatos_processamento.append(
-                    (
-                        doc.reference,
-                        doc.id,
-                        dados,
-                        arquivo,
-                    )
-                )
-
-            candidatos_processamento = (
-                candidatos_processamento[
-                    :limite
-                ]
-            )
-
-            processados = 0
-            falhas = 0
-            resultados_gravados = 0
-
-            detalhes_erros = []
-
-            for (
-                ref,
-                doc_id,
-                dados,
-                arquivo,
-            ) in candidatos_processamento:
-
-                if (
-                    time.time()
-                    - inicio
-                    > 270
-                ):
+                dados = doc.to_dict() or {}
+                for arquivo in arquivos_unicos(dados.get("arquivosBU")):
+                    candidatos.append((doc.id, dados, arquivo))
+            # Priorização determinística. A prévia pode percorrer o conjunto
+            # em blocos com cursor/offset quando necessário.
+            candidatos.sort(key=lambda x: (x[0], str(x[2].get("hash"))))
+            offset = max(0, inteiro(query.get("offset", ["0"])[0]) or 0)
+            selecionados = candidatos[offset:offset + limite]
+            prontos = {}
+            erros = []
+            sem_presidente = 0
+            ignorados_eleicao = {}
+            for doc_id, dados, arquivo in selecionados:
+                if time.time() - inicio > 40:
+                    erros.append({"secao": doc_id, "erro": "Tempo limite de consulta atingido"})
                     break
-
                 try:
-                    conteudo = baixar(
-                        arquivo["url"]
-                    )
-
-                    resultado = (
-                        decodificar_bu(
-                            conteudo
-                        )
-                    )
-
-                    if not mesmo_numero(
-                        resultado.get(
-                            "municipioCodigo"
-                        ),
-                        dados.get(
-                            "codigoMunicipio"
-                        ),
-                    ):
-                        raise ValueError(
-                            "Município do BU não corresponde ao registro da seção."
-                        )
-
-                    if not mesmo_numero(
-                        resultado.get(
-                            "zona"
-                        ),
-                        dados.get(
-                            "zona"
-                        ),
-                    ):
-                        raise ValueError(
-                            "Zona do BU não corresponde ao registro da seção."
-                        )
-
-                    if not mesmo_numero(
-                        resultado.get(
-                            "secao"
-                        ),
-                        dados.get(
-                            "secao"
-                        ),
-                    ):
-                        raise ValueError(
-                            "Seção do BU não corresponde ao registro da seção."
-                        )
-
-                    doc_secao = {
-                        "uf":
-                            "MS",
-
-                        "codigoMunicipio":
-                            str(
-                                dados.get(
-                                    "codigoMunicipio"
-                                )
-                                or ""
-                            ),
-
-                        "municipio":
-                            dados.get(
-                                "municipio"
-                            )
-                            or "",
-
-                        "zona":
-                            str(
-                                dados.get(
-                                    "zona"
-                                )
-                                or ""
-                            ),
-
-                        "secao":
-                            str(
-                                dados.get(
-                                    "secao"
-                                )
-                                or ""
-                            ),
-
-                        "escolas":
-                            dados.get(
-                                "escolas"
-                            )
-                            or [],
-
-                        "hashBU":
-                            arquivo.get(
-                                "hash"
-                            ),
-
-                        "nomeArquivoBU":
-                            arquivo.get(
-                                "nome"
-                            ),
-
-                        "urlBU":
-                            arquivo.get(
-                                "url"
-                            ),
-
-                        "bytesBU":
-                            len(conteudo),
-
-                        "fase":
-                            resultado.get(
-                                "fase"
-                            ),
-
-                        "dataHoraEmissao":
-                            resultado.get(
-                                "dataHoraEmissao"
-                            ),
-
-                        "local":
-                            resultado.get(
-                                "local"
-                            ),
-
-                        "qtdEleitoresCompareceram":
-                            resultado.get(
-                                "qtdEleitoresCompareceram"
-                            ),
-
-                        "resultados":
-                            resultado.get(
-                                "resultados"
-                            )
-                            or [],
-
-                        "atualizadoEm":
-                            firestore.SERVER_TIMESTAMP,
-                    }
-
-                    db.collection(
-                        "votos_secao_tse_2026"
-                    ).document(
-                        doc_id
-                    ).set(
-                        doc_secao,
-                        merge=True,
-                    )
-
-                    ref.set(
-                        {
-                            "buProcessadoOk":
-                                True,
-
-                            "buProcessadoHash":
-                                arquivo.get(
-                                    "hash"
-                                ),
-
-                            "buProcessadoEm":
-                                firestore.SERVER_TIMESTAMP,
-
-                            "buProcessamentoErro":
-                                None,
-                        },
-                        merge=True,
-                    )
-
-                    processados += 1
-
-                    resultados_gravados += len(
-                        resultado.get(
-                            "resultados"
-                        )
-                        or []
-                    )
-
-                except Exception as erro:
-                    falhas += 1
-
-                    mensagem = str(
-                        erro
-                    )[:500]
-
-                    ref.set(
-                        {
-                            "buProcessadoOk":
-                                False,
-
-                            "buProcessamentoErro":
-                                mensagem,
-
-                            "buProcessadoEm":
-                                firestore.SERVER_TIMESTAMP,
-                        },
-                        merge=True,
-                    )
-
-                    detalhes_erros.append(
-                        {
-                            "id":
-                                doc_id,
-                            "erro":
-                                mensagem,
+                    identificador, municipio, zona, secao = secao_id(dados, doc_id)
+                    if not host_tse_valido(arquivo["url"]):
+                        raise ValueError("URL de BU não pertence ao TSE")
+                    conteudo = baixar(arquivo["url"])
+                    decodificado = decodificar_bu(conteudo)
+                    if not all((
+                        mesmo_numero(decodificado.get("municipioCodigo"), municipio),
+                        mesmo_numero(decodificado.get("zona"), zona),
+                        mesmo_numero(decodificado.get("secao"), secao),
+                    )):
+                        raise ValueError("Identificacao de municipio/zona/secao diverge do BU")
+                    resultados_presidente = [r for r in decodificado.get("resultados", []) if numero_cargo(r) == 1]
+                    if not resultados_presidente:
+                        sem_presidente += 1
+                    for resultado in resultados_presidente:
+                        eleicao = inteiro(resultado.get("idEleicao"))
+                        if eleicao not in ELEICOES_PRESIDENTE:
+                            chave = str(eleicao)
+                            ignorados_eleicao[chave] = ignorados_eleicao.get(chave, 0) + 1
+                            continue
+                        chave = f"{identificador}_e{eleicao}"
+                        reg = {
+                            "uf": "MS",
+                            "codigoMunicipio": str(municipio),
+                            "municipio": dados.get("municipio") or "",
+                            "zona": str(zona), "secao": str(secao),
+                            "escolas": dados.get("escolas") or [],
+                            "hashBU": arquivo.get("hash"),
+                            "nomeArquivoBU": arquivo.get("nome"),
+                            "urlBU": arquivo.get("url"),
+                            "idEleicao": eleicao,
+                            "turno": ELEICOES_PRESIDENTE[eleicao],
+                            "resultados": [resultado],
                         }
-                    )
-
-            db.collection(
-                "meta_tse_2026"
-            ).document(
-                "processamento_bus"
-            ).set(
-                {
-                    "fonte":
-                        "TSE BU ASN.1",
-
-                    "totalComBU":
-                        len(documentos),
-
-                    "selecionadosNestaExecucao":
-                        len(
-                            candidatos_processamento
-                        ),
-
-                    "processadosNestaExecucao":
-                        processados,
-
-                    "falhasNestaExecucao":
-                        falhas,
-
-                    "resultadosCargoGravados":
-                        resultados_gravados,
-
-                    "atualizadoEm":
-                        firestore.SERVER_TIMESTAMP,
-                },
-                merge=True,
-            )
-
-            return self.responder(
-                200,
-                {
-                    "ok":
-                        True,
-
-                    "totalComBU":
-                        len(documentos),
-
-                    "selecionados":
-                        len(
-                            candidatos_processamento
-                        ),
-
-                    "processados":
-                        processados,
-
-                    "falhas":
-                        falhas,
-
-                    "resultadosCargoGravados":
-                        resultados_gravados,
-
-                    "detalhesErros":
-                        detalhes_erros[:10],
-
-                    "duracaoMs":
-                        int(
-                            (
-                                time.time()
-                                - inicio
-                            )
-                            * 1000
-                        ),
-                },
-            )
-
+                        # Se houver reemissão de BU, a última entrada consistente
+                        # substitui a anterior da mesma seção/eleição nesta execução.
+                        prontos[chave] = reg
+                except Exception as erro:
+                    erros.append({"secao": doc_id, "erro": str(erro)[:250]})
+            por_turno = {"1": 0, "2": 0}
+            for registro in prontos.values():
+                por_turno[str(registro["turno"])] += 1
+            resposta = {
+                "ok": not erros, "modo": "gravacao" if gravar else "previsualizacao",
+                "documentosFonte": len(documentos), "arquivosFonte": len(candidatos),
+                "offset": offset, "consultados": len(selecionados),
+                "preparados": len(prontos), "porTurno": por_turno,
+                "semPresidente": sem_presidente,
+                "eleicoesNaoMapeadas": ignorados_eleicao,
+                "erros": erros[:10], "gravacao": False,
+                "proximoOffset": offset + len(selecionados) if offset + len(selecionados) < len(candidatos) else None,
+                "observacao": "Esta rotina não descobre BUs do segundo turno: apenas processa arquivos existentes em bus_tse_2026.",
+            }
+            if gravar:
+                if erros or ignorados_eleicao or not prontos:
+                    resposta["ok"] = False
+                    resposta["erro"] = "Gravacao bloqueada: inconsistencias, eleicoes nao mapeadas ou nenhum voto presidencial."
+                    return self.responder(409, resposta)
+                for chave, reg in prontos.items():
+                    reg["atualizadoEm"] = firestore.SERVER_TIMESTAMP
+                    db.collection("votos_secao_tse_2026").document(chave).set(reg, merge=False)
+                resposta["gravacao"] = True
+            return self.responder(200, resposta)
         except Exception as erro:
-            return self.responder(
-                500,
-                {
-                    "ok":
-                        False,
+            return self.responder(500, {"ok": False, "erro": str(erro)[:400]})
 
-                    "erro":
-                        str(erro),
 
-                    "duracaoMs":
-                        int(
-                            (
-                                time.time()
-                                - inicio
-                            )
-                            * 1000
-                        ),
-                },
-            )
+def numero_cargo(resultado):
+    return inteiro(resultado.get("cargoCodigo"))
