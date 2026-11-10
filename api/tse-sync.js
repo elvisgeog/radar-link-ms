@@ -169,6 +169,7 @@ export default async function handler(req, res) {
     const config = configuracaoOficial();
     const diagnostico = String(req.query?.diagnostico || "") === "1";
     const modo = String(req.query?.modo || "todos").toLowerCase();
+    const previsualizar = String(req.query?.previsualizar || "") === "1";
     if (!['todos', 'presidente'].includes(modo)) return res.status(400).json({ ok: false, erro: "Modo inválido: use todos ou presidente." });
     const cargos = modo === 'presidente' ? ELEICOES.filter(x => x.cargo === 1) : ELEICOES;
     if (diagnostico) {
@@ -179,7 +180,6 @@ export default async function handler(req, res) {
       });
     }
 
-    const db = iniciarFirebaseAdmin();
     const eleicoesDistintas = [...new Set(cargos.map(c => c.eleicao))];
     const municipiosPorEleicao = new Map();
     const faltantesPorEleicao = [];
@@ -216,6 +216,35 @@ export default async function handler(req, res) {
 
     const gravaveis = apuracoes.filter(x => x.ok);
     const erros = apuracoes.filter(x => !x.ok);
+
+    // Modo de leitura: consulta o TSE, valida cada resultado e NÃO grava no Firestore.
+    if (previsualizar) {
+      const porTurno = cargos.map(item => {
+        const correspondentes = apuracoes.filter(x => x.turno === item.turno && x.cargo === item.nome);
+        return {
+          cargo: item.nome,
+          turno: item.turno,
+          eleicao: item.eleicao,
+          municipiosConsultados: correspondentes.length,
+          municipiosValidos: correspondentes.filter(x => x.ok).length,
+          municipiosComErro: correspondentes.filter(x => !x.ok).length,
+        };
+      });
+      return res.status(200).json({
+        ok: erros.length === 0,
+        modo: "previsualizacao",
+        ambiente: "oficial",
+        gravacao: false,
+        totalConsultas: apuracoes.length,
+        validos: gravaveis.length,
+        erros: erros.length,
+        porTurno,
+        detalhesErros: erros.map(x => ({ municipio: x.municipio, cargo: x.cargo, turno: x.turno, status: x.status, erro: x.erro })),
+        duracaoMs: Date.now() - inicio,
+      });
+    }
+
+    const db = iniciarFirebaseAdmin();
     if (!gravaveis.length) return res.status(502).json({ ok: false, erro: "Nenhum resultado oficial válido foi encontrado; nenhuma alteração realizada.", detalhesErros: erros.slice(0, 12) });
 
     // Só grava resultados validados; nunca remove coleções ou documentos de outros cargos.
