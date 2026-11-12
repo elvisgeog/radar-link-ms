@@ -2271,21 +2271,18 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
   const [perfisProtegidos, setPerfisProtegidos] = useState([]);
   const [perfilStatus, setPerfilStatus] = useState("Protegido — desbloqueie o módulo Perfil Gestores");
 
-  // A API já exige a chave do módulo. Nunca enviar a chave como dado ou incluí-la no relatório.
+  // A mesma sessão autenticada do Radar dá acesso aos perfis, sem segunda senha.
   useEffect(() => {
-    let chave = "";
-    try { chave = sessionStorage.getItem("radar_perfil_secret") || ""; } catch { /* sessão indisponível */ }
-    if (!chave) return;
     const controller = new AbortController();
     setPerfilStatus("Carregando perfis autorizados...");
-    fetch("/api/perfil-gestores", { headers: { "x-radar-secret": chave }, cache: "no-store", signal: controller.signal })
+    fetch("/api/perfil-gestores", { credentials: "same-origin", cache: "no-store", signal: controller.signal })
       .then(async (response) => {
         const json = await response.json();
-        if (!response.ok || !json.ok) throw new Error("Acesso aos perfis não autorizado");
+        if (!response.ok || !json.ok) throw new Error("Sessão expirada ou perfis indisponíveis");
         return json.registros || [];
       })
-      .then((lista) => { setPerfisProtegidos(Array.isArray(lista) ? lista : []); setPerfilStatus("Perfis atualizados — sessão autorizada"); })
-      .catch((e) => { if (e.name !== "AbortError") { setPerfisProtegidos([]); setPerfilStatus("Perfis indisponíveis — desbloqueie o módulo"); } });
+      .then((lista) => { setPerfisProtegidos(Array.isArray(lista) ? lista : []); setPerfilStatus("Perfis atualizados"); })
+      .catch((e) => { if (e.name !== "AbortError") { setPerfisProtegidos([]); setPerfilStatus("Perfis indisponíveis"); } });
     return () => controller.abort();
   }, []);
 
@@ -2823,13 +2820,20 @@ const RADAR_DASHBOARD_EXTRA_CSS = `
 export default function App() {
   const [votosTSEEscolas, setVotosTSEEscolas] = useState([]);
   const [statusTSE, setStatusTSE] = useState("Carregando resultados do Firestore...");
-  const SENHA_ACESSO = "radar2026";
 
   const [senhaDigitada, setSenhaDigitada] = useState("");
-  const [autenticado, setAutenticado] = useState(() => {
-    try { return window.localStorage.getItem("radar_auth") === "ok"; }
-    catch { return false; }
-  });
+  const [autenticado, setAutenticado] = useState(false);
+  const [verificandoSessao, setVerificandoSessao] = useState(true);
+  const [entrando, setEntrando] = useState(false);
+  useEffect(() => {
+    let ativo = true;
+    fetch("/api/perfil-gestores?acao=sessao", { credentials: "same-origin", cache: "no-store" })
+      .then((r) => r.json())
+      .then((r) => { if (ativo) setAutenticado(r.ok === true); })
+      .catch(() => { if (ativo) setAutenticado(false); })
+      .finally(() => { if (ativo) setVerificandoSessao(false); });
+    return () => { ativo = false; };
+  }, []);
   const [tela, setTela] = useState("inicio");
   // Usa a mesma coleção Firestore do módulo Resultados TSE. Uma única leitura
   // por entrada autenticada no aplicativo, sem novas APIs Serverless.
@@ -2943,18 +2947,30 @@ export default function App() {
     }
   }
 
-  function entrarNaPlataforma() {
-    if (senhaDigitada === SENHA_ACESSO) {
-      try { window.localStorage.setItem("radar_auth", "ok"); } catch { /* ambiente sem localStorage */ }
+  async function entrarNaPlataforma() {
+    if (entrando) return;
+    setEntrando(true);
+    try {
+      const resposta = await fetch("/api/perfil-gestores?acao=login", {
+        method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ senha: senhaDigitada }),
+      });
+      const json = await resposta.json();
+      if (!resposta.ok || !json.ok) throw new Error(json.erro || "Não autorizado.");
       setAutenticado(true);
       setSenhaDigitada("");
-    } else {
-      alert("Senha incorreta.");
+    } catch (erro) {
+      alert(erro.message || "Não foi possível entrar.");
+    } finally {
+      setEntrando(false);
     }
   }
 
   function sairDaPlataforma() {
-    try { window.localStorage.removeItem("radar_auth"); } catch { /* ambiente sem localStorage */ }
+    // Encerra a sessão no servidor, sem salvar senhas no navegador.
+    fetch("/api/perfil-gestores?acao=logout", { method: "POST", credentials: "same-origin" })
+      .catch(() => {});
     setAutenticado(false);
     setTela("inicio");
     setSenhaDigitada("");
@@ -3329,7 +3345,7 @@ export default function App() {
           <h1>Radar Link MS</h1>
           <p>Plataforma estratégica de gestão regional e acompanhamento de cenários.</p>
           <input className="input" type="password" placeholder="Digite a senha" value={senhaDigitada} onChange={(e) => setSenhaDigitada(e.target.value)} onKeyDown={(e) => { if (e.key === "Enter") entrarNaPlataforma(); }} autoFocus />
-          <button className="btn primary full" style={{ marginTop: 12 }} onClick={entrarNaPlataforma}>Entrar na plataforma</button>
+          <button className="btn primary full" style={{ marginTop: 12 }} onClick={entrarNaPlataforma} disabled={entrando}>{entrando ? "Entrando..." : "Entrar na plataforma"}</button>
         </div>
       </div>
     );
@@ -4024,6 +4040,7 @@ export default function App() {
 
   // As telas são funções de renderização locais. Chamá-las diretamente evita
   // remount completo da tela a cada alteração de estado (ex.: digitação em textarea).
+  if (verificandoSessao) return <div className="login-page"><style>{GLOBAL_CSS}</style><p>Verificando sessão segura...</p></div>;
   if (!autenticado) return TelaLogin();
   if (formAberto) return TelaFormularioAberto();
   if (filtroAtivo) return TelaListaFiltro();
