@@ -2132,6 +2132,7 @@ const chaveCidade = (r) => lugar(r?.cidade || r?.municipio || r?.município || r
 const chaveEscola = (r) => lugar(r?.escola || r?.unidade || r?.nomeEscola || r?.nome_escola);
 const chaveNorm = (v) => lugar(v).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase();
 const inteiro = (v) => Number.isFinite(Number(v)) && v !== "" && v != null ? Number(v).toLocaleString("pt-BR") : "—";
+const percentualTexto = (v) => `${Number(v || 0).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`;
 function contar(v) { return Array.isArray(v) ? v.length : (typeof v === "number" ? v : null); }
 function numeroOuNulo(v) { return Number.isFinite(v) ? v : null; }
 function Kpi({ rotulo, valor, nota, destaque, icone = "▦" }) {
@@ -2142,14 +2143,23 @@ function Kpi({ rotulo, valor, nota, destaque, icone = "▦" }) {
 }
 
 function Barras({ dados, tituloVazio, limite = 0 }) {
-  const maior = Math.max(1, ...dados.map((r) => r.valor));
+  const visiveis = limite ? dados.slice(0, limite) : dados;
+  const totalBase = Math.max(0, dados.reduce((soma, item) => soma + Number(item?.valor || 0), 0));
   if (!dados.length) return <div className="rd-empty">{tituloVazio}</div>;
-  return <div className="rd-bars" role="list" aria-label="Gráfico de barras com valores">
-    {(limite ? dados.slice(0, limite) : dados).map((r) => <div className="rd-barrow" role="listitem" key={r.nome}>
-      <div className="rd-bar-label" title={r.nome}>{r.nome}</div>
-      <div className="rd-track"><div className="rd-fill" style={{ width: `${Math.max(3, (r.valor / maior) * 100)}%` }} /></div>
-      <strong>{inteiro(r.valor)}</strong>
-    </div>)}
+  return <div className="rd-bars" role="list" aria-label="Gráfico de barras com valores percentuais">
+    {visiveis.map((r) => {
+      const valor = Number(r?.valor || 0);
+      const percentual = totalBase > 0 ? (valor / totalBase) * 100 : 0;
+      const largura = percentual > 0 ? Math.max(3, percentual) : 0;
+      return <div className="rd-barrow" role="listitem" key={r.nome}>
+        <div className="rd-bar-label" title={r.nome}>{r.nome}</div>
+        <div className="rd-track"><div className="rd-fill" style={{ width: `${largura}%` }} /></div>
+        <div className="rd-bar-meta" title={`${inteiro(valor)} registros / votos — ${percentualTexto(percentual)}`}>
+          <strong>{percentualTexto(percentual)}</strong>
+          <span>{inteiro(valor)}</span>
+        </div>
+      </div>;
+    })}
   </div>;
 }
 
@@ -2412,7 +2422,7 @@ const CSS = `
 .rd-hero{position:relative;overflow:hidden;background:linear-gradient(110deg,#101b37,#163d70);border:1px solid #31558c;border-left:5px solid #38bdf8;border-radius:18px;padding:27px 30px;display:flex;justify-content:space-between;align-items:center;gap:20px}.rd-hero:after{content:"";position:absolute;width:340px;height:340px;border:40px solid #366ebd3c;border-radius:50%;right:-125px;top:-200px;pointer-events:none}.rd-overline{font-size:11px;letter-spacing:1.6px;font-weight:800;color:#7dd3fc}.rd-hero h2{font-size:clamp(25px,3vw,39px);line-height:1.13;letter-spacing:-1px;margin:13px 0 10px}.rd-hero p{font-size:13px;color:#c9dbf4;line-height:1.55;margin:0;max-width:700px}.rd-hero-actions{z-index:1;display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end}.rd-hero-actions button{border:0;cursor:pointer;border-radius:10px;padding:12px 14px;font-weight:750;font-size:12px;white-space:nowrap}.rd-primary{background:#41b7f9;color:#05192d}.rd-secondary{background:#263f62;color:#e5f2ff}
 .rd-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:18px 0 12px}.rd-toolbar strong{display:block;font-size:17px}.rd-toolbar small{display:block;color:var(--muted);font-size:12px;margin-top:4px}.rd-toolbar label{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--muted)}.rd-toolbar select,.rd-card select,.rd-search{background:#182944;border:1px solid #39506d;color:#fff;padding:10px 12px;border-radius:9px;max-width:100%}
 .rd-kpis{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px}.rd-kpi{background:#17263e;border:1px solid #324763;border-radius:13px;padding:17px 16px;min-width:0}.rd-kpi-accent{border-top:3px solid #38bdf8}.rd-kpi span,.rd-kpi small{display:block;color:#b3c4de;font-size:11px}.rd-kpi strong{display:block;font-size:30px;margin:8px 0;font-variant-numeric:tabular-nums;letter-spacing:-.7px}.rd-kpi small{color:#7c9bb8;font-size:10px}
-.rd-charts,.rd-bottom{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,1fr);gap:12px;margin-top:14px}.rd-bottom{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.rd-card{background:#101d32;border:1px solid var(--border);border-radius:14px;padding:19px;min-width:0}.rd-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.rd-card h3{font-size:16px;margin:0 0 5px}.rd-card p{font-size:12px;color:var(--muted);margin:0;line-height:1.4}.rd-bars{display:grid;gap:13px;padding:2px 0 8px}.rd-barrow{display:grid;grid-template-columns:140px minmax(0,1fr) 40px;align-items:center;gap:11px;font-size:12px}.rd-bar-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#cddcf1}.rd-track{height:13px;background:#223754;border-radius:6px;overflow:hidden}.rd-fill{height:100%;background:linear-gradient(90deg,#2563eb,#22d3ee);border-radius:6px}.rd-barrow strong{text-align:right;font-variant-numeric:tabular-nums}.rd-empty{padding:45px 10px;color:#9db3cf;font-size:13px;line-height:1.5;text-align:center;border:1px dashed #375071;border-radius:12px}
+.rd-charts,.rd-bottom{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(300px,1fr);gap:12px;margin-top:14px}.rd-bottom{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}.rd-card{background:#101d32;border:1px solid var(--border);border-radius:14px;padding:19px;min-width:0}.rd-card-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px}.rd-card h3{font-size:16px;margin:0 0 5px}.rd-card p{font-size:12px;color:var(--muted);margin:0;line-height:1.4}.rd-bars{display:grid;gap:13px;padding:2px 0 8px}.rd-barrow{display:grid;grid-template-columns:140px minmax(0,1fr) 74px;align-items:center;gap:11px;font-size:12px}.rd-bar-label{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#cddcf1}.rd-track{height:13px;background:#223754;border-radius:6px;overflow:hidden}.rd-fill{height:100%;background:linear-gradient(90deg,#2563eb,#22d3ee);border-radius:6px}.rd-barrow strong{text-align:right;font-variant-numeric:tabular-nums}.rd-bar-meta{justify-self:end;min-width:74px;text-align:right;line-height:1.1}.rd-bar-meta strong{display:block}.rd-bar-meta span{display:block;font-size:10px;color:#94A3B8;margin-top:3px}.rd-empty{padding:45px 10px;color:#9db3cf;font-size:13px;line-height:1.5;text-align:center;border:1px dashed #375071;border-radius:12px}
 .rd-ring-wrap{display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:20px;min-height:217px}.rd-ring{--percent:0;width:172px;height:172px;border-radius:50%;background:conic-gradient(#2dd4bf calc(var(--percent) * 1%),#29415e 0);display:grid;place-items:center}.rd-ring-inside{width:128px;height:128px;border-radius:50%;background:#101d32;display:flex;flex-direction:column;align-items:center;justify-content:center}.rd-ring-inside strong{font-size:30px}.rd-ring-inside span{font-size:11px;color:#9fb4d0}.rd-ring-caption{max-width:145px}.rd-ring-caption b{display:block;font-size:20px}.rd-ring-caption span{display:block;margin-top:6px;font-size:12px;color:#9fb4d0}.rd-note{font-size:11px;line-height:1.45;color:#829bb9;border-top:1px solid #243852;padding-top:12px}
 .rd-search{width:100%;margin-bottom:12px;font-size:12px}.rd-tablewrap{max-height:340px;overflow:auto}.rd-tablewrap table{width:100%;border-collapse:collapse;text-align:left;font-size:12px}.rd-tablewrap th{font-size:11px;color:#8fa9ca;text-transform:uppercase;letter-spacing:.5px}.rd-tablewrap td,.rd-tablewrap th{padding:11px 8px;border-bottom:1px solid #283d59}.rd-tablewrap td:last-child,.rd-tablewrap th:last-child{text-align:right}.rd-shortcuts{display:grid;grid-template-columns:1fr 1fr;gap:10px}.rd-shortcuts button{display:grid;grid-template-columns:27px 1fr 15px;gap:2px 7px;text-align:left;background:#192b45;border:1px solid #2d4663;color:#fff;border-radius:12px;padding:13px;cursor:pointer}.rd-shortcuts button:hover{background:#243e60}.rd-shortcuts span{grid-row:span 2;font-size:13px;color:#60a5fa;font-weight:800}.rd-shortcuts b{font-size:12px}.rd-shortcuts small{grid-column:2;color:#a8bfdc;font-size:10px;line-height:1.35}.rd-shortcuts em{font-style:normal;grid-column:3;grid-row:1;color:#7dd3fc}.rd-source{color:#96aac5;font-size:11px;line-height:1.5;margin-top:18px}.rd-footer{font-size:11px;text-align:center;padding:24px 0 10px;color:#7287a5}
 @media(max-width:1220px){.rd-nav{grid-template-columns:repeat(3,minmax(0,1fr))}.rd-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}}@media(max-width:780px){.rd-root{padding:10px}.rd-header,.rd-hero{padding:16px}.rd-hero{align-items:flex-start;flex-direction:column}.rd-hero-actions{justify-content:flex-start}.rd-charts,.rd-bottom{grid-template-columns:minmax(0,1fr)}.rd-nav{grid-template-columns:repeat(2,minmax(0,1fr))}.rd-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.rd-toolbar{align-items:flex-start;flex-direction:column}.rd-status{font-size:10px}.rd-brand h1{font-size:20px}.rd-brand p{font-size:10px}.rd-logo{width:46px;height:46px;font-size:34px}}@media(max-width:460px){.rd-shortcuts{grid-template-columns:1fr}.rd-barrow{grid-template-columns:96px minmax(0,1fr) 28px;gap:7px}.rd-navbtn{padding:10px 7px}.rd-navicon{width:27px;height:27px}.rd-navbtn b{font-size:11px}.rd-navbtn small{font-size:9px}.rd-header{flex-wrap:wrap}}
@@ -2545,7 +2555,7 @@ const RADAR_DASHBOARD_EXTRA_CSS = `/* Radar Link MS: identidade visual profissio
 .rd-card h3{font-family:Poppins,Inter,sans-serif;font-size:14px;color:#0F172A;letter-spacing:-.2px;font-weight:700}
 .rd-card p{font-family:Inter,sans-serif;font-size:11px;line-height:1.5;color:#64748B}
 .rd-bars{gap:14px;padding:3px 0 9px}
-.rd-barrow,.rd-insight-grid .rd-barrow{grid-template-columns:minmax(125px,175px) minmax(0,1fr) 44px;gap:12px;font-size:12px;min-height:17px}
+.rd-barrow,.rd-insight-grid .rd-barrow{grid-template-columns:minmax(125px,175px) minmax(0,1fr) 74px;gap:12px;font-size:12px;min-height:17px}
 .rd-bar-label{color:#334155;font-size:11px;font-weight:500}
 .rd-track{height:10px;background:#E2E8F0;border-radius:5px}
 .rd-fill{height:100%;border-radius:5px;background:#2563EB}
@@ -2581,8 +2591,8 @@ const RADAR_DASHBOARD_EXTRA_CSS = `/* Radar Link MS: identidade visual profissio
 .rd-footer{padding:24px 0 14px;color:#64748B}
 .rd-root :is(button,select,input):focus-visible{outline:3px solid #93C5FD;outline-offset:2px}
 @media(max-width:1150px){.rd-kpis{grid-template-columns:repeat(3,minmax(0,1fr))}.rd-navbtn{flex-basis:28%}.rd-charts>.rd-card:first-child{grid-column:span 7}.rd-charts>.rd-card:nth-child(2){grid-column:span 5}}
-@media(max-width:780px){.rd-root{padding:10px}.rd-header{border-radius:8px 8px 0 0;padding:12px}.rd-nav{margin-bottom:12px;grid-template-columns:none}.rd-navbtn{flex-basis:30%;min-height:48px}.rd-navbtn b{font-size:10px}.rd-toolbar{flex-wrap:wrap}.rd-hero{padding:15px;flex-direction:column;align-items:flex-start}.rd-hero-actions{justify-content:flex-start}.rd-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.rd-charts>.rd-card:first-child,.rd-charts>.rd-card:nth-child(2){grid-column:span 12}.rd-insight-grid>.rd-card{grid-column:span 12}.rd-card{padding:15px}.rd-barrow,.rd-insight-grid .rd-barrow{grid-template-columns:110px minmax(0,1fr) 38px;gap:7px}}
-@media(max-width:420px){.rd-navbtn{flex-basis:43%;padding:6px}.rd-brand h1{font-size:18px}.rd-brand p{font-size:10px}.rd-status{font-size:10px}.rd-kpi strong{font-size:23px}.rd-barrow,.rd-insight-grid .rd-barrow{grid-template-columns:92px minmax(0,1fr) 32px}.rd-perfil-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:780px){.rd-root{padding:10px}.rd-header{border-radius:8px 8px 0 0;padding:12px}.rd-nav{margin-bottom:12px;grid-template-columns:none}.rd-navbtn{flex-basis:30%;min-height:48px}.rd-navbtn b{font-size:10px}.rd-toolbar{flex-wrap:wrap}.rd-hero{padding:15px;flex-direction:column;align-items:flex-start}.rd-hero-actions{justify-content:flex-start}.rd-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}.rd-charts>.rd-card:first-child,.rd-charts>.rd-card:nth-child(2){grid-column:span 12}.rd-insight-grid>.rd-card{grid-column:span 12}.rd-card{padding:15px}.rd-barrow,.rd-insight-grid .rd-barrow{grid-template-columns:110px minmax(0,1fr) 68px;gap:7px}}
+@media(max-width:420px){.rd-navbtn{flex-basis:43%;padding:6px}.rd-brand h1{font-size:18px}.rd-brand p{font-size:10px}.rd-status{font-size:10px}.rd-kpi strong{font-size:23px}.rd-barrow,.rd-insight-grid .rd-barrow{grid-template-columns:92px minmax(0,1fr) 62px}.rd-perfil-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media print{.rd-root{background:#fff;padding:0}.rd-header,.rd-hero,.rd-kpi,.rd-card{box-shadow:none}.rd-header{background:#fff;color:#000}.rd-header h1,.rd-brand p{color:#000}.rd-nav,.rd-toolbar,.rd-hero-actions,.rd-election-empty button,.rd-eleicao-footer button{display:none!important}.rd-hero h2,.rd-hero p,.rd-overline{color:#000}.rd-charts,.rd-insight-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.rd-charts>.rd-card:first-child,.rd-charts>.rd-card:nth-child(2),.rd-insight-grid>.rd-card{grid-column:span 1}.rd-kpis{grid-template-columns:repeat(3,1fr)}.rd-fill{background:#2563EB!important}.rd-card{break-inside:avoid}}
 
 
@@ -2660,7 +2670,7 @@ const RADAR_DASHBOARD_EXTRA_CSS = `/* Radar Link MS: identidade visual profissio
 .rd-root .rd-insight-heading p,.rd-root .rd-insight-heading span {color:#a8bbd5}
 .rd-root .rd-barrow {min-height:19px}
 .rd-root .rd-bar-label {color:#e1eafa;font-size:11px}
-.rd-root .rd-barrow strong {color:#fff;font-size:12px}
+.rd-root .rd-barrow strong {color:#fff;font-size:12px}.rd-root .rd-bar-meta span{color:#b8cae0}
 .rd-root .rd-track {background:#263a58;height:11px}
 .rd-root .rd-fill {background:linear-gradient(90deg,#2563eb,#24b6df)}
 .rd-root .rd-ring {background:conic-gradient(#0f9485 calc(var(--percent) * 1%),#263a58 0)}
