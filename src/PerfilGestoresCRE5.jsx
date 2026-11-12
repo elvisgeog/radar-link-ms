@@ -1,7 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 
 const API = "/api/perfil-gestores";
-const CHAVE_SESSAO = "radar_perfil_secret";
 
 function normalizar(v = "") {
   return String(v)
@@ -26,11 +25,8 @@ function perfilEdicao(p = {}) {
   };
 }
 
-function headers(segredo) {
-  return {
-    "Content-Type": "application/json",
-    "x-radar-secret": segredo,
-  };
+function headers() {
+  return { "Content-Type": "application/json" };
 }
 
 function escaparHTML(valor) {
@@ -92,14 +88,6 @@ function htmlRelatorio(registros, abrangencia) {
 }
 
 export default function PerfilGestoresCRE5({ onVoltar }) {
-  const [segredo, setSegredo] = useState(() => {
-    try {
-      return sessionStorage.getItem(CHAVE_SESSAO) || "";
-    } catch {
-      return "";
-    }
-  });
-  const [senhaDigitada, setSenhaDigitada] = useState("");
   const [registros, setRegistros] = useState([]);
   const [carregando, setCarregando] = useState(false);
   const [erro, setErro] = useState("");
@@ -112,8 +100,7 @@ export default function PerfilGestoresCRE5({ onVoltar }) {
   const [importando, setImportando] = useState(false);
   const [abrangenciaRelatorio, setAbrangenciaRelatorio] = useState("TODOS");
 
-  async function carregar(chave = segredo) {
-    if (!chave) return;
+  async function carregar() {
 
     setCarregando(true);
     setErro("");
@@ -121,7 +108,7 @@ export default function PerfilGestoresCRE5({ onVoltar }) {
     try {
       const resposta = await fetch(API, {
         method: "GET",
-        headers: headers(chave),
+        headers: headers(),
         cache: "no-store",
       });
 
@@ -134,68 +121,15 @@ export default function PerfilGestoresCRE5({ onVoltar }) {
       setRegistros(json.registros || []);
     } catch (e) {
       setErro(e?.message || "Falha ao carregar a base.");
-      if (e?.message === "Não autorizado.") {
-        bloquear();
-      }
     } finally {
       setCarregando(false);
     }
   }
 
   useEffect(() => {
-    if (segredo) carregar(segredo);
+    carregar();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [segredo]);
-
-  async function desbloquear() {
-    const chave = senhaDigitada.trim();
-    if (!chave) return;
-
-    setErro("");
-    setCarregando(true);
-
-    try {
-      const resposta = await fetch(API, {
-        method: "GET",
-        headers: headers(chave),
-        cache: "no-store",
-      });
-
-      const json = await resposta.json();
-
-      if (!resposta.ok || !json.ok) {
-        throw new Error(json.erro || "Acesso negado.");
-      }
-
-      try {
-        sessionStorage.setItem(CHAVE_SESSAO, chave);
-      } catch {
-        // sessão sem storage
-      }
-
-      setSegredo(chave);
-      setSenhaDigitada("");
-      setRegistros(json.registros || []);
-    } catch (e) {
-      setErro(e?.message || "Acesso negado.");
-    } finally {
-      setCarregando(false);
-    }
-  }
-
-  function bloquear() {
-    try {
-      sessionStorage.removeItem(CHAVE_SESSAO);
-    } catch {
-      // sessão sem storage
-    }
-
-    setSegredo("");
-    setSenhaDigitada("");
-    setRegistros([]);
-    setEdicaoId(null);
-    setRascunho(null);
-  }
+  }, []);
 
   const municipios = useMemo(
     () =>
@@ -289,7 +223,7 @@ export default function PerfilGestoresCRE5({ onVoltar }) {
     try {
       const resposta = await fetch(API, {
         method: "PUT",
-        headers: headers(segredo),
+        headers: headers(),
         body: JSON.stringify({
           id: item.id,
           diretor: rascunho.diretor,
@@ -335,7 +269,7 @@ export default function PerfilGestoresCRE5({ onVoltar }) {
 
       const resposta = await fetch(API, {
         method: "POST",
-        headers: headers(segredo),
+        headers: headers(),
         body: JSON.stringify({
           acao: "importar",
           registros: registrosImportacao,
@@ -352,56 +286,12 @@ export default function PerfilGestoresCRE5({ onVoltar }) {
         `${json.importados} registros importados com sucesso.`
       );
 
-      await carregar(segredo);
+      await carregar();
     } catch (e) {
       setErro(e?.message || "Falha ao importar.");
     } finally {
       setImportando(false);
     }
-  }
-
-  if (!segredo) {
-    return (
-      <Pagina>
-        <div className="pg-lock-card">
-          <div className="pg-eyebrow">Área protegida</div>
-          <h1>Avaliação de Perfil CRE-5</h1>
-          <p>
-            Esta área contém dados pessoais e avaliações de gestores.
-            Informe a senha específica do módulo.
-          </p>
-
-          <input
-            className="pg-input"
-            type="password"
-            value={senhaDigitada}
-            onChange={(e) => setSenhaDigitada(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") desbloquear();
-            }}
-            placeholder="Senha do módulo"
-            autoFocus
-          />
-
-          {erro && <div className="pg-erro">{erro}</div>}
-
-          <div className="pg-actions">
-            {onVoltar && (
-              <button className="pg-btn sec" onClick={onVoltar}>
-                ← Voltar
-              </button>
-            )}
-            <button
-              className="pg-btn"
-              onClick={desbloquear}
-              disabled={carregando}
-            >
-              {carregando ? "Verificando..." : "Entrar"}
-            </button>
-          </div>
-        </div>
-      </Pagina>
-    );
   }
 
   return (
@@ -437,9 +327,6 @@ export default function PerfilGestoresCRE5({ onVoltar }) {
           </button>
           <button className="pg-btn" onClick={imprimirRelatorio} disabled={!registros.length || carregando}>
             ↓ Salvar PDF
-          </button>
-          <button className="pg-btn sec" onClick={bloquear}>
-            Bloquear módulo
           </button>
         </div>
       </div>
