@@ -2377,8 +2377,6 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
   const perfisDisponiveis = new Set(ps.filter((r) => chaveCidade(r) && chaveEscola(r)).map(chaveUnica)).size;
   const divergenciaPerfil = perfisProtegidos.length > 0 && municipio === "TODOS" && perfisDisponiveis !== ESCOLAS_REFERENCIA_CRE5;
   const votosFiltrados = filtrar(tse);
-  const seriePresidente1 = apurarVotosTSE(votosFiltrados, 1, 6257);
-  const seriePresidente2 = apurarVotosTSE(votosFiltrados, 1, 6258);
   const serieGovernador = apurarVotosTSE(votosFiltrados, 3);
   const serieSenador = apurarVotosTSE(votosFiltrados, 5);
   const escolasTSEFiltradas = new Set(votosFiltrados.map((r) => r.escolaId).filter(Boolean)).size;
@@ -2440,8 +2438,6 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
           <Barras dados={administrativasGrafico.slice(0, 9)} tituloVazio="Não há questões administrativas classificadas neste recorte." />
         </section>
         {[
-          { cargo: "Presidente · 1º turno", codigo: "Presidente 1º", serie: seriePresidente1 },
-          { cargo: "Presidente · 2º turno", codigo: "Presidente 2º", serie: seriePresidente2 },
           { cargo: "Governador", codigo: "Governador", serie: serieGovernador },
           { cargo: "Senador", codigo: "Senador", serie: serieSenador },
         ].map(({ cargo, codigo, serie }) => (
