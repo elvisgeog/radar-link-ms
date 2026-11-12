@@ -1,3 +1,4 @@
+import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 import { cert, getApps, initializeApp } from "firebase-admin/app";
 import { FieldValue, getFirestore } from "firebase-admin/firestore";
 
@@ -23,47 +24,61 @@ function dbAdmin() {
   return getFirestore();
 }
 
+const NOME_COOKIE = "radar_session";
+const DURACAO_SESSAO = 12 * 60 * 60;
+
+function igualSeguro(a, b) {
+  const x = Buffer.from(String(a || ""));
+  const y = Buffer.from(String(b || ""));
+  return x.length === y.length && timingSafeEqual(x, y);
+}
+
+function assinar(valor) {
+  return createHmac("sha256", process.env.RADAR_SESSION_SECRET || "")
+    .update(valor).digest("hex");
+}
+
+function criarSessao() {
+  const expira = Math.floor(Date.now() / 1000) + DURACAO_SESSAO;
+  const corpo = Buffer.from(JSON.stringify({ expira, nonce: randomBytes(12).toString("hex") }))
+    .toString("base64url");
+  return `${corpo}.${assinar(corpo)}`;
+}
+
+function sessaoValida(req) {
+  if (!process.env.RADAR_SESSION_SECRET) return false;
+  const cookies = String(req.headers.cookie || "").split(";");
+  const valor = cookies.map((c) => c.trim()).find((c) => c.startsWith(`${NOME_COOKIE}=`))
+    ?.slice(NOME_COOKIE.length + 1);
+  if (!valor) return false;
+  const partes = valor.split(".");
+  if (partes.length !== 2 || !igualSeguro(partes[1], assinar(partes[0]))) return false;
+  try {
+    const dados = JSON.parse(Buffer.from(partes[0], "base64url").toString("utf8"));
+    return Number.isInteger(dados.expira) && dados.expira > Date.now() / 1000;
+  } catch { return false; }
+}
+
+function cookieSessao(token, idade) {
+  return `${NOME_COOKIE}=${token}; Path=/; HttpOnly; Secure; SameSite=Strict; Max-Age=${idade}`;
+}
+
+function origemValida(req) {
+  const origem = String(req.headers.origin || "");
+  if (!origem) return false;
+  try {
+    const host = String(req.headers.host || "").toLowerCase();
+    return new URL(origem).host.toLowerCase() === host && new URL(origem).protocol === "https:";
+  } catch { return false; }
+}
+
 function autorizado(req) {
-  const esperado = String(
-    process.env.RADAR_PERFIL_SECRET || ""
-  ).trim();
-
-  const authorization = String(
-    req.headers.authorization || ""
-  ).trim();
-
-  const bearer = authorization
-    .replace(/^Bearer\s+/i, "")
-    .trim();
-
-  const headerAlternativo = String(
-    req.headers["x-radar-secret"] || ""
-  ).trim();
-
-  const recebido = bearer || headerAlternativo;
-
-  if (!esperado) {
-    return {
-      ok: false,
-      status: 500,
-      erro: "RADAR_PERFIL_SECRET não configurada na Vercel.",
-    };
+  if (!process.env.RADAR_APP_PASSWORD || !process.env.RADAR_SESSION_SECRET) {
+    return { ok: false, status: 500, erro: "Autenticação do Radar não configurada no servidor." };
   }
-
-  if (!recebido || recebido !== esperado) {
-    return {
-      ok: false,
-      status: 401,
-      erro: "Não autorizado.",
-      diagnostico: {
-        recebeuChave: Boolean(recebido),
-        tamanhoRecebido: recebido.length,
-        tamanhoEsperado: esperado.length,
-      },
-    };
-  }
-
-  return { ok: true };
+  return sessaoValida(req)
+    ? { ok: true }
+    : { ok: false, status: 401, erro: "Sessão expirada. Entre novamente no Radar Link MS." };
 }
 
 function texto(v, max = 6000) {
@@ -129,15 +144,33 @@ function serializarTimestamp(v) {
 
 export default async function handler(req, res) {
   res.setHeader("Cache-Control", "no-store");
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,POST,PUT,OPTIONS");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "Content-Type, X-Radar-Secret, Authorization"
-  );
-
-  if (req.method === "OPTIONS") {
-    return res.status(204).end();
+  // Apenas requisições do próprio domínio podem alterar sessões ou perfis.
+  const acao = String(req.query?.acao || "");
+  if (acao === "login" && req.method === "POST") {
+    if (!origemValida(req)) return res.status(403).json({ ok: false, erro: "Origem inválida." });
+    const esperado = process.env.RADAR_APP_PASSWORD || "";
+    const chaveSessao = process.env.RADAR_SESSION_SECRET || "";
+    if (!esperado || chaveSessao.length < 32) {
+      return res.status(500).json({ ok: false, erro: "Configure RADAR_APP_PASSWORD e RADAR_SESSION_SECRET na Vercel." });
+    }
+    const corpo = typeof req.body === "string" ? JSON.parse(req.body || "{}") : (req.body || {});
+    if (!igualSeguro(corpo.senha, esperado)) return res.status(401).json({ ok: false, erro: "Senha incorreta." });
+    res.setHeader("Set-Cookie", cookieSessao(criarSessao(), DURACAO_SESSAO));
+    return res.status(200).json({ ok: true });
+  }
+  if (acao === "logout" && req.method === "POST") {
+    if (!origemValida(req)) return res.status(403).json({ ok: false, erro: "Origem inválida." });
+    res.setHeader("Set-Cookie", cookieSessao("", 0));
+    return res.status(200).json({ ok: true });
+  }
+  if (acao === "sessao" && req.method === "GET") {
+    return res.status(200).json({ ok: sessaoValida(req) });
+  }
+  if (!["GET", "POST", "PUT"].includes(req.method)) {
+    return res.status(405).json({ ok: false, erro: "Método não permitido." });
+  }
+  if (req.method !== "GET" && !origemValida(req)) {
+    return res.status(403).json({ ok: false, erro: "Origem inválida." });
   }
 
   const auth = autorizado(req);
@@ -145,9 +178,6 @@ export default async function handler(req, res) {
     return res.status(auth.status).json({
       ok: false,
       erro: auth.erro,
-      ...(auth.diagnostico
-        ? { diagnostico: auth.diagnostico }
-        : {}),
     });
   }
 
