@@ -2081,6 +2081,74 @@ const GLOBAL_CSS = `
     .kpi-card { background:#fff !important; border:1px solid #bbb !important; }
   }
 
+
+  /* RADAR LINK MS — identidade compartilhada entre todos os módulos. */
+  .radar-app {
+    --radar-navy:#081323; --radar-panel:#0d1729; --radar-blue:#2563eb;
+    --radar-teal:#0f766e; --radar-ink:#f8fafc;
+    font-family:Inter,"Segoe UI",Arial,sans-serif;
+  }
+  .radar-app .radar-brand h1,
+  .radar-app .hero h2,
+  .radar-unified-module h1,
+  .radar-unified-module h2,
+  .radar-unified-module h3 {
+    font-family:Inter,"Segoe UI",Arial,sans-serif;
+    letter-spacing:-.025em;
+  }
+  .radar-unified-module {
+    min-width:0;
+    width:100%;
+    margin:0 auto;
+    background:transparent;
+    color:#f8fafc;
+    font-family:Inter,"Segoe UI",Arial,sans-serif;
+  }
+  .radar-unified-module .resultados-page,
+  .radar-unified-module .pg-page {
+    width:100%; max-width:none; min-height:0!important;
+    box-sizing:border-box; margin:0;
+    font-family:Inter,"Segoe UI",Arial,sans-serif!important;
+    background:#081323!important;
+    border:1px solid #243650;
+    border-radius:14px;
+    color:#f8fafc;
+  }
+  .radar-unified-module .resultados-page {padding:18px!important;}
+  .radar-unified-module .pg-page {padding:18px!important;}
+  .radar-unified-module :is(button,select,input,textarea) {font-family:Inter,"Segoe UI",Arial,sans-serif;}
+  .radar-unified-module :is(button,select,input,textarea):focus-visible {
+    outline:2px solid #60a5fa;outline-offset:2px;
+  }
+  .radar-unified-module .pg-top h1,
+  .radar-unified-module .pg-lock-card h1,
+  .radar-unified-module .resultados-titulo {
+    font-size:clamp(23px,2.4vw,31px)!important;
+    line-height:1.18!important;
+    font-weight:800;
+    color:#fff;
+  }
+  .radar-unified-module .pg-panel,
+  .radar-unified-module .pg-card {border-color:#2c405c;border-radius:12px;}
+  .radar-unified-module .pg-btn {border-radius:9px;min-height:39px;}
+  .radar-unified-module .pg-btn:not(.sec):not(.ok) {background:#2563eb;}
+  .radar-unified-module .resultados-page .botao-voltar {display:none;}
+  .radar-app .radar-document {width:100%;max-width:none;min-height:0;padding:22px;border-radius:12px;}
+  @media(max-width:780px) {
+    .radar-unified-module .resultados-page,
+    .radar-unified-module .pg-page {padding:11px!important;border-radius:10px;}
+    .radar-unified-module .pg-page .pg-top {gap:12px;}
+  }
+  @media print {
+    .radar-unified-module .resultados-page,
+    .radar-unified-module .pg-page,
+    .radar-app .radar-document {
+      background:#fff!important;color:#111!important;
+      border:0!important;padding:0!important;
+    }
+    .radar-unified-module {background:#fff!important;}
+  }
+
 `;
 
 // Componente estável fora de App. Isso evita que o formulário seja desmontado
@@ -2325,33 +2393,20 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
 
   function imprimir() { window.print(); }
 
-  return <div className="rd-root">
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet" />
+  return <div className="rd-root rd-embedded">
     <style>{CSS + RADAR_DASHBOARD_EXTRA_CSS}</style>
-    <header className="rd-header">
-      <div className="rd-brand"><div className="rd-logo">◎</div><div><h1>{titulo}</h1><p>CRE-5 · Gestão educacional e inteligência regional · Mato Grosso do Sul</p></div></div>
-      <div className="rd-top-controls"><div className="rd-status"><i />{statusBase}</div><button type="button" className="rd-exit" onClick={onLogout}>Sair da plataforma</button></div>
-    </header>
-    <nav className="rd-nav" aria-label="Navegação principal">
-      {MODULOS.map((m) => <button type="button" className={`rd-navbtn ${m.id === "inicio" ? "active" : ""}`} key={m.id} onClick={() => m.id !== "inicio" && onNavigate(m.id)}>
-        <span className="rd-navicon">{m.icone}</span><span><b>{m.nome}</b><small>{m.detalhe}</small></span>
-      </button>)}
-    </nav>
-
     <main className="rd-main">
+      <section className="hero rd-dashboard-hero">
+        <div><span className="eyebrow">PAINEL EXECUTIVO REGIONAL</span><h2>Central de Inteligência CRE-5</h2>
+          <p>Informação consolidada para acompanhamento das escolas, reuniões, gestores e articulação regional.</p></div>
+        <div className="rd-hero-actions">
+          <button type="button" onClick={() => onNavigate("formulario")} className="btn secondary">+ Nova reunião</button>
+          <button type="button" onClick={imprimir} className="btn secondary">Imprimir relatório</button>
+        </div>
+      </section>
       <section className="rd-toolbar" aria-label="Filtros do painel">
         <div><strong>Filtros do painel</strong><small>Selecione um município para atualizar os gráficos</small></div>
         <label>Município <select value={municipio} onChange={(e) => setMunicipio(e.target.value)}><option value="TODOS">Toda a CRE-5</option>{municipios.map((m) => <option key={m} value={m}>{m}</option>)}</select></label>
-      </section>
-      <section className="rd-hero">
-        <div><span className="rd-overline">PAINEL EXECUTIVO REGIONAL</span><h2>Central de Inteligência CRE-5</h2>
-          <p>Informação consolidada para acompanhamento das escolas, reuniões, gestores e articulação regional.</p></div>
-        <div className="rd-hero-actions">
-          <button onClick={() => onNavigate("formulario")} className="rd-primary">+ Nova reunião</button>
-          <button onClick={imprimir} className="rd-secondary">Imprimir relatório</button>
-        </div>
       </section>
       <section className="rd-kpis" aria-label="Indicadores gerais">
         <Kpi icone="⌖" rotulo="Municípios monitorados" valor={municipio === "TODOS" ? (municipios.length || dados.totais?.municipios) : 1} nota="Cobertura regional" destaque />
@@ -2432,7 +2487,58 @@ const CSS = `
 .rd-eleicao-card .rd-card-head{align-items:flex-start}.rd-eleicao-tag{padding:6px 9px;border:1px solid #315d8b;color:#9bd3ff;background:#173251;border-radius:8px;font-size:11px;font-weight:700;white-space:nowrap}.rd-eleicao-footer{display:flex;justify-content:space-between;gap:10px;align-items:center;border-top:1px solid #273c58;padding-top:13px;margin-top:16px}.rd-eleicao-footer span{font-size:11px;color:#9fb6d1}.rd-eleicao-footer button{border:1px solid #3b6592;background:#1b3e6b;color:#fff;font-size:11px;font-weight:700;border-radius:8px;padding:8px;cursor:pointer}@media(max-width:520px){.rd-eleicao-footer{align-items:flex-start;flex-direction:column}}
 `;
 
-const RADAR_DASHBOARD_EXTRA_CSS = `/* Radar Link MS: identidade visual profissional — Azul + Verde + neutros */
+const RADAR_DASHBOARD_EXTRA_CSS = `
+/* Painel inicial reutiliza o cabecalho e a navegacao reais das outras abas. */
+.rd-root.rd-embedded {
+  min-height:0;
+  width:100%;
+  background:transparent;
+  padding:0;
+  font-family:inherit;
+}
+.rd-root.rd-embedded .rd-main {max-width:none; margin:0; width:100%;}
+.rd-root.rd-embedded .rd-dashboard-hero {
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:20px;
+  margin:0 0 16px;
+  padding:24px 26px;
+  background:linear-gradient(110deg,#111a38 0%,#19264f 65%,#183d78 100%);
+  border:1px solid #244475;
+  border-left:7px solid #2563eb;
+}
+.rd-root.rd-embedded .rd-dashboard-hero::after {
+  content:"";
+  display:block;
+  position:absolute;
+  width:300px;
+  height:300px;
+  border-radius:50%;
+  right:-110px;
+  top:-175px;
+  border:55px solid rgba(70,122,220,.13);
+  pointer-events:none;
+}
+.rd-root.rd-embedded .rd-dashboard-hero > div {position:relative;z-index:1;}
+.rd-root.rd-embedded .rd-dashboard-hero h2 {font-size:clamp(26px,3vw,38px);font-weight:850;letter-spacing:-.9px;margin:8px 0 7px;color:#fff;}
+.rd-root.rd-embedded .rd-dashboard-hero p {font-size:14px;color:#dbe6f7;line-height:1.55;}
+.rd-root.rd-embedded .rd-dashboard-hero .eyebrow {color:#8dbbff;}
+.rd-root.rd-embedded .rd-dashboard-hero .rd-hero-actions {display:flex;gap:9px;flex-wrap:wrap;justify-content:flex-end;}
+.rd-root.rd-embedded .rd-dashboard-hero .rd-hero-actions .btn.secondary {
+  background:#13233d;
+  color:#fff;
+  border:1px solid #3a557a;
+  border-radius:9px;
+  padding:10px 14px;
+  font-weight:800;
+}
+.rd-root.rd-embedded .rd-dashboard-hero .rd-hero-actions .btn.secondary:hover {background:#1f385b;}
+@media(max-width:780px){
+  .rd-root.rd-embedded .rd-dashboard-hero{flex-direction:column;align-items:flex-start;padding:18px;}
+  .rd-root.rd-embedded .rd-dashboard-hero .rd-hero-actions{justify-content:flex-start;}
+}
+/* Radar Link MS: identidade visual profissional — Azul + Verde + neutros */
 .rd-root {
   --rd-primary:#004F9F; --rd-primary-hover:#003B7A; --rd-secondary:#009E3D;
   --rd-bg:#F1F4F8; --rd-surface:#FFFFFF; --rd-ink:#183047;
@@ -3186,7 +3292,7 @@ export default function App() {
       <>
         <nav className="radar-nav no-print" aria-label="Navegação principal">
           {itens.map((item) => (
-            <button key={item.id} className={`nav-btn ${(tela === item.id || (item.grupo && tela === item.grupo)) ? "active" : ""}`} onClick={() => navegar(item.id)}>
+            <button key={item.id} className={`nav-btn ${(tela === item.id || (item.id === "formularios" && tela === "novaReuniao") || (item.grupo && tela === item.grupo)) ? "active" : ""}`} onClick={() => navegar(item.id)}>
               <span className="nav-icon" aria-hidden="true"><NavIcon tipo={item.id} /></span>
               <span className="nav-label-wrap">
                 <span className="nav-label">{item.label}</span>
@@ -3907,15 +4013,17 @@ export default function App() {
       "indicadores-relatorios": "graficos", tse: "resultadosTSE",
       "inteligencia-eleitoral": "politico",
     };
-    return <RadarDashboardCRE5
-      dados={dados}
-      onNavigate={(destino) => {
-        if (destino === "formulario") { setForm(formLimpo); setEditandoId(null); }
-        navegar(destinos[destino] || "inicio");
-      }}
-      onLogout={sairDaPlataforma}
-      statusBase={erroSistema ? "Erro ao consultar a base" : "Dados carregados"}
-    />;
+    return <StableShell brand={BrandBar()} nav={NavPrincipal()}>
+      <RadarDashboardCRE5
+        dados={dados}
+        onNavigate={(destino) => {
+          if (destino === "formulario") { setForm(formLimpo); setEditandoId(null); }
+          navegar(destinos[destino] || "inicio");
+        }}
+        onLogout={sairDaPlataforma}
+        statusBase={erroSistema ? "Erro ao consultar a base" : "Dados carregados"}
+      />
+    </StableShell>;
   }
 
   // As telas são funções de renderização locais. Chamá-las diretamente evita
@@ -3925,9 +4033,17 @@ export default function App() {
   if (filtroAtivo) return TelaListaFiltro();
   if (tela === "novaReuniao") return TelaNovoFormulario();
   if (tela === "formularios") return TelaFormularios();
-  if (tela === "perfilGestores") return <PerfilGestoresCRE5 onVoltar={() => setTela("inicio")} />;
+  if (tela === "perfilGestores") return <StableShell brand={BrandBar()} nav={NavPrincipal()}>
+    <main className="radar-unified-module" aria-label="Perfil Gestores">
+      <PerfilGestoresCRE5 onVoltar={() => setTela("inicio")} />
+    </main>
+  </StableShell>;
   if (tela === "graficos") return TelaGraficos();
-  if (tela === "resultadosTSE") return <ResultadosTSE2026 onVoltar={() => setTela("inicio")} />;
+  if (tela === "resultadosTSE") return <StableShell brand={BrandBar()} nav={NavPrincipal()}>
+    <main className="radar-unified-module" aria-label="Resultados TSE">
+      <ResultadosTSE2026 onVoltar={() => setTela("inicio")} />
+    </main>
+  </StableShell>;
   if (tela === "politico") return TelaPolitica();
   if (tela === "dobradinha") return TelaDobradinha();
   if (tela === "relatorio") return TelaRelatorio();
