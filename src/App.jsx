@@ -2164,21 +2164,26 @@ function Anel({ valor, total }) {
   </div>;
 }
 
-// Consolidação por cargo/candidato: só soma registros que contêm votos numéricos.
-// Não calcula percentuais ou resultados quando a API não retorna dados compatíveis.
-function apurarVotosTSE(registros, cargoEsperado) {
+// Consolida somente votos NOMINAIS dos documentos escolares distintos.
+// Cada documento corresponde a uma escola vinculada ao TSE. O turno é filtrado
+// por idEleicao para impedir a mistura das eleições 6257 e 6258.
+function apurarVotosTSE(registros, cargoCodigo, idEleicao = null) {
   const mapa = new Map();
   for (const r of registros) {
-    const cargo = chaveNorm(r?.cargo || r?.descricaoCargo || r?.dsCargo || r?.tipoEleicao || "");
-    if (cargo !== cargoEsperado && !cargo.includes(cargoEsperado)) continue;
-    const candidato = lugar(r?.candidato || r?.nomeCandidato || r?.nmVotavel || r?.nomeUrna || r?.nome || "");
-    const bruto = r?.votos ?? r?.qtVotos ?? r?.quantidadeVotos ?? r?.votosNominais ?? r?.totalVotos;
-    if (!candidato || bruto == null || bruto === "") continue;
-    const quantidade = typeof bruto === "number" ? bruto : Number(String(bruto).replace(/\./g, "").replace(",", "."));
-    if (!Number.isSafeInteger(quantidade) || quantidade < 0) continue;
-    mapa.set(candidato, (mapa.get(candidato) || 0) + quantidade);
+    if (Number(r.cargoCodigo) !== Number(cargoCodigo)) continue;
+    if (idEleicao !== null && Number(r.idEleicao) !== Number(idEleicao)) continue;
+    const numero = String(r.numeroCandidato ?? "").trim();
+    const bruto = Number(r.votos);
+    if (!numero || !Number.isSafeInteger(bruto) || bruto < 0) continue;
+    const chave = `${cargoCodigo}:${numero}`;
+    const nome = lugar(r.candidato) || `Candidato nº ${numero}`;
+    const atual = mapa.get(chave) || { nome, valor: 0, numero };
+    atual.valor += bruto;
+    // Prefere nome completo oficial quando disponível.
+    if (nome !== `Candidato nº ${numero}`) atual.nome = nome;
+    mapa.set(chave, atual);
   }
-  return [...mapa].map(([nome, valor]) => ({ nome, valor })).sort((a, b) => b.valor - a.valor).slice(0, 12);
+  return [...mapa.values()].sort((a, b) => b.valor - a.valor || a.nome.localeCompare(b.nome, "pt-BR"));
 }
 
 function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () => {}, statusBase = "Base sincronizada", titulo = "Radar Link MS" }) {
@@ -2214,6 +2219,7 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
   const apoioFed = array(dados.apoiosFederais);
   const dobradinhas = array(dados.dobradinhas);
   const tse = array(dados.resultadosTSE);
+  const statusTSE = dados.statusTSE || "";
 
   const municipios = useMemo(() => {
     const nomes = [
@@ -2292,8 +2298,13 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
   // Esta métrica NÃO é substituída por 63: representa apenas dados efetivamente recebidos.
   const perfisDisponiveis = new Set(ps.filter((r) => chaveCidade(r) && chaveEscola(r)).map(chaveUnica)).size;
   const divergenciaPerfil = perfisProtegidos.length > 0 && municipio === "TODOS" && perfisDisponiveis !== ESCOLAS_REFERENCIA_CRE5;
-  const serieGovernador = apurarVotosTSE(filtrar(tse), "GOVERNADOR");
-  const serieSenador = apurarVotosTSE(filtrar(tse), "SENADOR");
+  const votosFiltrados = filtrar(tse);
+  const seriePresidente1 = apurarVotosTSE(votosFiltrados, 1, 6257);
+  const seriePresidente2 = apurarVotosTSE(votosFiltrados, 1, 6258);
+  const serieGovernador = apurarVotosTSE(votosFiltrados, 3);
+  const serieSenador = apurarVotosTSE(votosFiltrados, 5);
+  const escolasTSEFiltradas = new Set(votosFiltrados.map((r) => r.escolaId).filter(Boolean)).size;
+  const recorteEleitoral = municipio === "TODOS" ? "CRE-5 (62 escolas vinculadas ao TSE)" : municipio;
   const tiposApoio = [
     { nome: "Estadual", valor: filtrar(apoioEst).length },
     { nome: "Federal", valor: filtrar(apoioFed).length },
@@ -2363,16 +2374,18 @@ function RadarDashboardCRE5({ dados = {}, onNavigate = () => {}, onLogout = () =
         <section className="rd-card"><div className="rd-card-head"><div><h3>Questões administrativas</h3><p>Ocorrências registradas em reuniões com gestores</p></div></div>
           <Barras dados={administrativasGrafico.slice(0, 9)} tituloVazio="Não há questões administrativas classificadas neste recorte." />
         </section>
-        <section className="rd-card rd-eleicao-card">
-          <div className="rd-card-head"><div><h3>Eleição 2026 · Governador</h3><p>Votação consolidada nos locais eleitorais vinculados às escolas CRE-5</p></div><span className="rd-eleicao-tag">Governador</span></div>
-          {serieGovernador.length ? <Barras dados={serieGovernador} /> : <div className="rd-election-empty" role="status"><span className="rd-election-empty-icon" aria-hidden="true">◷</span><strong>Resultados aguardando integração</strong><p>Os votos por candidato e escola ainda não estão disponíveis nesta visão.</p><button type="button" onClick={() => onNavigate("tse")}>Consultar módulo TSE</button></div>}
-          <div className="rd-eleicao-footer"><span>{serieGovernador.length ? `${inteiro(serieGovernador.reduce((a,r)=>a+r.valor,0))} votos válidos por candidato na base` : "Aguardando dados eleitorais por escola"}</span><button type="button" onClick={() => onNavigate("tse")}>Abrir Resultados TSE ↗</button></div>
-        </section>
-        <section className="rd-card rd-eleicao-card">
-          <div className="rd-card-head"><div><h3>Eleição 2026 · Senador</h3><p>Votação consolidada nos locais eleitorais vinculados às escolas CRE-5</p></div><span className="rd-eleicao-tag">Senador</span></div>
-          {serieSenador.length ? <Barras dados={serieSenador} /> : <div className="rd-election-empty" role="status"><span className="rd-election-empty-icon" aria-hidden="true">◷</span><strong>Resultados aguardando integração</strong><p>Os votos por candidato e escola ainda não estão disponíveis nesta visão.</p><button type="button" onClick={() => onNavigate("tse")}>Consultar módulo TSE</button></div>}
-          <div className="rd-eleicao-footer"><span>{serieSenador.length ? `${inteiro(serieSenador.reduce((a,r)=>a+r.valor,0))} votos nominais na base` : "Aguardando dados eleitorais por escola"}</span><button type="button" onClick={() => onNavigate("tse")}>Abrir Resultados TSE ↗</button></div>
-        </section>
+        {[
+          { cargo: "Presidente · 1º turno", codigo: "Presidente 1º", serie: seriePresidente1 },
+          { cargo: "Presidente · 2º turno", codigo: "Presidente 2º", serie: seriePresidente2 },
+          { cargo: "Governador", codigo: "Governador", serie: serieGovernador },
+          { cargo: "Senador", codigo: "Senador", serie: serieSenador },
+        ].map(({ cargo, codigo, serie }) => (
+          <section className="rd-card rd-eleicao-card" key={codigo}>
+            <div className="rd-card-head"><div><h3>Eleição 2026 · {cargo}</h3><p>Votos nominais somados nos locais vinculados às escolas · {recorteEleitoral}</p></div><span className="rd-eleicao-tag">{codigo}</span></div>
+            {serie.length ? <Barras dados={serie} /> : <div className="rd-election-empty" role="status"><span className="rd-election-empty-icon" aria-hidden="true">◷</span><strong>Resultados não disponíveis</strong><p>{statusTSE || "Não há votos consolidados para o cargo e o município selecionados."}</p><button type="button" onClick={() => onNavigate("tse")}>Consultar módulo TSE</button></div>}
+            <div className="rd-eleicao-footer"><span>{serie.length ? `${inteiro(serie.reduce((a,r)=>a+r.valor,0))} votos nominais · ${inteiro(escolasTSEFiltradas)} locais escolares na base consultada` : "Aguardando dados eleitorais consolidados"}</span><button type="button" onClick={() => onNavigate("tse")}>Abrir Resultados TSE ↗</button></div>
+          </section>
+        ))}
         <section className="rd-card"><div className="rd-card-head"><div><h3>Composição da base de gestores</h3><p>Diretores e adjuntos cadastrados na base principal</p></div></div>
           <Barras dados={tiposGestores} tituloVazio="Nenhum gestor disponível para este município." />
         </section>
@@ -2697,24 +2710,7 @@ const RADAR_DASHBOARD_EXTRA_CSS = `/* Radar Link MS: identidade visual profissio
 `;
 export default function App() {
   const [votosTSEEscolas, setVotosTSEEscolas] = useState([]);
-  // A mesma API escolar usada no módulo TSE pode expor registros de votos por cargo.
-  // Se não disponibilizar uma lista compatível, exibimos o estado sem dados,
-  // nunca números presumidos a partir de resultados gerais do município.
-  useEffect(() => {
-    const ac = new AbortController();
-    fetch("/api/tse-escolas-resultados", { cache: "no-store", signal: ac.signal })
-      .then(async (r) => {
-        if (!r.ok) throw new Error("Resultados TSE indisponíveis");
-        return r.json();
-      })
-      .then((j) => {
-        const dados = Array.isArray(j) ? j :
-          [j?.registros, j?.resultados, j?.dados, j?.items].find(Array.isArray) || [];
-        setVotosTSEEscolas(dados);
-      })
-      .catch(() => { if (!ac.signal.aborted) setVotosTSEEscolas([]); });
-    return () => ac.abort();
-  }, []);
+  const [statusTSE, setStatusTSE] = useState("Carregando resultados do Firestore...");
   const SENHA_ACESSO = "radar2026";
 
   const [senhaDigitada, setSenhaDigitada] = useState("");
@@ -2723,6 +2719,69 @@ export default function App() {
     catch { return false; }
   });
   const [tela, setTela] = useState("inicio");
+  // Usa a mesma coleção Firestore do módulo Resultados TSE. Uma única leitura
+  // por entrada autenticada no aplicativo, sem novas APIs Serverless.
+  useEffect(() => {
+    if (!autenticado) return;
+    let cancelado = false;
+    Promise.all([
+      getDocs(collection(db, "resultados_escolas_tse_2026")),
+      getDocs(collection(db, "resultados_tse_2026")),
+    ])
+      .then(([escolasSnap, municipiosSnap]) => {
+        if (cancelado) return;
+        const metadados = new Map();
+        municipiosSnap.docs.forEach((d) => {
+          const dado = d.data() || {};
+          (dado.candidatos || []).forEach((c) => {
+            const codigo = Number(dado.cargoCodigo);
+            const num = String(c.numero ?? "").trim();
+            if (!num) return;
+            const chave = `${codigo}:${num}`;
+            if (!metadados.has(chave)) {
+              metadados.set(chave, c.nomeUrna || c.nome || "");
+            }
+          });
+        });
+        const itens = [];
+        escolasSnap.docs.forEach((docEscola) => {
+          const escola = docEscola.data() || {};
+          // Um documento por escola evita duplicação de resultados entre carregamentos.
+          (escola.resultados || []).forEach((resultado) => {
+            const cargoCodigo = Number(resultado.cargoCodigo);
+            const idEleicao = Number(resultado.idEleicao);
+            if (![1, 3, 5].includes(cargoCodigo)) return;
+            if (cargoCodigo === 1 && ![6257, 6258].includes(idEleicao)) return;
+            (resultado.candidatos || []).forEach((c) => {
+              const numeroCandidato = String(c.numero ?? "").trim();
+              const votos = Number(c.votos);
+              if (!numeroCandidato || !Number.isSafeInteger(votos) || votos < 0) return;
+              const nome = metadados.get(`${cargoCodigo}:${numeroCandidato}`) ||
+                `Candidato nº ${numeroCandidato}`;
+              itens.push({
+                cidade: escola.municipio || "",
+                municipio: escola.municipio || "",
+                escolaId: docEscola.id,
+                cargoCodigo,
+                idEleicao,
+                numeroCandidato,
+                candidato: nome,
+                votos,
+              });
+            });
+          });
+        });
+        setVotosTSEEscolas(itens);
+        setStatusTSE(itens.length ? "Resultados escolares carregados" : "Nenhum resultado de candidato encontrado na base escolar.");
+      })
+      .catch((erro) => {
+        if (cancelado) return;
+        setVotosTSEEscolas([]);
+        setStatusTSE(`Não foi possível carregar os votos: ${erro?.code || "verifique as permissões do Firestore"}`);
+      });
+    return () => { cancelado = true; };
+  }, [autenticado]);
+
   const [registros, setRegistros] = useState([]);
   const [form, setForm] = useState(formLimpo);
   const [editandoId, setEditandoId] = useState(null);
@@ -3831,6 +3890,7 @@ export default function App() {
       apoiosFederais: apoiosPoliticosBase.filter((a) => a.tipo === "Federal"),
       dobradinhas: dobradinhasBase,
       resultadosTSE: votosTSEEscolas,
+      statusTSE,
     };
     const destinos = {
       inicio: "inicio", formulario: "novaReuniao", perfil: "perfilGestores",
