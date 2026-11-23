@@ -99,6 +99,7 @@ export default function PerfilGestoresCRE5({ onVoltar }) {
   const [salvando, setSalvando] = useState(false);
   const [importando, setImportando] = useState(false);
   const [abrangenciaRelatorio, setAbrangenciaRelatorio] = useState("TODOS");
+  const itemEmEdicao = registros.find((item) => item.id === edicaoId) || null;
 
   async function carregar() {
 
@@ -196,6 +197,7 @@ export default function PerfilGestoresCRE5({ onVoltar }) {
       adjunto: perfilEdicao(item.adjunto),
     });
     setMensagem("");
+    window.scrollTo?.({ top: 0, behavior: "smooth" });
   }
 
   function fecharEdicao() {
@@ -243,7 +245,7 @@ export default function PerfilGestoresCRE5({ onVoltar }) {
         )
       );
 
-      setMensagem("Alterações salvas.");
+      setMensagem("Alterações salvas. Os dados da tabela foram atualizados.");
       fecharEdicao();
     } catch (e) {
       setErro(e?.message || "Falha ao salvar.");
@@ -299,20 +301,21 @@ export default function PerfilGestoresCRE5({ onVoltar }) {
       <div className="pg-top">
         <div>
           <div className="pg-eyebrow">CRE-5 · Dourados</div>
-          <h1>Avaliação de Perfil</h1>
-          <p>
-            Cidade e escola são campos fixos. Todos os demais campos
-            podem ser atualizados.
-          </p>
+          <h1>{itemEmEdicao ? "Editar perfil da escola" : "Avaliação de Perfil"}</h1>
+          <p>{itemEmEdicao ? `${itemEmEdicao.escola} — ${itemEmEdicao.cidade}` : "Consulta detalhada de gestores, conforme o relatório de impressão. Selecione Editar para atualizar uma escola."}</p>
         </div>
 
         <div className="pg-actions">
-          {onVoltar && (
+          {itemEmEdicao ? (
+            <button className="pg-btn sec" onClick={fecharEdicao} disabled={salvando}>
+              ← Voltar ao relatório
+            </button>
+          ) : onVoltar ? (
             <button className="pg-btn sec" onClick={onVoltar}>
               ← Voltar
             </button>
-          )}
-          <select
+          ) : null}
+          {!itemEmEdicao && <select
             className="pg-export-select"
             aria-label="Abrangência do relatório"
             value={abrangenciaRelatorio}
@@ -321,24 +324,24 @@ export default function PerfilGestoresCRE5({ onVoltar }) {
           >
             <option value="TODOS">Relatório: todas as escolas</option>
             <option value="FILTRADOS">Relatório: filtro atual</option>
-          </select>
-          <button className="pg-btn sec" onClick={imprimirRelatorio} disabled={!registros.length || carregando}>
+          </select>}
+          {!itemEmEdicao && <button className="pg-btn sec" onClick={imprimirRelatorio} disabled={!registros.length || carregando}>
             🖨 Imprimir
-          </button>
-          <button className="pg-btn" onClick={imprimirRelatorio} disabled={!registros.length || carregando}>
+          </button>}
+          {!itemEmEdicao && <button className="pg-btn" onClick={imprimirRelatorio} disabled={!registros.length || carregando}>
             ↓ Salvar PDF
-          </button>
+          </button>}
         </div>
       </div>
 
-      <div className="pg-kpis">
+      {!itemEmEdicao && <div className="pg-kpis">
         <Kpi titulo="Municípios" valor={municipios.length} />
         <Kpi titulo="Escolas" valor={registros.length} />
         <Kpi titulo="Diretores" valor={registros.length} />
         <Kpi titulo="Adjuntos" valor={registros.length} />
-      </div>
+      </div>}
 
-      {registros.length === 0 && !carregando && (
+      {!itemEmEdicao && registros.length === 0 && !carregando && (
         <section className="pg-panel">
           <h2>Importação inicial</h2>
           <p>
@@ -359,7 +362,7 @@ export default function PerfilGestoresCRE5({ onVoltar }) {
         </section>
       )}
 
-      <section className="pg-panel">
+      {!itemEmEdicao && <section className="pg-panel">
         <div className="pg-filtros">
           <select
             className="pg-input"
@@ -384,84 +387,79 @@ export default function PerfilGestoresCRE5({ onVoltar }) {
             placeholder="Buscar escola ou gestor..."
           />
         </div>
-      </section>
+      </section>}
 
       {erro && <div className="pg-erro">{erro}</div>}
       {mensagem && <div className="pg-ok">{mensagem}</div>}
 
       {carregando ? (
         <section className="pg-panel">Carregando...</section>
+      ) : itemEmEdicao && rascunho ? (
+        <section className="pg-editor-screen" aria-label={`Edição de ${itemEmEdicao.escola}`}>
+          <div className="pg-edit-head">
+            <div>
+              <span className="pg-eyebrow">{itemEmEdicao.cidade}</span>
+              <h2>{itemEmEdicao.escola}</h2>
+              <p>Atualize os dados dos gestores. Escola e município permanecem fixos.</p>
+            </div>
+            <button className="pg-btn sec" type="button" onClick={fecharEdicao} disabled={salvando}>Voltar à lista</button>
+          </div>
+          <div className="pg-grid2">
+            <Pessoa titulo="Diretor" perfil={rascunho.diretor} onChange={(c, v) => mudar("diretor", c, v)} />
+            <Pessoa titulo="Diretor Adjunto" perfil={rascunho.adjunto} onChange={(c, v) => mudar("adjunto", c, v)} />
+          </div>
+          <div className="pg-fixed">🔒 Município e escola não são editáveis.</div>
+          <div className="pg-actions">
+            <button className="pg-btn sec" onClick={fecharEdicao} disabled={salvando}>Cancelar</button>
+            <button className="pg-btn ok" onClick={() => salvar(itemEmEdicao)} disabled={salvando}>
+              {salvando ? "Salvando..." : "Salvar alterações"}
+            </button>
+          </div>
+        </section>
       ) : (
-        <div className="pg-list">
-          {filtrados.map((item) => {
-            const aberto = edicaoId === item.id;
-
-            return (
-              <section className="pg-card" key={item.id}>
-                <div className="pg-card-head">
-                  <div>
-                    <div className="pg-city">{item.cidade}</div>
-                    <div className="pg-school">{item.escola}</div>
-                    <div className="pg-summary">
-                      <strong>Diretor:</strong>{" "}
-                      {item.diretor?.nome || "—"}
-                      <br />
-                      <strong>Adjunto:</strong>{" "}
-                      {item.adjunto?.nome || "—"}
-                    </div>
-                  </div>
-
-                  <button
-                    className="pg-btn"
-                    onClick={() =>
-                      aberto ? fecharEdicao() : abrirEdicao(item)
-                    }
-                  >
-                    {aberto ? "Fechar" : "Editar"}
-                  </button>
-                </div>
-
-                {aberto && rascunho && (
-                  <div className="pg-editor">
-                    <div className="pg-grid2">
-                      <Pessoa
-                        titulo="Diretor"
-                        perfil={rascunho.diretor}
-                        onChange={(c, v) => mudar("diretor", c, v)}
-                      />
-                      <Pessoa
-                        titulo="Diretor Adjunto"
-                        perfil={rascunho.adjunto}
-                        onChange={(c, v) => mudar("adjunto", c, v)}
-                      />
-                    </div>
-
-                    <div className="pg-fixed">
-                      🔒 Município e escola não são editáveis.
-                    </div>
-
-                    <div className="pg-actions">
-                      <button
-                        className="pg-btn sec"
-                        onClick={fecharEdicao}
-                        disabled={salvando}
-                      >
-                        Cancelar
-                      </button>
-                      <button
-                        className="pg-btn ok"
-                        onClick={() => salvar(item)}
-                        disabled={salvando}
-                      >
-                        {salvando ? "Salvando..." : "Salvar alterações"}
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </section>
-            );
-          })}
-        </div>
+        <section className="pg-report-screen" aria-label="Relatório de avaliação de perfil">
+          <div className="pg-report-heading">
+            <h2>CRE-5 Dourados — Avaliação de Perfil</h2>
+            <p><strong>Abrangência:</strong> {municipio === "TODOS" ? "Todos os municípios" : municipio} · <strong>Municípios:</strong> {new Set(filtrados.map((r) => r.cidade)).size} · <strong>Escolas exibidas:</strong> {filtrados.length} de {registros.length}</p>
+            <p><strong>DOCUMENTO DE ACESSO RESTRITO</strong> — Contém dados pessoais e avaliações de gestores.</p>
+          </div>
+          {filtrados.length === 0 ? <div className="pg-no-results">Nenhuma escola encontrada para os filtros selecionados.</div> : (
+            <div className="pg-report-scroll">
+              <table className="pg-report-table">
+                <colgroup><col style={{width:"8%"}}/><col style={{width:"16%"}}/><col style={{width:"6%"}}/><col style={{width:"6%"}}/><col style={{width:"6%"}}/><col style={{width:"26%"}}/><col style={{width:"32%"}}/></colgroup>
+                {filtrados.map((item, indice) => (
+                  <tbody className="pg-report-group" key={item.id}>
+                    <tr className="pg-report-school">
+                      <td colSpan={7}>
+                        <div className="pg-report-school-line">
+                          <strong>{indice + 1}. {item.escola} — {item.cidade}</strong>
+                          <button type="button" className="pg-btn pg-report-edit" onClick={() => abrirEdicao(item)} aria-label={`Editar ${item.escola}`}>
+                            ✎ Editar
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                    <tr className="pg-report-column-head">
+                      <th scope="col">Cargo</th><th scope="col">Nome</th><th scope="col">Técnico</th>
+                      <th scope="col">Político</th><th scope="col">Social</th>
+                      <th scope="col">Posicionamento político Dep. Estadual/Federal 2026</th><th scope="col">Observação</th>
+                    </tr>
+                    {[["Diretor",item.diretor || {}],["Adjunto",item.adjunto || {}]].map(([cargo,pessoa]) => (
+                      <tr key={cargo}>
+                        <td>{cargo}</td><td>{pessoa.nome || "—"}</td>
+                        <td className="pg-report-number">{pessoa.tecnico ?? "—"}</td>
+                        <td className="pg-report-number">{pessoa.politico ?? "—"}</td>
+                        <td className="pg-report-number">{pessoa.social ?? "—"}</td>
+                        <td>{pessoa.posicionamento || "—"}</td><td>{pessoa.observacao || "—"}</td>
+                      </tr>
+                    ))}
+                    <tr className="pg-report-separator"><td colSpan={7}></td></tr>
+                  </tbody>
+                ))}
+              </table>
+            </div>
+          )}
+        </section>
       )}
     </Pagina>
   );
@@ -562,7 +560,25 @@ function Pagina({ children }) {
           background:linear-gradient(135deg,#07111f,#0f172a,#111827);
           color:#fff;font-family:Arial,sans-serif;box-sizing:border-box
         }
-        .pg-page>*{width:min(1180px,100%);margin-left:auto;margin-right:auto}
+        .pg-page>*{width:min(1450px,100%);margin-left:auto;margin-right:auto}
+        .pg-report-screen{background:#fff;color:#111;border:1px solid #a5b4c5;border-radius:10px;padding:16px;overflow:hidden}
+        .pg-report-heading h2{margin:0 0 7px;font-size:20px;color:#111}
+        .pg-report-heading p{margin:4px 0 9px;font-size:12px;color:#111;line-height:1.4}
+        .pg-report-scroll{overflow-x:auto;width:100%}
+        .pg-report-table{border-collapse:collapse;table-layout:fixed;width:100%;min-width:970px;font:12px Arial,sans-serif;color:#111;background:#fff}
+        .pg-report-table th,.pg-report-table td{border:1px solid #999;padding:7px 6px;vertical-align:top;overflow-wrap:anywhere;white-space:pre-wrap}
+        .pg-report-table th{text-align:left;background:#e9e9e9;font-weight:700}
+        .pg-report-school td{background:#dcdcdc;padding:7px;font-size:13px}
+        .pg-report-school-line{display:flex;align-items:center;justify-content:space-between;gap:12px}
+        .pg-report-edit{font-size:12px;padding:7px 13px;white-space:nowrap}
+        .pg-report-number{text-align:center}
+        .pg-report-separator td{height:12px;background:#fff;border-left:0;border-right:0}
+        .pg-no-results{padding:28px;text-align:center;color:#334155}
+        .pg-editor-screen{background:#0f172a;border:1px solid #334155;border-radius:12px;padding:22px}
+        .pg-edit-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:20px}
+        .pg-edit-head h2{font-size:24px;margin:7px 0}
+        .pg-edit-head p{font-size:13px;color:#b7cbe3}
+        @media(max-width:760px){.pg-report-screen{padding:10px}.pg-edit-head{flex-direction:column;align-items:flex-start}}
         .pg-top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:14px}
         .pg-top h1,.pg-lock-card h1{margin:4px 0 6px;font-size:clamp(26px,4vw,38px)}
         .pg-top p,.pg-lock-card p{margin:0;color:#cbd5e1;line-height:1.5}
